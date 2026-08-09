@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "JogjaHub",
+    "slug": "jogjahub-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jogjahub.app"
+    },
+    "android": {
+      "package": "com.jogjahub.app"
+    },
+    "plugins": [],
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}
