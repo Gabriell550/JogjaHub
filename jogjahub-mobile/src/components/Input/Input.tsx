@@ -1,10 +1,17 @@
 import React from 'react';
 import { TextInput, StyleSheet, TextInputProps } from 'react-native';
+import { colors, radius } from '../../constants/theme';
 
-export function Input(props: TextInputProps) {
-  return <TextInput style={styles.input} placeholderTextColor="#999" {...props} />;
+export function Input({ style, ...rest }: TextInputProps) {
+  return <TextInput style={[styles.input, style]} placeholderTextColor={colors.outline} {...rest} />;
 }
 
 const styles = StyleSheet.create({
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10 },
+  input: {
+    borderWidth: 2,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.DEFAULT,
+    padding: 10,
+    color: colors.onSurface,
+  },
 });
