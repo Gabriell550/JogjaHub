@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primaryContainer, 
   },
   logo: { width: 200, height: 200, marginBottom: spacing.stackLg },
   text: {
