@@ -9,8 +9,6 @@ type Props = {
   onChange: (role: AuthRole) => void;
 };
 
-// Tab pill untuk pilih "Login/Daftar sebagai Customer" atau "Vendor".
-// Dipakai bareng di LoginScreen dan kedua RegisterScreen supaya konsisten.
 export default function RoleSwitchTab({ value, onChange }: Props) {
   return (
     <View style={styles.wrap}>
