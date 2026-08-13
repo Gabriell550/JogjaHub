@@ -23,7 +23,7 @@ export default function RegisterCustomerScreen() {
       return;
     }
 
-    const result = await registerCustomer({ name, email, password, phone });
+    const result = await registerCustomer({ name, email, password, passwordConfirmation: confirmPassword, phone });
     if (result.success) {
       Alert.alert('Berhasil', 'Akun customer berhasil dibuat. Silakan login.', [
         { text: 'OK', onPress: () => navigation.goBack() },

@@ -82,6 +82,7 @@ export default function RegisterVendorScreen() {
       phone,
       email,
       password,
+      passwordConfirmation: confirmPassword,
       idCardFile,
       businessLicenseFile,
     });

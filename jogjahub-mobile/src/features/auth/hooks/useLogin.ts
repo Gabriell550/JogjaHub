@@ -7,6 +7,19 @@ import type { AppDispatch } from '../../../store';
 
 type LoginPayload = { email: string; password: string };
 
+const getErrorMessage = (err: any, fallback: string) => {
+  const errors = err?.response?.data?.errors;
+  if (errors && typeof errors === 'object') {
+    const firstError = Object.values(errors)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .find((value) => typeof value === 'string');
+
+    if (firstError) return firstError;
+  }
+
+  return err?.response?.data?.message ?? fallback;
+};
+
 export function useLogin() {
   const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(false);
@@ -16,22 +29,28 @@ export function useLogin() {
     setLoading(true);
     setError(null);
     try {
-      const response = await authApi.login({ email, password });
+      console.log('=== LOGIN REQUEST ===');
+      console.log('email:', email);
+      console.log('password length:', password.length);
 
-      // TODO ketika backend siap: cocokkan baris ini dengan bentuk response ASLI.
-      // Sekarang diasumsikan: { data: { user: {...}, token: '...' } } (pola umum Laravel API Resource).
-      // Kalau ternyata backend balikin langsung { user, token } tanpa pembungkus "data",
-      // ganti baris di bawah jadi: const { user, token } = response.data;
+      const response = await authApi.login({ email, password });
+      console.log('=== LOGIN RESPONSE ===');
+      console.log(JSON.stringify(response.data, null, 2));
+
       const { user, token } = response.data.data;
 
       dispatch(setSession({ user, token }));
-      setToken(token); // supaya request berikutnya otomatis bawa header Authorization
+      setToken(token);
 
       return { success: true as const };
     } catch (err: any) {
-      // TODO ketika backend siap: cocokkan path "err.response.data.message" ini dengan
-      // bentuk error response ASLI (mis. Laravel validation error biasanya di err.response.data.errors).
-      const message = err?.response?.data?.message ?? 'Login gagal. Periksa email dan password.';
+      console.log('=== LOGIN ERROR ===');
+      console.log('error object:', err);
+      console.log('status:', err?.response?.status);
+      console.log('response data:', JSON.stringify(err?.response?.data, null, 2));
+      console.log('request URL:', err?.config?.url);
+
+      const message = getErrorMessage(err, 'Login gagal. Periksa email dan password.');
       setError(message);
       return { success: false as const, message };
     } finally {

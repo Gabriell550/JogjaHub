@@ -12,13 +12,21 @@ export const authApi = {
     name: string;
     email: string;
     password: string;
+    password_confirmation: string;
     phone: string;
   }) => apiClient.post('/auth/register/customer', payload),
 
-  // Vendor pakai multipart/form-data karena ada file KTP & Surat Badan Usaha yang ikut dikirim
-  // sekaligus, bukan JSON biasa seperti registerCustomer.
+  registerTenant: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+    phone?: string;
+  }) => apiClient.post('/auth/register/tenant', payload),
+
+  // Vendor di backend saat ini dipetakan ke role tenant. Jadi endpoint yang benar adalah /auth/register/tenant.
   registerVendor: (formData: FormData) =>
-    apiClient.post('/auth/register/vendor', formData, {
+    apiClient.post('/auth/register/tenant', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 };
