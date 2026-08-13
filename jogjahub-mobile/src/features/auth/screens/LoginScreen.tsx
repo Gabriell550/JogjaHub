@@ -7,20 +7,26 @@ import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import AuthHeader from '../components/AuthHeader';
 import RoleSwitchTab, { AuthRole } from '../components/RoleSwitchTab';
+import { useLogin } from '../hooks/useLogin';
 import type { AuthStackParamList } from '../../../navigation/types';
 
 type LoginNav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
-// FR-02: login pakai email & password. Role dipilih user sendiri lewat RoleSwitchTab,
-// nanti dikirim bareng payload login supaya backend tahu mau login sebagai customer/vendor.
+// FR-02: login pakai email & password. Role di sini cuma dipakai untuk UI (label tombol +
+// tujuan link Daftar) — role yang sebenarnya menentukan menu setelah login datang dari
+// response backend (user.role), lalu dibaca RootNavigator, bukan dari state role di screen ini.
 export default function LoginScreen() {
   const navigation = useNavigation<LoginNav>();
+  const { login, loading, error } = useLogin();
   const [role, setRole] = useState<AuthRole>('customer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // TODO: panggil useLogin() -> authApi.login({ email, password, role })
+  const handleLogin = async () => {
+    // Begitu login sukses, useLogin() sudah dispatch(setSession(...)) ke store —
+    // RootNavigator otomatis pindah dari AuthStack ke tab sesuai role, tidak perlu
+    // navigation.navigate manual di sini.
+    await login({ email, password });
   };
 
   const goToRegister = () => {
@@ -56,7 +62,13 @@ export default function LoginScreen() {
           <Text style={styles.forgotText}>Lupa Password?</Text>
         </Pressable>
 
-        <Button label={`Login sebagai ${role === 'customer' ? 'Customer' : 'Tenant'}`} onPress={handleLogin} />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <Button
+          label={loading ? 'Memproses...' : `Login sebagai ${role === 'customer' ? 'Customer' : 'Vendor'}`}
+          onPress={handleLogin}
+          disabled={loading}
+        />
 
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Belum punya akun? </Text>
@@ -88,6 +100,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.stackMd,
   },
   inputSpacing: { marginBottom: spacing.stackSm },
+  errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginBottom: spacing.stackSm },
   forgotWrap: { alignSelf: 'flex-end', marginBottom: spacing.stackMd },
   forgotText: { color: colors.primary, fontFamily: typography.labelMd.fontFamily, fontSize: 13 },
   footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.stackLg },

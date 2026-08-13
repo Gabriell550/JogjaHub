@@ -7,9 +7,20 @@ import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import { FileUploadField } from '../../../components/FileUploadField/FileUploadField';
 import CategoryMultiSelect from '../components/CategoryMultiSelect';
+import { useRegister } from '../hooks/useRegister';
 
+type SelectedDocument = {
+  uri: string;
+  name?: string;
+  type?: string;
+};
+
+// FR-01/FR-03: form registrasi vendor. Beda dari customer — vendor wajib isi identitas bisnis
+// (nama, kategori, alamat) dan upload 2 dokumen verifikasi (KTP + Surat Badan Usaha) di awal,
+// supaya admin punya bahan lengkap untuk approve/reject (FR-04) tanpa bolak-balik minta data.
 export default function RegisterVendorScreen() {
   const navigation = useNavigation();
+  const { registerVendor, loading, error } = useRegister();
 
   const [businessName, setBusinessName] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -18,25 +29,29 @@ export default function RegisterVendorScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // Simpan objek file lengkap (uri, name, mimeType), bukan cuma nama-nya — uri ini yang nanti
+  // Simpan objek file lengkap (uri, name, type), bukan cuma nama-nya — uri ini yang nanti
   // dipakai buildFileFormData() (services/fileUploadService.ts) saat upload beneran ke backend.
-  const [idCardFile, setIdCardFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [businessLicenseFile, setBusinessLicenseFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [idCardFile, setIdCardFile] = useState<SelectedDocument | null>(null);
+  const [businessLicenseFile, setBusinessLicenseFile] = useState<SelectedDocument | null>(null);
 
   const pickDocument = async (
-    setFile: (file: DocumentPicker.DocumentPickerAsset | null) => void,
+    setFile: (file: SelectedDocument | null) => void,
     label: string,
   ) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'], // KTP/Surat Badan Usaha boleh foto atau hasil scan PDF
+        type: ['image/*', 'application/pdf'],
         copyToCacheDirectory: true,
-        multiple: false,
       });
-      if (result.canceled) return; // user batal pilih file, bukan error
-      const [file] = result.assets;
-      if (!file) return;
-      setFile(file);
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const asset = result.assets[0];
+      setFile({
+        uri: asset.uri,
+        name: asset.name ?? `${label}.bin`,
+        type: asset.mimeType ?? 'application/octet-stream',
+      });
     } catch (err) {
       console.error(`Gagal memilih ${label}:`, err);
       Alert.alert('Gagal memilih file', `Terjadi kesalahan saat memilih ${label}. Coba lagi.`);
@@ -46,15 +61,37 @@ export default function RegisterVendorScreen() {
   const handlePickIdCard = () => pickDocument(setIdCardFile, 'KTP');
   const handlePickBusinessLicense = () => pickDocument(setBusinessLicenseFile, 'Surat Badan Usaha');
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert('Password tidak cocok', 'Password dan konfirmasi password harus sama.');
+      return;
+    }
+    if (categories.length === 0) {
+      Alert.alert('Kategori belum dipilih', 'Pilih minimal 1 kategori layanan.');
+      return;
+    }
     if (!idCardFile || !businessLicenseFile) {
       Alert.alert('Dokumen belum lengkap', 'Upload KTP dan Surat Badan Usaha dulu sebelum daftar.');
       return;
     }
-    // TODO: panggil useRegister() -> authApi.registerVendor({
-    //   businessName, categories, address, phone, email, password,
-    // }) lalu uploadApi.uploadFile(buildFileFormData('idCard', idCardFile.uri, idCardFile.name, idCardFile.mimeType))
-    // dan sekali lagi untuk businessLicenseFile — nunggu endpoint dari backend siap.
+
+    const result = await registerVendor({
+      businessName,
+      categories,
+      address,
+      phone,
+      email,
+      password,
+      idCardFile,
+      businessLicenseFile,
+    });
+
+    if (result.success) {
+      Alert.alert('Berhasil', 'Akun vendor berhasil dibuat. Admin akan meninjau dokumen kamu sebelum akun aktif.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
+    // Kalau gagal, pesan errornya sudah otomatis tampil lewat `error` dari useRegister.
   };
 
   return (
@@ -76,8 +113,7 @@ export default function RegisterVendorScreen() {
         onChangeText={setAddress}
         multiline
         numberOfLines={3}
-        style={[styles.inputSpacing, styles.textArea, { marginTop: spacing.stackMd }]}
-      />
+        style={[styles.inputSpacing, styles.textArea, { marginTop: spacing.stackMd }]} />
       <Input placeholder="Nomor Telepon" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.inputSpacing} />
       <Input placeholder="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.inputSpacing} />
       <Input placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.inputSpacing} />
@@ -88,8 +124,10 @@ export default function RegisterVendorScreen() {
       <View style={{ height: spacing.stackSm }} />
       <FileUploadField label="Upload Surat Badan Usaha" fileName={businessLicenseFile?.name} onPress={handlePickBusinessLicense} />
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <View style={{ height: spacing.stackLg }} />
-      <Button label="Sign Up" onPress={handleRegister} />
+      <Button label={loading ? 'Memproses...' : 'Sign Up'} onPress={handleRegister} disabled={loading} />
     </ScrollView>
   );
 }
@@ -116,4 +154,5 @@ const styles = StyleSheet.create({
   },
   inputSpacing: { marginBottom: spacing.stackSm },
   textArea: { minHeight: 70, textAlignVertical: 'top' },
+  errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginTop: spacing.stackSm },
 });
