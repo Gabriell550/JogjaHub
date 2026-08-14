@@ -16,8 +16,18 @@ class TenantProfile extends Model
     ];
 
     protected $casts = [
-        'address' => 'array',
+        'address' => 'array'
     ];
+
+    public function getLocationAttribute(): array
+    {
+        return [
+            'latitude' => (float) $this->latitude,
+            'longitude' => (float) $this->longitude,
+        ];
+    }
+
+    protected $appends = ['location'];
 
     public function user()
     {

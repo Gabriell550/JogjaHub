@@ -16,7 +16,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('business_name');
             $table->text('description')->nullable();
-            $table->jsonb('address');
+            $table->jsonb('address')->nullable(); // street, city, province, postal_code — TANPA lat/long
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
             $table->string('whatsapp_number');
             $table->string('status')->default('pending');
             $table->timestamps();
