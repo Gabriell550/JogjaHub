@@ -27,6 +27,18 @@ type RegisterVendorPayload = {
   businessLicenseFile: SelectedDocument;
 };
 
+const categoryValueMap: Record<string, string> = {
+  salon_mua: 'Beauty & Style',
+  butik_wisuda: 'Beauty & Style',
+  penginapan: 'Penginapan',
+  selempang_plakat: 'Gifting',
+  akrilik: 'Gifting',
+  florist: 'Gifting',
+  beauty_and_style: 'Beauty & Style',
+  gifting: 'Gifting',
+  hotel: 'Penginapan',
+};
+
 const getErrorMessage = (err: any, fallback: string) => {
   const errors = err?.response?.data?.errors;
   if (errors && typeof errors === 'object') {
@@ -73,26 +85,35 @@ export function useRegister() {
     try {
       const formData = new FormData();
       formData.append('name', payload.businessName);
+      formData.append('business_name', payload.businessName);
       formData.append('address', payload.address);
       formData.append('phone', payload.phone);
       formData.append('email', payload.email);
       formData.append('password', payload.password);
       formData.append('password_confirmation', payload.passwordConfirmation);
 
-      payload.categories.forEach((categoryId) => formData.append('categories[]', categoryId));
+      payload.categories.forEach((categoryId) => {
+        const normalizedCategory = categoryValueMap[categoryId] ?? categoryId;
+        formData.append('categories[]', normalizedCategory);
+      });
 
-      // @ts-ignore - format file React Native (uri/name/type), bukan File API browser biasa
-      formData.append('id_card', {
-        uri: payload.idCardFile.uri,
-        name: payload.idCardFile.name ?? 'id_card.pdf',
-        type: payload.idCardFile.type ?? 'application/octet-stream',
-      });
-      // @ts-ignore
-      formData.append('business_license', {
-        uri: payload.businessLicenseFile.uri,
-        name: payload.businessLicenseFile.name ?? 'business_license.pdf',
-        type: payload.businessLicenseFile.type ?? 'application/octet-stream',
-      });
+      if (payload.idCardFile?.uri) {
+        // @ts-ignore - format file React Native (uri/name/type), bukan File API browser biasa
+        formData.append('id_card', {
+          uri: payload.idCardFile.uri,
+          name: payload.idCardFile.name ?? 'id_card.pdf',
+          type: payload.idCardFile.type ?? 'application/octet-stream',
+        });
+      }
+
+      if (payload.businessLicenseFile?.uri) {
+        // @ts-ignore
+        formData.append('business_license', {
+          uri: payload.businessLicenseFile.uri,
+          name: payload.businessLicenseFile.name ?? 'business_license.pdf',
+          type: payload.businessLicenseFile.type ?? 'application/octet-stream',
+        });
+      }
 
       await authApi.registerVendor(formData);
       return { success: true as const };

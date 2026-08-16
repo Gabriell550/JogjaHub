@@ -2,6 +2,7 @@ export type AuthStackParamList = {
   Login: undefined;
   RegisterCustomer: undefined;
   RegisterVendor: undefined;
+  PendingApproval: { businessName?: string; rejected?: boolean };
 };
 
 export type CustomerTabParamList = {

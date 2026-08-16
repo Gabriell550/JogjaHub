@@ -5,7 +5,7 @@ import { setSession } from '../store/authSlice';
 import { setToken } from '../../../services/tokenStore';
 import type { AppDispatch } from '../../../store';
 
-type LoginPayload = { email: string; password: string };
+type LoginPayload = { email: string; password: string; role: 'customer' | 'tenant' };
 
 const getErrorMessage = (err: any, fallback: string) => {
   const errors = err?.response?.data?.errors;
@@ -25,23 +25,40 @@ export function useLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async ({ email, password }: LoginPayload) => {
+  const login = async ({ email, password, role }: LoginPayload) => {
     setLoading(true);
     setError(null);
     try {
       console.log('=== LOGIN REQUEST ===');
       console.log('email:', email);
       console.log('password length:', password.length);
+      console.log('role:', role);
 
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login({ email, password, role });
       console.log('=== LOGIN RESPONSE ===');
       console.log(JSON.stringify(response.data, null, 2));
 
-      const { user, token } = response.data.data;
+      const { user, token, tenant_status, business_name } = response.data.data;
+      const normalizedUser = {
+        ...user,
+        role: user?.role === 'tenant' ? 'vendor' : user?.role,
+      };
 
-      dispatch(setSession({ user, token }));
+      console.log('=== EXTRACTED DATA ===');
+      console.log('user.role:', user?.role);
+      console.log('normalizedUser.role:', normalizedUser.role);
+      console.log('tenant_status:', tenant_status);
+      console.log('business_name:', business_name);
+
+      dispatch(setSession({ 
+        user: normalizedUser,
+        token,
+        tenantStatus: tenant_status ?? null,
+        businessName: business_name ?? null,
+      }));
       setToken(token);
 
+      console.log('=== DISPATCH COMPLETE ===');
       return { success: true as const };
     } catch (err: any) {
       console.log('=== LOGIN ERROR ===');

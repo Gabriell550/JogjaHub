@@ -8,23 +8,29 @@ type Props = {
   onChange: (categories: string[]) => void;
 };
 
+const normalizeId = (value: string) => String(value);
+
 // Chip multi-pilih kategori layanan vendor. Tap sekali = pilih, tap lagi = batal pilih.
 // Reusable — bisa dipakai lagi nanti di features/vendor/onboarding kalau vendor mau ubah kategori.
 export default function CategoryMultiSelect({ selected, onChange }: Props) {
   const toggle = (id: string) => {
-    if (selected.includes(id)) {
-      onChange(selected.filter((c) => c !== id));
-    } else {
-      onChange([...selected, id]);
+    const normalizedId = normalizeId(id);
+    const selectedIds = selected.map(normalizeId);
+
+    if (selectedIds.includes(normalizedId)) {
+      onChange(selected.filter((item) => normalizeId(item) !== normalizedId));
+      return;
     }
+
+    onChange([...selected, id]);
   };
 
   return (
     <View style={styles.wrap}>
       {VENDOR_CATEGORIES.map((cat) => {
-        const active = selected.includes(cat.id);
+        const active = selected.map(normalizeId).includes(normalizeId(cat.id));
         return (
-          <Pressable key={cat.id} onPress={() => toggle(cat.id)} style={[styles.chip, active && styles.chipActive]}>
+          <Pressable key={String(cat.id)} onPress={() => toggle(cat.id)} style={[styles.chip, active && styles.chipActive]}>
             <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{cat.label}</Text>
           </Pressable>
         );

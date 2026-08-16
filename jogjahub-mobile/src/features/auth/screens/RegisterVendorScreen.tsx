@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
+import type { DocumentPickerAsset } from 'expo-document-picker';
 import { colors, typography, spacing } from '../../../constants/theme';
 import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import { FileUploadField } from '../../../components/FileUploadField/FileUploadField';
 import CategoryMultiSelect from '../components/CategoryMultiSelect';
 import { useRegister } from '../hooks/useRegister';
+import type { AuthStackParamList } from '../../../navigation/types';
 
-type SelectedDocument = {
-  uri: string;
-  name?: string;
-  type?: string;
-};
+type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
 // FR-01/FR-03: form registrasi vendor. Beda dari customer — vendor wajib isi identitas bisnis
 // (nama, kategori, alamat) dan upload 2 dokumen verifikasi (KTP + Surat Badan Usaha) di awal,
 // supaya admin punya bahan lengkap untuk approve/reject (FR-04) tanpa bolak-balik minta data.
 export default function RegisterVendorScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RegisterVendorNav>();
   const { registerVendor, loading, error } = useRegister();
 
   const [businessName, setBusinessName] = useState('');
@@ -31,11 +30,11 @@ export default function RegisterVendorScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   // Simpan objek file lengkap (uri, name, type), bukan cuma nama-nya — uri ini yang nanti
   // dipakai buildFileFormData() (services/fileUploadService.ts) saat upload beneran ke backend.
-  const [idCardFile, setIdCardFile] = useState<SelectedDocument | null>(null);
-  const [businessLicenseFile, setBusinessLicenseFile] = useState<SelectedDocument | null>(null);
+  const [idCardFile, setIdCardFile] = useState<DocumentPickerAsset | null>(null);
+  const [businessLicenseFile, setBusinessLicenseFile] = useState<DocumentPickerAsset | null>(null);
 
   const pickDocument = async (
-    setFile: (file: SelectedDocument | null) => void,
+    setFile: (file: DocumentPickerAsset | null) => void,
     label: string,
   ) => {
     try {
@@ -44,14 +43,8 @@ export default function RegisterVendorScreen() {
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled || !result.assets || result.assets.length === 0) return;
-
-      const asset = result.assets[0];
-      setFile({
-        uri: asset.uri,
-        name: asset.name ?? `${label}.bin`,
-        type: asset.mimeType ?? 'application/octet-stream',
-      });
+      if (result.canceled || !result.assets?.length) return;
+      setFile(result.assets[0]);
     } catch (err) {
       console.error(`Gagal memilih ${label}:`, err);
       Alert.alert('Gagal memilih file', `Terjadi kesalahan saat memilih ${label}. Coba lagi.`);
@@ -83,14 +76,25 @@ export default function RegisterVendorScreen() {
       email,
       password,
       passwordConfirmation: confirmPassword,
-      idCardFile,
-      businessLicenseFile,
+      idCardFile: {
+        uri: idCardFile!.uri,
+        name: idCardFile!.name ?? undefined,
+        type: idCardFile!.mimeType ?? 'application/octet-stream',
+      },
+      businessLicenseFile: {
+        uri: businessLicenseFile!.uri,
+        name: businessLicenseFile!.name ?? undefined,
+        type: businessLicenseFile!.mimeType ?? 'application/octet-stream',
+      },
     });
 
     if (result.success) {
-      Alert.alert('Berhasil', 'Akun vendor berhasil dibuat. Admin akan meninjau dokumen kamu sebelum akun aktif.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      // reset (bukan navigate) supaya form registrasi hilang dari history — back dari
+      // PendingApproval tidak bisa balik ke form ini lagi.
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'PendingApproval', params: { businessName } }],
+      });
     }
     // Kalau gagal, pesan errornya sudah otomatis tampil lewat `error` dari useRegister.
   };
@@ -114,7 +118,8 @@ export default function RegisterVendorScreen() {
         onChangeText={setAddress}
         multiline
         numberOfLines={3}
-        style={[styles.inputSpacing, styles.textArea, { marginTop: spacing.stackMd }]} />
+        style={[styles.inputSpacing, styles.textArea, { marginTop: spacing.stackMd }]}
+      />
       <Input placeholder="Nomor Telepon" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.inputSpacing} />
       <Input placeholder="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.inputSpacing} />
       <Input placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.inputSpacing} />

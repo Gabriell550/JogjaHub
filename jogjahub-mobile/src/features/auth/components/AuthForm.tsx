@@ -5,14 +5,14 @@ import { Button } from '../../../components/Button/Button';
 import { colors, spacing, typography } from '../../../constants/theme';
 import { useLogin } from '../hooks/useLogin';
 
-export default function AuthForm() {
+export default function AuthForm({ role = 'customer' }: { role?: 'customer' | 'tenant' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error } = useLogin();
 
   const handleSubmit = () => {
     if (!email.trim() || !password) return;
-    login({ email: email.trim(), password });
+    login({ email: email.trim(), password, role });
   };
 
   return (

@@ -26,7 +26,8 @@ export default function LoginScreen() {
     // Begitu login sukses, useLogin() sudah dispatch(setSession(...)) ke store —
     // RootNavigator otomatis pindah dari AuthStack ke tab sesuai role, tidak perlu
     // navigation.navigate manual di sini.
-    await login({ email, password });
+    const roleToSend = role === 'customer' ? 'customer' : 'tenant';
+    await login({ email, password, role: roleToSend });
   };
 
   const goToRegister = () => {

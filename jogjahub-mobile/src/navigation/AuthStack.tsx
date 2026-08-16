@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterCustomerScreen from '../features/auth/screens/RegisterCustomerScreen';
 import RegisterVendorScreen from '../features/auth/screens/RegisterVendorScreen';
+import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
 import { AuthStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -13,6 +14,7 @@ export function AuthStack() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="RegisterCustomer" component={RegisterCustomerScreen} />
       <Stack.Screen name="RegisterVendor" component={RegisterVendorScreen} />
+      <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
     </Stack.Navigator>
   );
 }
