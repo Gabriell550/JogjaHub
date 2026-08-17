@@ -11,6 +11,8 @@ class TenantProfile extends Model
         'business_name',
         'description',
         'address',
+        'latitude',
+        'longitude',
         'whatsapp_number',
         'status',
     ];
