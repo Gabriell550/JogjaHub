@@ -4,11 +4,12 @@ import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { AuthStack } from './AuthStack';
-import { CustomerTabNavigator } from './CustomerTabNavigator';
+import { CustomerStackNavigator } from './CustomerStackNavigator';
 import { VendorTabNavigator } from './VendorTabNavigator';
 import { AdminTabNavigator } from './AdminTabNavigator';
 import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
 import SplashScreen from '../features/shared/onboarding-splash/SplashScreen';
+import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator<{ PendingApproval: { businessName?: string; rejected?: boolean } }>();
 
@@ -41,15 +42,18 @@ export function RootNavigator() {
   if (normalizedRole === 'vendor' && tenantStatus === 'pending') {
     console.log('→ ROUTE: PendingApprovalScreen (pending)');
     return (
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen 
-            name="PendingApproval" 
-            component={PendingApprovalScreen}
-            initialParams={{ businessName: businessName ?? undefined }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name="PendingApproval"
+              component={PendingApprovalScreen}
+              initialParams={{ businessName: businessName ?? undefined }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <Toast />
+      </>
     );
   }
 
@@ -57,15 +61,18 @@ export function RootNavigator() {
   if (normalizedRole === 'vendor' && tenantStatus === 'rejected') {
     console.log('→ ROUTE: PendingApprovalScreen (rejected)');
     return (
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen 
-            name="PendingApproval" 
-            component={PendingApprovalScreen}
-            initialParams={{ businessName: businessName ?? undefined, rejected: true }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name="PendingApproval"
+              component={PendingApprovalScreen}
+              initialParams={{ businessName: businessName ?? undefined, rejected: true }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <Toast />
+      </>
     );
   }
 
@@ -73,25 +80,31 @@ export function RootNavigator() {
   if (normalizedRole === 'vendor' && !tenantStatus) {
     console.log('→ ROUTE: PendingApprovalScreen (no status - fallback)');
     return (
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen 
-            name="PendingApproval" 
-            component={PendingApprovalScreen}
-            initialParams={{ businessName: businessName ?? undefined }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen
+              name="PendingApproval"
+              component={PendingApprovalScreen}
+              initialParams={{ businessName: businessName ?? undefined }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+        <Toast />
+      </>
     );
   }
 
   console.log('→ ROUTE: Standard navigators');
   return (
-    <NavigationContainer>
-      {!user && <AuthStack />}
-      {user?.role === 'customer' && <CustomerTabNavigator />}
-      {(normalizedRole === 'vendor' || user?.role === 'tenant') && tenantStatus === 'approved' && <VendorTabNavigator />}
-      {user?.role === 'admin' && <AdminTabNavigator />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        {!user && <AuthStack />}
+        {user?.role === 'customer' && <CustomerStackNavigator />}
+        {(normalizedRole === 'vendor' || user?.role === 'tenant') && tenantStatus === 'approved' && <VendorTabNavigator />}
+        {user?.role === 'admin' && <AdminTabNavigator />}
+      </NavigationContainer>
+      <Toast />
+    </>
   );
 }

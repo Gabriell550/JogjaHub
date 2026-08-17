@@ -26,3 +26,8 @@ export type AdminStackParamList = {
   Monitoring: undefined;
   Profile: undefined;
 };
+
+export type CustomerStackParamList = {
+  CustomerTabs: undefined;
+  Notifications: undefined;
+};

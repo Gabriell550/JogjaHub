@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@api/*": [
         "src/api/*"
