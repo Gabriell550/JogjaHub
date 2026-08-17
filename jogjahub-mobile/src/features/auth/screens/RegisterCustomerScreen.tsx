@@ -5,6 +5,7 @@ import { colors, typography, spacing } from '../../../constants/theme';
 import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import { useRegister } from '../hooks/useRegister';
+import Toast from 'react-native-toast-message';
 
 // FR-01: form registrasi customer.
 export default function RegisterCustomerScreen() {
@@ -25,10 +26,15 @@ export default function RegisterCustomerScreen() {
 
     const result = await registerCustomer({ name, email, password, passwordConfirmation: confirmPassword, phone });
     if (result.success) {
-      Alert.alert('Berhasil', 'Akun customer berhasil dibuat. Silakan login.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    }
+  Toast.show({
+    type: 'success',
+    text1: 'Berhasil',
+    text2: 'Akun customer berhasil dibuat. Silakan login.',
+    position: 'top',
+    visibilityTime: 2500,
+  });
+  navigation.goBack();
+}
     // Kalau gagal, pesan errornya sudah otomatis tampil lewat `error` dari useRegister — tidak
     // perlu Alert lagi di sini supaya tidak dobel notifikasi.
   };
