@@ -11,4 +11,9 @@ class Category extends Model
     public function tenants(){
         return $this->belongsToMany(TenantProfile::class, 'tenant_categories', 'category_id', 'tenant_profile_id');
     }
+
+    public function subcategories()
+    {
+        return $this->hasMany(Subcategory::class);
+    }
 }
