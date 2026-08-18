@@ -1,2 +1,2 @@
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.100.30:8000/api/v1';
-export const MAPS_API_KEY = process.env.EXPO_PUBLIC_MAPS_API_KEY ?? '';
+export const API_BASE_URL = 'http://192.168.100.30:8000/api/v1';
+export const MAPS_API_KEY = '';

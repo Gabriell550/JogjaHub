@@ -16,7 +16,7 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
-            'role' => 'required|string|in:customer,tenant',
+            'role' => 'required|string|in:customer,tenant,admin',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -28,13 +28,21 @@ class AuthController extends Controller
         }
 
         // Validasi role: user harus login dengan role yang sesuai
-        $expectedRole = $request->role === 'tenant' ? 'tenant' : 'customer';
-        if ($user->role !== $expectedRole) {
-            $roleLabel = $expectedRole === 'tenant' ? 'Vendor' : 'Customer';
-            throw ValidationException::withMessages([
-                'email' => ["Akun ini tidak bisa login sebagai {$roleLabel}. Silakan gunakan email/password yang sesuai."],
-            ]);
-        }
+     $expectedRole = $request->role;
+
+if ($user->role !== $expectedRole) {
+    $roleLabel = match ($expectedRole) {
+        'admin' => 'Admin',
+        'tenant' => 'Vendor',
+        'customer' => 'Customer',
+    };
+
+    throw ValidationException::withMessages([
+        'email' => [
+            "Akun ini tidak bisa login sebagai {$roleLabel}. Silakan gunakan email/password yang sesuai."
+        ],
+    ]);
+}
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

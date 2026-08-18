@@ -6,7 +6,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@api/*": [
         "src/api/*"
@@ -45,3 +45,4 @@
   },
   "extends": "expo/tsconfig.base"
 }
+
