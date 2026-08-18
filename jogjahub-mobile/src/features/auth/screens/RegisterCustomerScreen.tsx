@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../../constants/theme';
 import { Input } from '../../../components/Input/Input';
@@ -7,7 +7,6 @@ import { Button } from '../../../components/Button/Button';
 import { useRegister } from '../hooks/useRegister';
 import Toast from 'react-native-toast-message';
 
-// FR-01: form registrasi customer.
 export default function RegisterCustomerScreen() {
   const navigation = useNavigation();
   const { registerCustomer, loading, error } = useRegister();
@@ -20,23 +19,35 @@ export default function RegisterCustomerScreen() {
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      Alert.alert('Password tidak cocok', 'Password dan konfirmasi password harus sama.');
+      Toast.show({
+        type: 'error',
+        text1: 'Password tidak cocok',
+        text2: 'Password dan konfirmasi password harus sama.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
 
     const result = await registerCustomer({ name, email, password, passwordConfirmation: confirmPassword, phone });
     if (result.success) {
-  Toast.show({
-    type: 'success',
-    text1: 'Berhasil',
-    text2: 'Akun customer berhasil dibuat. Silakan login.',
-    position: 'top',
-    visibilityTime: 2500,
-  });
-  navigation.goBack();
-}
-    // Kalau gagal, pesan errornya sudah otomatis tampil lewat `error` dari useRegister — tidak
-    // perlu Alert lagi di sini supaya tidak dobel notifikasi.
+      Toast.show({
+        type: 'success',
+        text1: 'Berhasil',
+        text2: 'Akun customer berhasil dibuat. Silakan login.',
+        position: 'top',
+        visibilityTime: 2500,
+      });
+      navigation.goBack();
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Registrasi Gagal',
+        text2: result.message,
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
   };
 
   return (
@@ -52,7 +63,6 @@ export default function RegisterCustomerScreen() {
       <Input placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.inputSpacing} />
       <Input placeholder="Konfirmasi Password" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} style={styles.inputSpacing} />
       <Input placeholder="Nomor HP" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.inputSpacing} />
-
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Button label={loading ? 'Memproses...' : 'Sign Up'} onPress={handleRegister} disabled={loading} />
