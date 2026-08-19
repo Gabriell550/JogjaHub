@@ -33,7 +33,7 @@ class AuthController extends Controller
 if ($user->role !== $expectedRole) {
     $roleLabel = match ($expectedRole) {
         'admin' => 'Admin',
-        'tenant' => 'Vendor',
+        'tenant' => 'Tenant',
         'customer' => 'Customer',
     };
 
