@@ -1,110 +1,158 @@
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import React from 'react';
+import {
+  NavigationContainer,
+} from '@react-navigation/native';
+import {
+  createNativeStackNavigator,
+} from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
+
 import { RootState } from '../store';
 import { AuthStack } from './AuthStack';
 import { CustomerStackNavigator } from './CustomerStackNavigator';
 import { VendorTabNavigator } from './VendorTabNavigator';
 import { AdminTabNavigator } from './AdminTabNavigator';
+
 import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
-import SplashScreen from '../features/shared/onboarding-splash/SplashScreen';
-import Toast from 'react-native-toast-message';
 
-const Stack = createNativeStackNavigator<{ PendingApproval: { businessName?: string; rejected?: boolean } }>();
+const Stack = createNativeStackNavigator();
 
-// Pilih stack berdasarkan role user yang login: customer | vendor | admin.
-// Vendor dengan status pending akan diarahkan ke PendingApprovalScreen.
 export function RootNavigator() {
-  const user = useSelector((state: RootState) => state.auth?.user);
-  const tenantStatus = useSelector((state: RootState) => state.auth?.tenantStatus);
-  const businessName = useSelector((state: RootState) => state.auth?.businessName);
-  const normalizedRole = user?.role === 'tenant' ? 'vendor' : user?.role;
-  const [isReady, setIsReady] = useState(false);
+  const user = useSelector(
+    (state: RootState) => state.auth?.user
+  );
 
-  useEffect(() => {
-    // TODO: cek token tersimpan (mis. AsyncStorage) di sini sebelum isReady jadi true
-    const timer = setTimeout(() => setIsReady(true), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  const tenantStatus = useSelector(
+    (state: RootState) => state.auth?.tenantStatus
+  );
 
-  if (!isReady) {
-    return <SplashScreen />;
-  }
+  const businessName = useSelector(
+    (state: RootState) => state.auth?.businessName
+  );
+
+  const normalizedRole =
+    user?.role === 'tenant'
+      ? 'vendor'
+      : user?.role;
 
   console.log('=== ROOT NAVIGATOR CHECK ===');
-  console.log('user?.role:', user?.role);
+  console.log('user:', user);
+  console.log('role:', user?.role);
   console.log('normalizedRole:', normalizedRole);
   console.log('tenantStatus:', tenantStatus);
   console.log('businessName:', businessName);
 
-  // Jika vendor pending approval, tampilkan pending screen dalam navigator khusus
-  if (normalizedRole === 'vendor' && tenantStatus === 'pending') {
-    console.log('→ ROUTE: PendingApprovalScreen (pending)');
-    return (
-      <>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen
-              name="PendingApproval"
-              component={PendingApprovalScreen}
-              initialParams={{ businessName: businessName ?? undefined }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <Toast />
-      </>
-    );
-  }
+  /*
+   * KEY INI PENTING
+   *
+   * Ketika user logout:
+   *
+   * user = null
+   *
+   * key berubah dari:
+   * authenticated
+   *
+   * menjadi:
+   * unauthenticated
+   *
+   * sehingga NavigationContainer dibuat ulang
+   * dan AuthStack dimulai dari Login.
+   */
+  const navigationKey = user
+    ? 'authenticated'
+    : 'unauthenticated';
 
-  // Jika vendor rejected, tampilkan rejection screen
-  if (normalizedRole === 'vendor' && tenantStatus === 'rejected') {
-    console.log('→ ROUTE: PendingApprovalScreen (rejected)');
-    return (
-      <>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen
-              name="PendingApproval"
-              component={PendingApprovalScreen}
-              initialParams={{ businessName: businessName ?? undefined, rejected: true }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <Toast />
-      </>
-    );
-  }
-
-  // Jika vendor belum punya status (undefined/null), arahkan ke pending
-  if (normalizedRole === 'vendor' && !tenantStatus) {
-    console.log('→ ROUTE: PendingApprovalScreen (no status - fallback)');
-    return (
-      <>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen
-              name="PendingApproval"
-              component={PendingApprovalScreen}
-              initialParams={{ businessName: businessName ?? undefined }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <Toast />
-      </>
-    );
-  }
-
-  console.log('→ ROUTE: Standard navigators');
   return (
-    <>
-      <NavigationContainer>
-        {!user && <AuthStack />}
-        {user?.role === 'customer' && <CustomerStackNavigator />}
-        {(normalizedRole === 'vendor' || user?.role === 'tenant') && tenantStatus === 'approved' && <VendorTabNavigator />}
-        {user?.role === 'admin' && <AdminTabNavigator />}
-      </NavigationContainer>
-      <Toast />
-    </>
+    <NavigationContainer key={navigationKey}>
+
+      {/* =========================
+          BELUM LOGIN
+      ========================== */}
+
+      {!user && (
+        <>
+          {console.log('→ ROUTE: AuthStack')}
+
+          <AuthStack key="auth-stack" />
+        </>
+      )}
+
+      {/* =========================
+          VENDOR PENDING / REJECTED
+      ========================== */}
+
+      {user &&
+        normalizedRole === 'vendor' &&
+        (tenantStatus === 'pending' ||
+          tenantStatus === 'rejected') && (
+
+          <>
+            {console.log('→ ROUTE: PendingApproval')}
+
+            <Stack.Navigator
+              key="pending-stack"
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen
+                name="PendingApproval"
+                component={PendingApprovalScreen}
+                initialParams={{
+                  businessName:
+                    businessName ?? undefined,
+
+                  rejected:
+                    tenantStatus === 'rejected',
+                }}
+              />
+            </Stack.Navigator>
+          </>
+        )}
+
+      {/* =========================
+          CUSTOMER
+      ========================== */}
+
+      {user &&
+        user.role === 'customer' && (
+
+          <>
+            {console.log('→ ROUTE: Customer')}
+
+            <CustomerStackNavigator />
+          </>
+        )}
+
+      {/* =========================
+          VENDOR APPROVED
+      ========================== */}
+
+      {user &&
+        normalizedRole === 'vendor' &&
+        tenantStatus === 'approved' && (
+
+          <>
+            {console.log('→ ROUTE: Vendor')}
+
+            <VendorTabNavigator />
+          </>
+        )}
+
+      {/* =========================
+          ADMIN
+      ========================== */}
+
+      {user &&
+        user.role === 'admin' && (
+
+          <>
+            {console.log('→ ROUTE: Admin')}
+
+            <AdminTabNavigator />
+          </>
+        )}
+
+    </NavigationContainer>
   );
 }

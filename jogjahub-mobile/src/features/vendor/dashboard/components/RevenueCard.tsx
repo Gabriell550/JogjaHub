@@ -6,15 +6,29 @@ const DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
 type Props = {
   amount: number;
-  periodLabel: string; // contoh: "Bulan ini • Nov 2024"
-  dailyTrend?: number[]; // 0..1 per hari, dipakai tinggi bar mini di bawah — opsional
+  dailyTrend?: number[];
 };
 
 // TODO: `amount` & `dailyTrend` idealnya dari bookingApi/vendorApi (rekap transaksi selesai
 // bulan berjalan). Untuk sekarang dipanggil dengan data mock dari VendorDashboardScreen.
-export function RevenueCard({ amount, periodLabel, dailyTrend }: Props) {
+export function RevenueCard({ amount, dailyTrend }: Props) {
   const formatted = `Rp ${amount.toLocaleString('id-ID')}`;
-  const today = new Date().getDay(); // 0 = Minggu di JS, geser supaya Senin = index 0
+
+  const now = new Date();
+
+  const dateLabel = now.toLocaleDateString('id-ID', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+  const periodLabel = ` ${now.toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  })}`;
+
+  const today = now.getDay();
   const todayIndex = today === 0 ? 6 : today - 1;
 
   return (
@@ -25,7 +39,7 @@ export function RevenueCard({ amount, periodLabel, dailyTrend }: Props) {
           <Text style={styles.trendIcon}>📈</Text>
         </View>
       </View>
-      <Text style={styles.period}>{periodLabel}</Text>
+      <Text style={styles.period}>{dateLabel}</Text>
       <Text style={styles.amount}>{formatted}</Text>
 
       <View style={styles.daysRow}>

@@ -4,6 +4,7 @@ import { authApi } from '../../../api/authApi';
 import { setSession } from '../store/authSlice';
 import { setToken } from '../../../services/tokenStore';
 import type { AppDispatch } from '../../../store';
+import { logout } from '../store/authSlice';
 
 type LoginPayload = { email: string; password: string; role: 'customer' | 'tenant' };
 
@@ -49,6 +50,9 @@ export function useLogin() {
       console.log('normalizedUser.role:', normalizedUser.role);
       console.log('tenant_status:', tenant_status);
       console.log('business_name:', business_name);
+      console.log('USER DARI BACKEND:', user);
+      console.log('ROLE:', user?.role);
+      console.log('NORMALIZED:', normalizedUser);
 
       dispatch(setSession({ 
         user: normalizedUser,

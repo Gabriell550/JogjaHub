@@ -9,14 +9,18 @@ import { QuickActionsGrid } from '../components/QuickActionsGrid';
 import { OrderPreviewCard } from '../components/OrderPreviewCard';
 import { SellingTipCard } from '../components/SellingTipCard';
 import type { VendorTabParamList } from '../../../../navigation/types';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../../store';
 
 type Nav = BottomTabNavigationProp<VendorTabParamList>;
 
 // TODO: ganti semua data mock di bawah dengan vendorApi.getMyProfile() + bookingApi.listIncomingBookings()
 // begitu endpoint vendor sudah tersedia dari backend. Bentuk datanya sudah disiapkan mendekati
 // response yang diharapkan supaya nanti tinggal ganti sumbernya, bukan tulis ulang tampilannya.
-const MOCK_VENDOR = { businessName: 'Toko Berkah' };
-const MOCK_REVENUE = { amount: 12_450_000, periodLabel: 'Bulan ini • Nov 2024' };
+
+const MOCK_REVENUE = {
+  amount: 12_450_000,
+};
 const MOCK_RECENT_ORDERS = [
   { id: '1', title: 'Anindhya Fathia Rizki', badgeLabel: 'TERBARU' as const, buyerName: 'Andi Wijaya', timeAgo: '2 jam yang lalu', price: 75000 },
   { id: '2', title: 'Bouquet Matahari...', badgeLabel: 'DIPROSES' as const, buyerName: 'Siti Khadijah', timeAgo: '6 jam yang lalu', price: 120000 },
@@ -25,6 +29,9 @@ const MOCK_RECENT_ORDERS = [
 export default function VendorDashboardScreen() {
   const navigation = useNavigation<Nav>();
   const [refreshing, setRefreshing] = useState(false);
+  const businessName = useSelector(
+  (state: RootState) => state.auth?.businessName
+);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -75,12 +82,12 @@ export default function VendorDashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         <View style={styles.greetingBlock}>
-          <Text style={styles.greeting}>Halo, {MOCK_VENDOR.business_name}! 👋</Text>
+        <Text style={styles.greeting}> Halo, {businessName ?? 'Vendor'}! </Text>
           <Text style={styles.subGreeting}>Semoga harimu produktif dan sukses.</Text>
         </View>
 
         <View style={{ height: spacing.stackLg }} />
-        <RevenueCard amount={MOCK_REVENUE.amount} periodLabel={MOCK_REVENUE.periodLabel} />
+        <RevenueCard amount={MOCK_REVENUE.amount}/>
 
         <View style={{ height: spacing.stackLg }} />
         <QuickActionsGrid actions={actions} />

@@ -12,7 +12,7 @@ export function VendorHeaderBar() {
 
   return (
     <View style={styles.bar}>
-      <Text style={styles.title}>JogjaHub Vendor</Text>s
+      <Text style={styles.title}>JogjaHub Tenant</Text>
       <Pressable
         onPress={() => setIsOpen((v) => !v)}
         style={[styles.toggle, { backgroundColor: isOpen ? colors.primaryContainer : colors.onSurfaceVariant }]}
@@ -31,12 +31,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.inverseSurface,
     paddingHorizontal: spacing.containerMargin,
-    paddingTop: 52,
+    paddingTop: 20,
     paddingBottom: spacing.stackMd,
   },
   title: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 15,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.inverseOnSurface,
   },
