@@ -11,6 +11,7 @@ import { FileUploadField } from '../../../components/FileUploadField/FileUploadF
 import CategoryMultiSelect from '../components/CategoryMultiSelect';
 import { useRegister } from '../hooks/useRegister';
 import type { AuthStackParamList } from '../../../navigation/types';
+import Toast from 'react-native-toast-message';
 
 type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
@@ -56,18 +57,35 @@ export default function RegisterVendorScreen() {
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      Alert.alert('Password tidak cocok', 'Password dan konfirmasi password harus sama.');
+      Toast.show({
+        type: 'error',
+        text1: 'Password tidak cocok',
+        text2: 'Password dan konfirmasi password harus sama.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
     if (categories.length === 0) {
-      Alert.alert('Kategori belum dipilih', 'Pilih minimal 1 kategori layanan.');
+      Toast.show({
+        type: 'error',
+        text1: 'Kategori belum dipilih',
+        text2: 'Pilih minimal 1 kategori layanan.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
     if (!idCardFile || !businessLicenseFile) {
-      Alert.alert('Dokumen belum lengkap', 'Upload KTP dan Surat Badan Usaha dulu sebelum daftar.');
+      Toast.show({
+        type: 'error',
+        text1: 'Dokumen belum lengkap',
+        text2: 'Upload KTP dan Surat Badan Usaha dulu sebelum daftar.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
       return;
     }
-
     const result = await registerVendor({
       businessName,
       categories,

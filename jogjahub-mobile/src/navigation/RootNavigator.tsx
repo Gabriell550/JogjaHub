@@ -6,16 +6,53 @@ import {
   createNativeStackNavigator,
 } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
-
+import { View } from 'react-native';
 import { RootState } from '../store';
 import { AuthStack } from './AuthStack';
 import { CustomerStackNavigator } from './CustomerStackNavigator';
 import { VendorTabNavigator } from './VendorTabNavigator';
 import { AdminTabNavigator } from './AdminTabNavigator';
+import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
+import { colors } from '../constants/theme';
 
 import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
 
 const Stack = createNativeStackNavigator();
+
+const toastConfig: ToastConfig = {
+  success: (props) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: colors.primary, backgroundColor: '#fff' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{ fontSize: 15, fontWeight: '600', color: colors.onSurface }}
+      text2Style={{ fontSize: 13, color: colors.onSurfaceVariant }}
+    />
+  ),
+  error: (props) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: colors.error, backgroundColor: '#fff' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{ fontSize: 15, fontWeight: '600', color: colors.onSurface }}
+      text2Style={{ fontSize: 13, color: colors.onSurfaceVariant }}
+    />
+  ),
+};
+
+// Wrapper ini bikin <Toast /> cuma nyerap sentuhan di area notifikasinya sendiri —
+// area kosong di sekitarnya tembus ke komponen di belakangnya (mis. tombol Sign Up),
+// biar Toast tidak diam-diam menutupi seluruh layar dan bikin tombol tidak bisa dipencet.
+function ToastOverlay() {
+  return (
+    <View
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      pointerEvents="box-none"
+    >
+      <Toast config={toastConfig} />
+    </View>
+  );
+}
 
 export function RootNavigator() {
   const user = useSelector(
@@ -63,96 +100,100 @@ export function RootNavigator() {
     : 'unauthenticated';
 
   return (
-    <NavigationContainer key={navigationKey}>
+    <>
+      <NavigationContainer key={navigationKey}>
 
-      {/* =========================
-          BELUM LOGIN
-      ========================== */}
+        {/* =========================
+            BELUM LOGIN
+        ========================== */}
 
-      {!user && (
-        <>
-          {console.log('→ ROUTE: AuthStack')}
-
-          <AuthStack key="auth-stack" />
-        </>
-      )}
-
-      {/* =========================
-          VENDOR PENDING / REJECTED
-      ========================== */}
-
-      {user &&
-        normalizedRole === 'vendor' &&
-        (tenantStatus === 'pending' ||
-          tenantStatus === 'rejected') && (
-
+        {!user && (
           <>
-            {console.log('→ ROUTE: PendingApproval')}
+            {console.log('→ ROUTE: AuthStack')}
 
-            <Stack.Navigator
-              key="pending-stack"
-              screenOptions={{
-                headerShown: false,
-              }}
-            >
-              <Stack.Screen
-                name="PendingApproval"
-                component={PendingApprovalScreen}
-                initialParams={{
-                  businessName:
-                    businessName ?? undefined,
+            <AuthStack key="auth-stack" />
+          </>
+        )}
 
-                  rejected:
-                    tenantStatus === 'rejected',
+        {/* =========================
+            VENDOR PENDING / REJECTED
+        ========================== */}
+
+        {user &&
+          normalizedRole === 'vendor' &&
+          (tenantStatus === 'pending' ||
+            tenantStatus === 'rejected') && (
+
+            <>
+              {console.log('→ ROUTE: PendingApproval')}
+
+              <Stack.Navigator
+                key="pending-stack"
+                screenOptions={{
+                  headerShown: false,
                 }}
-              />
-            </Stack.Navigator>
-          </>
-        )}
+              >
+                <Stack.Screen
+                  name="PendingApproval"
+                  component={PendingApprovalScreen}
+                  initialParams={{
+                    businessName:
+                      businessName ?? undefined,
 
-      {/* =========================
-          CUSTOMER
-      ========================== */}
+                    rejected:
+                      tenantStatus === 'rejected',
+                  }}
+                />
+              </Stack.Navigator>
+            </>
+          )}
 
-      {user &&
-        user.role === 'customer' && (
+        {/* =========================
+            CUSTOMER
+        ========================== */}
 
-          <>
-            {console.log('→ ROUTE: Customer')}
+        {user &&
+          user.role === 'customer' && (
 
-            <CustomerStackNavigator />
-          </>
-        )}
+            <>
+              {console.log('→ ROUTE: Customer')}
 
-      {/* =========================
-          VENDOR APPROVED
-      ========================== */}
+              <CustomerStackNavigator />
+            </>
+          )}
 
-      {user &&
-        normalizedRole === 'vendor' &&
-        tenantStatus === 'approved' && (
+        {/* =========================
+            VENDOR APPROVED
+        ========================== */}
 
-          <>
-            {console.log('→ ROUTE: Vendor')}
+        {user &&
+          normalizedRole === 'vendor' &&
+          tenantStatus === 'approved' && (
 
-            <VendorTabNavigator />
-          </>
-        )}
+            <>
+              {console.log('→ ROUTE: Vendor')}
 
-      {/* =========================
-          ADMIN
-      ========================== */}
+              <VendorTabNavigator />
+            </>
+          )}
 
-      {user &&
-        user.role === 'admin' && (
+        {/* =========================
+            ADMIN
+        ========================== */}
 
-          <>
-            {console.log('→ ROUTE: Admin')}
+        {user &&
+          user.role === 'admin' && (
 
-            <AdminTabNavigator />
-          </>
-        )}
+            <>
+              {console.log('→ ROUTE: Admin')}
 
-    </NavigationContainer>
+              <AdminTabNavigator />
+            </>
+          )}
+
+      </NavigationContainer>
+
+      <ToastOverlay />
+    </>
   );
 }
