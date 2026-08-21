@@ -9,7 +9,7 @@ type Props = { title: string; message: string; ctaLabel: string; onPressCta: () 
 export function SellingTipCard({ title, message, ctaLabel, onPressCta }: Props) {
   return (
     <View style={styles.card}>
-      <Text style={styles.icon}>💡</Text>
+      <Text style={styles.icon}></Text>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       <Pressable style={styles.cta} onPress={onPressCta}>

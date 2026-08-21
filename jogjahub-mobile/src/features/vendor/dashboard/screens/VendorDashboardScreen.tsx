@@ -11,6 +11,11 @@ import { SellingTipCard } from '../components/SellingTipCard';
 import type { VendorTabParamList } from '../../../../navigation/types';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../../store';
+import { IconlyChart } from '../../../../components/icons/iconlyChart';
+import { IconlyCalendar } from '../../../../components/icons/iconlyCalendar';
+import { IconlyBag } from '../../../../components/icons/iconlyBag';
+import { IconlyTicket } from '../../../../components/icons/iconlyTicket';
+import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
 
 type Nav = BottomTabNavigationProp<VendorTabParamList>;
 
@@ -42,23 +47,23 @@ export default function VendorDashboardScreen() {
   const actions = [
     {
       key: 'listing',
-      icon: '📦',
+      icon: IconlyBag,
       label: 'Produk Anda',
-      subtitle: 'Kelola stok barang',
+      subtitle: 'Kelola listing barang',
       iconBg: colors.tertiaryContainer,
       onPress: () => navigation.navigate('Listing'),
     },
     {
       key: 'promo',
-      icon: '📣',
-      label: 'Promosi',
-      subtitle: 'Tingkatkan penjualan',
+      icon: IconlyWallet,
+      label: 'Dompet',
+      subtitle: 'Lihat Keuangan Bisnis',
       iconBg: colors.primaryFixed,
       onPress: () => {/* TODO: fitur promosi belum ada di scope MVP PRD */},
     },
     {
       key: 'stats',
-      icon: '📊',
+      icon: IconlyChart,
       label: 'Statistik',
       subtitle: 'Data pengunjung',
       iconBg: colors.tertiaryFixedDim,
@@ -66,7 +71,7 @@ export default function VendorDashboardScreen() {
     },
     {
       key: 'reviews',
-      icon: '⭐',
+      icon: IconlyTicket,
       label: 'Ulasan',
       subtitle: 'Respon pelanggan',
       iconBg: colors.errorContainer,
