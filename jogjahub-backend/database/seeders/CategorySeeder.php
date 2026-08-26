@@ -11,10 +11,23 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         $data = [
-            'Penginapan' => [],
-            'Beauty & Style' => ['Salon', 'Butik'],
-            'Gifting' => ['Selempang', 'Akrilik', 'Florist', 'Plakat'],
-            'Dokumentasi' => ['Fotografer', 'Videografer'],
+            'Penginapan' => [
+                'Kamar' => false
+            ],
+            'Beauty & Style' => [
+                'Salon' => true,
+                'Butik' => false
+            ],
+            'Gifting' => [
+                'Selempang' => false,
+                'Akrilik' => false,
+                'Florist' => false,
+                'Plakat' => false
+            ],
+            'Dokumentasi' => [
+                'Fotografer' => true,
+                'Videografer' => true
+            ],
         ];
 
         foreach ($data as $categoryName => $subcategories) {
