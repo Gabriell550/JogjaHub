@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class TenantController extends Controller
 {
-    public function index()
+    public function map()
     {
         $tenant = TenantProfile::where('status', 'approved')
             ->select('id', 'business_name', 'latitude', 'longitude', 'whatsapp_number')

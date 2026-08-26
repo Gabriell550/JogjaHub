@@ -20,4 +20,19 @@ class ServiceController extends Controller
 
         return response()->json(['success' => true, 'data' => $services]);
     }
+
+    public function slots(Service $service)
+    {
+        $slots = $service->timeSlots()
+            ->where('slot_date', '>=', now()->toDateString())
+            ->whereColumn('quota', '>', 'booked_count')
+            ->orderBy('slot_date')
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $slots
+        ]);
+    }
 }
