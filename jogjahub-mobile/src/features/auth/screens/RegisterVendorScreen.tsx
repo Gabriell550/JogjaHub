@@ -15,9 +15,7 @@ import Toast from 'react-native-toast-message';
 
 type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
-// FR-01/FR-03: form registrasi vendor. Beda dari customer — vendor wajib isi identitas bisnis
 // (nama, kategori, alamat) dan upload 2 dokumen verifikasi (KTP + Surat Badan Usaha) di awal,
-// supaya admin punya bahan lengkap untuk approve/reject (FR-04) tanpa bolak-balik minta data.
 export default function RegisterVendorScreen() {
   const navigation = useNavigation<RegisterVendorNav>();
   const { registerVendor, loading, error } = useRegister();
@@ -76,9 +74,8 @@ export default function RegisterVendorScreen() {
       });
       return;
     }
-    // Catatan: upload KTP & Surat Badan Usaha SENGAJA tidak lagi wajib di sini — backend belum
-    // punya tempat menyimpan file ini sama sekali. Dibiarkan opsional supaya user tidak terhambat
-    // daftar gara-gara field yang efeknya belum ada. Lihat dokumentasi PERBAIKAN_API_MOBILE.md.
+    //upload KTP & Surat Badan Usaha SENGAJA tidak lagi wajib di sini — backend belum buat
+  
     const result = await registerVendor({
       businessName,
       categories,
