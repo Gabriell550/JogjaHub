@@ -15,9 +15,7 @@ import Toast from 'react-native-toast-message';
 
 type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
-// FR-01/FR-03: form registrasi vendor. Beda dari customer — vendor wajib isi identitas bisnis
 // (nama, kategori, alamat) dan upload 2 dokumen verifikasi (KTP + Surat Badan Usaha) di awal,
-// supaya admin punya bahan lengkap untuk approve/reject (FR-04) tanpa bolak-balik minta data.
 export default function RegisterVendorScreen() {
   const navigation = useNavigation<RegisterVendorNav>();
   const { registerVendor, loading, error } = useRegister();
@@ -76,16 +74,8 @@ export default function RegisterVendorScreen() {
       });
       return;
     }
-    if (!idCardFile || !businessLicenseFile) {
-      Toast.show({
-        type: 'error',
-        text1: 'Dokumen belum lengkap',
-        text2: 'Upload KTP dan Surat Badan Usaha dulu sebelum daftar.',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      return;
-    }
+    //upload KTP & Surat Badan Usaha SENGAJA tidak lagi wajib di sini — backend belum buat
+  
     const result = await registerVendor({
       businessName,
       categories,
@@ -94,16 +84,20 @@ export default function RegisterVendorScreen() {
       email,
       password,
       passwordConfirmation: confirmPassword,
-      idCardFile: {
-        uri: idCardFile!.uri,
-        name: idCardFile!.name ?? undefined,
-        type: idCardFile!.mimeType ?? 'application/octet-stream',
-      },
-      businessLicenseFile: {
-        uri: businessLicenseFile!.uri,
-        name: businessLicenseFile!.name ?? undefined,
-        type: businessLicenseFile!.mimeType ?? 'application/octet-stream',
-      },
+      ...(idCardFile && {
+        idCardFile: {
+          uri: idCardFile.uri,
+          name: idCardFile.name ?? undefined,
+          type: idCardFile.mimeType ?? 'application/octet-stream',
+        },
+      }),
+      ...(businessLicenseFile && {
+        businessLicenseFile: {
+          uri: businessLicenseFile.uri,
+          name: businessLicenseFile.name ?? undefined,
+          type: businessLicenseFile.mimeType ?? 'application/octet-stream',
+        },
+      }),
     });
 
     if (result.success) {
@@ -143,7 +137,8 @@ export default function RegisterVendorScreen() {
       <Input placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.inputSpacing} />
       <Input placeholder="Konfirmasi Password" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} style={styles.inputSpacing} />
 
-      <Text style={styles.sectionLabel}>Dokumen Verifikasi</Text>
+      <Text style={styles.sectionLabel}>Dokumen Verifikasi (Opsional)</Text>
+      <Text style={styles.helperText}>Belum wajib diisi sekarang — bisa dilengkapi lagi nanti.</Text>
       <FileUploadField label="Upload KTP" fileName={idCardFile?.name} onPress={handlePickIdCard} />
       <View style={{ height: spacing.stackSm }} />
       <FileUploadField label="Upload Surat Badan Usaha" fileName={businessLicenseFile?.name} onPress={handlePickBusinessLicense} />
@@ -179,4 +174,5 @@ const styles = StyleSheet.create({
   inputSpacing: { marginBottom: spacing.stackSm },
   textArea: { minHeight: 70, textAlignVertical: 'top' },
   errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginTop: spacing.stackSm },
+  helperText: { color: colors.onSurfaceVariant, fontFamily: typography.labelMd.fontFamily, fontSize: 12, marginTop: -4, marginBottom: spacing.stackSm },
 });

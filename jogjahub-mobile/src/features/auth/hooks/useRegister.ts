@@ -23,8 +23,11 @@ type RegisterVendorPayload = {
   email: string;
   password: string;
   passwordConfirmation: string;
-  idCardFile: SelectedDocument;
-  businessLicenseFile: SelectedDocument;
+  // Opsional — backend saat ini TIDAK punya kolom/penyimpanan untuk file ini sama sekali
+  // (tenant_profiles tidak ada field id_card_url/business_license_url). Kalau diisi, tetap
+  // dikirim ke server (siapa tahu nanti backend-nya nambah dukungan), tapi tidak wajib lagi.
+  idCardFile?: SelectedDocument;
+  businessLicenseFile?: SelectedDocument;
 };
 
 const categoryValueMap: Record<string, string> = {
