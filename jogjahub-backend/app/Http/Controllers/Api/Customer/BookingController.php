@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
-    public function __construct(protected BookingService $bookingService)
-    {
-    }
+    public function __construct(protected BookingService $bookingService) {}
 
     public function index(Request $request)
     {
@@ -50,6 +48,20 @@ class BookingController extends Controller
 
         if ($booking->status !== 'pending') {
             return response()->json(['success' => false, 'message' => 'Booking tidak bisa dibatalkan'], 422);
+        }
+
+        // Syarat waktu (FR-11): kalau ada slot, minimal 6 jam sebelum jadwal
+        if ($booking->slot_id) {
+            $booking->load('slot');
+            $slotDateTime = \Carbon\Carbon::parse($booking->slot->slot_date . ' ' . $booking->slot->start_time);
+            $minimumCancelTime = now()->addHours(6);
+
+            if ($slotDateTime->lt($minimumCancelTime)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Booking hanya bisa dibatalkan minimal 6 jam sebelum jadwal',
+                ], 422);
+            }
         }
 
         $this->bookingService->cancelBooking($booking);
