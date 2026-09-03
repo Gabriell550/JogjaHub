@@ -1,14 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { VendorHeaderBar } from '../components/VendorHeaderBar';
 import { RevenueCard } from '../components/RevenueCard';
 import { QuickActionsGrid } from '../components/QuickActionsGrid';
 import { OrderPreviewCard } from '../components/OrderPreviewCard';
 import { SellingTipCard } from '../components/SellingTipCard';
-import type { VendorTabParamList } from '../../../../navigation/types';
+import type { VendorTabParamList, VendorDashboardStackParamList } from '../../../../navigation/types';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../../store';
 import { IconlyChart } from '../../../../components/icons/iconlyChart';
@@ -17,7 +19,10 @@ import { IconlyBag } from '../../../../components/icons/iconlyBag';
 import { IconlyTicket } from '../../../../components/icons/iconlyTicket';
 import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
 
-type Nav = BottomTabNavigationProp<VendorTabParamList>;
+type Nav = CompositeNavigationProp<
+  NativeStackNavigationProp<VendorDashboardStackParamList>,
+  BottomTabNavigationProp<VendorTabParamList>
+>;
 
 // TODO: ganti semua data mock di bawah dengan vendorApi.getMyProfile() + bookingApi.listIncomingBookings()
 // begitu endpoint vendor sudah tersedia dari backend. Bentuk datanya sudah disiapkan mendekati
@@ -97,6 +102,10 @@ export default function VendorDashboardScreen() {
         <View style={{ height: spacing.stackLg }} />
         <QuickActionsGrid actions={actions} />
 
+        <TouchableOpacity onPress={() => navigation.navigate('RecentActivity')} style={{ marginTop: spacing.stackMd }}>
+          <Text style={styles.seeAll}>Lihat Aktivitas Terbaru →</Text>
+        </TouchableOpacity>
+
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Pesanan Baru</Text>
           <Text style={styles.seeAll} onPress={() => navigation.navigate('Orders')}>Lihat Semua</Text>
@@ -149,5 +158,3 @@ const styles = StyleSheet.create({
   },
   seeAll: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.primary, fontWeight: '600' },
 });
-
-

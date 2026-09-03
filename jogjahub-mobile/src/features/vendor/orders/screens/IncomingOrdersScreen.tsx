@@ -9,11 +9,13 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Bell, Hourglass, CheckCircle2, ChevronRight, MessageCircle } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { bookingApi } from '../../../../api/bookingApi';
 import Toast from 'react-native-toast-message';
+import type { VendorOrdersStackParamList } from '../../../../navigation/types';
 
 // FR-10: daftar pesanan masuk, tombol accept/reject.
 // Catatan: status 'completed' belum ada di backend (enum BookingStatus cuma
@@ -49,6 +51,7 @@ function formatRupiah(value: number) {
 }
 
 export default function IncomingOrdersScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<VendorOrdersStackParamList>>();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | BookingStatus>('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -110,9 +113,14 @@ export default function IncomingOrdersScreen() {
     const config = STATUS_CONFIG[item.status];
     const StatusIcon = config.icon;
     const isUpdating = updatingId === item.id;
+    const CardWrapper = item.status === 'pending' ? TouchableOpacity : View;
+    const cardWrapperProps =
+      item.status === 'pending'
+        ? { onPress: () => navigation.navigate('OrderDetail', item), activeOpacity: 0.7 }
+        : {};
 
     return (
-      <View style={[styles.card, { borderLeftColor: config.color }]}>
+      <CardWrapper style={[styles.card, { borderLeftColor: config.color }]} {...cardWrapperProps}>
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
             <View style={[styles.statusBadge, { backgroundColor: `${config.color}1A` }]}>
@@ -176,7 +184,7 @@ export default function IncomingOrdersScreen() {
             <Text style={styles.waitingText}>Dibatalkan oleh customer</Text>
           )}
         </View>
-      </View>
+      </CardWrapper>
     );
   };
 

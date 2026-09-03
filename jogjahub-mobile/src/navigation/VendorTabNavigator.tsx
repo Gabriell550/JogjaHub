@@ -1,10 +1,10 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { LayoutDashboard, Store, ClipboardList, User, Calendar } from "lucide-react-native";
-import VendorDashboardScreen from "../features/vendor/dashboard/screens/VendorDashboardScreen";
+import { VendorDashboardStackNavigator } from "./VendorDashboardStackNavigator";
 import ListingScreen from "../features/vendor/listing/screens/ListingScreen";
 import ManageCalendarScreen from "../features/vendor/calendar/screens/ManageCalendarScreen";
-import IncomingOrdersScreen from "../features/vendor/orders/screens/IncomingOrdersScreen";
+import { VendorOrdersStackNavigator } from "./VendorOrdersStackNavigator";
 import VendorProfileScreen from "../features/vendor/profile/screens/VendorProfileScreen";
 import { colors } from "../constants/theme";
 import { VendorTabParamList } from "./types";
@@ -32,10 +32,18 @@ export function VendorTabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={VendorDashboardScreen} />
+      <Tab.Screen
+        name="Dashboard"
+        component={VendorDashboardStackNavigator}
+        options={{ headerShown: false }}
+      />
       <Tab.Screen name="Listing" component={ListingScreen} />
       <Tab.Screen name="Calendar" component={ManageCalendarScreen} />
-      <Tab.Screen name="Orders" component={IncomingOrdersScreen} />
+      <Tab.Screen
+        name="Orders"
+        component={VendorOrdersStackNavigator}
+        options={{ headerShown: false }}
+      />
       <Tab.Screen name="Profile" component={VendorProfileScreen} />
     </Tab.Navigator>
   );

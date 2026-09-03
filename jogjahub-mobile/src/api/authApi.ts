@@ -41,4 +41,8 @@ export const authApi = {
 
     return apiClient.post('/auth/register/tenant', payload);
   },
+
+  // Endpoint ini sudah ada & jalan di backend (POST /v1/auth/logout, hapus token Sanctum aktif)
+  // tapi sebelumnya tidak pernah dipanggil — useLogout.ts cuma hapus state lokal.
+  logout: () => apiClient.post('/auth/logout'),
 };

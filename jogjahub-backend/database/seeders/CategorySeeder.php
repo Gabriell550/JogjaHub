@@ -33,10 +33,13 @@ class CategorySeeder extends Seeder
         foreach ($data as $categoryName => $subcategories) {
             $category = Category::firstOrCreate(['name' => $categoryName]);
 
-            foreach ($subcategories as $subName) {
-                Subcategory::firstOrCreate([
+            foreach ($subcategories as $subName => $requiresSlot) {
+                Subcategory::updateOrCreate([
                     'category_id' => $category->id,
                     'name' => $subName,
+                ],
+                [
+                    'requires_time_slot' => $requiresSlot,
                 ]);
             }
         }
