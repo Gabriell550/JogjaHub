@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Text } from "react-native";
+import { LayoutDashboard, Store, ClipboardList, User, Calendar } from "lucide-react-native";
 import VendorDashboardScreen from "../features/vendor/dashboard/screens/VendorDashboardScreen";
 import ListingScreen from "../features/vendor/listing/screens/ListingScreen";
 import ManageCalendarScreen from "../features/vendor/calendar/screens/ManageCalendarScreen";
@@ -12,12 +12,12 @@ import { VendorTabParamList } from "./types";
 const Tab = createBottomTabNavigator<VendorTabParamList>();
 
 // 5 tab sesuai referensi desain vendor: Dashboard, Listing, Calendar, Orders, Profile.
-const ICONS: Record<keyof VendorTabParamList, string> = {
-  Dashboard: "??",
-  Listing: "??",
-  Calendar: "??",
-  Orders: "??",
-  Profile: "??",
+const ICONS: Record<keyof VendorTabParamList, any> = {
+  Dashboard: LayoutDashboard,
+  Listing: Store,
+  Calendar: Calendar,
+  Orders: ClipboardList,
+  Profile: User,
 };
 
 export function VendorTabNavigator() {
@@ -26,7 +26,10 @@ export function VendorTabNavigator() {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.onSurfaceVariant,
-        tabBarIcon: () => <Text style={{ fontSize: 18 }}>{ICONS[route.name as keyof VendorTabParamList]}</Text>,
+        tabBarIcon: ({ color, size }) => {
+          const Icon = ICONS[route.name as keyof VendorTabParamList];
+          return <Icon color={color} size={size ?? 22} />;
+        },
       })}
     >
       <Tab.Screen name="Dashboard" component={VendorDashboardScreen} />

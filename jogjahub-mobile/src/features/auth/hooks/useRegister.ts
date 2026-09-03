@@ -118,6 +118,7 @@ export function useRegister() {
       await authApi.registerVendor(formData);
       return { success: true as const };
     } catch (err: any) {
+      console.log('REGISTER VENDOR ERROR:', JSON.stringify(err?.response?.data), err?.response?.status, err?.message);
       const message = getErrorMessage(err, 'Registrasi gagal. Coba lagi.');
       setError(message);
       return { success: false as const, message };
