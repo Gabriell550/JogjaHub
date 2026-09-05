@@ -17,7 +17,8 @@
       "package": "com.jogjahub.app"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-status-bar"
     ],
     "experiments": {
       "tsconfigPaths": true

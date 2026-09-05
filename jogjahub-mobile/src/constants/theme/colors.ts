@@ -56,4 +56,7 @@ export const colors = {
   background: '#f8f9ff',
   onBackground: '#121c2a',
   surfaceVariant: '#d9e3f6',
+
+    accentGreen: '#2E7D32',
+  accentGreenContainer: '#e3f3e6',
 } as const;

@@ -58,6 +58,7 @@ export type CustomerStackParamList = {
 export type VendorDashboardStackParamList = {
   DashboardHome: undefined;
   RecentActivity: undefined;
+  Statistics: undefined;
 };
 
 export type VendorOrdersStackParamList = {
