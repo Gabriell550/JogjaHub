@@ -1,23 +1,26 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { Card } from '../../../../components/Card/Card';
 import { EmptyState } from '../../../../components/EmptyState/EmptyState';
 import { vendorApi } from '../../../../api/vendorApi';
+import type { VendorServicesStackParamList } from '../../../../navigation/types';
 
 type ServiceItem = {
   id: number;
   name: string;
   price: number;
-  subcategory?: { id: number; name: string; category?: { name: string } };
+  description?: string;
+  subcategory?: { id: number; name: string; category?: { id: number; name: string } };
 };
 
 const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
 
 // FR: kelola layanan/produk yang dijual vendor (create/read/update).
 export default function ListingScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<VendorServicesStackParamList>>();
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,7 +50,7 @@ export default function ListingScreen() {
     <View style={styles.screen}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Layanan Saya</Text>
-        <Pressable style={styles.addButton} onPress={() => navigation.navigate('ServiceForm' as never, { mode: 'create' } as never)}>
+        <Pressable style={styles.addButton} onPress={() => navigation.navigate('ServiceForm', { mode: 'create' })}>
           <Text style={styles.addButtonText}>+ Tambah</Text>
         </Pressable>
       </View>
@@ -63,7 +66,7 @@ export default function ListingScreen() {
         ItemSeparatorComponent={() => <View style={{ height: spacing.stackSm }} />}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => navigation.navigate('ServiceForm' as never, { mode: 'edit', serviceId: item.id } as never)}
+            onPress={() => navigation.navigate('ServiceForm', { mode: 'edit', service: item })}
           >
             <Card>
               <Text style={styles.serviceName}>{item.name}</Text>

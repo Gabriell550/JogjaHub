@@ -30,9 +30,19 @@ export type VendorProfileStackParamList = {
 // Stack kecil di dalam tab Listing — ServicesList (daftar layanan) & ServiceForm (tambah/edit).
 export type VendorServicesStackParamList = {
   ServicesList: undefined;
-  ServiceForm: { mode: 'create' } | { mode: 'edit'; serviceId: number };
+  ServiceForm:
+    | { mode: 'create' }
+    | {
+        mode: 'edit';
+        service: {
+          id: number;
+          name: string;
+          price: number;
+          description?: string;
+          subcategory?: { id: number; name: string; category?: { id: number; name: string } };
+        };
+      };
 };
-
 export type AdminStackParamList = {
   Dashboard: undefined;
   PendingVendors: undefined;
