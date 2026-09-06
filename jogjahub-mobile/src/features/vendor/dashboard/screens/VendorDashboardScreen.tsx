@@ -6,11 +6,8 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { VendorHeaderBar } from '../components/VendorHeaderBar';
-import { DashboardSummaryCards } from '../components/DashboardSummaryCards';
 import { QuickActionsGrid } from '../components/QuickActionsGrid';
 import { OrderPreviewCard } from '../components/OrderPreviewCard';
-import { SellingTipCard } from '../components/SellingTipCard';
-import { RevenueChartCard } from '../components/RevenueChartCard';
 import { OrderNotificationCard } from '../components/OrderNotificationCard';
 import type { VendorTabParamList, VendorDashboardStackParamList } from '../../../../navigation/types';
 import { useSelector } from 'react-redux';
@@ -21,6 +18,8 @@ import { IconlyBag } from '../../../../components/icons/iconlyBag';
 import { IconlyTicket } from '../../../../components/icons/iconlyTicket';
 import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
 import { orderTracking } from '../../../../utils/orderTracking';
+import { PerformaCard } from '../components/PerformaCard';
+import { SaldoTokoCard } from '../components/SaldoTokoCard';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<VendorDashboardStackParamList>,
@@ -112,33 +111,29 @@ export default function VendorDashboardScreen() {
       key: 'listing',
       icon: IconlyBag,
       label: 'Produk Anda',
-      subtitle: 'Kelola listing barang',
-      iconBg: colors.tertiaryContainer,
+      iconBg: colors.orangePale,
       onPress: () => navigation.navigate('Listing'),
     },
     {
       key: 'promo',
       icon: IconlyWallet,
       label: 'Dompet',
-      subtitle: 'Lihat Keuangan Bisnis',
       iconBg: colors.primaryFixed,
-      onPress: () => {/* TODO: fitur promosi belum ada di scope MVP PRD */},
+      onPress: () => {/* TODO */},
     },
     {
       key: 'stats',
       icon: IconlyChart,
       label: 'Statistik',
-      subtitle: 'Data pengunjung',
-      iconBg: colors.tertiaryFixedDim,
+      iconBg: colors.accentGreenContainer,
       onPress: () => navigation.navigate('Statistics'),
     },
     {
       key: 'reviews',
       icon: IconlyTicket,
       label: 'Ulasan',
-      subtitle: 'Respon pelanggan',
-      iconBg: colors.errorContainer,
-      onPress: () => {/* TODO: layar ulasan belum dibuat */},
+      iconBg: colors.grayPale,
+      onPress: () => {/* TODO */},
     },
   ];
 
@@ -156,21 +151,26 @@ export default function VendorDashboardScreen() {
           <Text style={styles.subGreeting}>Semoga harimu produktif dan sukses.</Text>
         </View>
 
-        <View style={{ height: spacing.stackLg }} />
-        <DashboardSummaryCards {...MOCK_SUMMARY} />
+        <View style={{ height: spacing.stackMd }} />
+        <PerformaCard
+          label="PERFORMA HARI INI"
+          amount={MOCK_REVENUE.amount}
+          subtitle="Dari 45 transaksi"
+          icon="🚀"
+        />
 
-        <View style={{ height: spacing.stackLg }} />
-        <RevenueChartCard currentRevenue={MOCK_REVENUE.amount} />
+        <View style={{ height: spacing.stackMd }} />
+        <SaldoTokoCard
+          balance={MOCK_SUMMARY.estimatedRevenue}
+          onTarik={() => {/* TODO */}}
+          onRiwayat={() => {/* TODO */}}
+        />
 
-        <View style={{ height: spacing.stackLg }} />
+        <View style={{ height: spacing.stackMd }} />
         <QuickActionsGrid actions={actions} />
 
-        <TouchableOpacity onPress={() => navigation.navigate('RecentActivity')} style={{ marginTop: spacing.stackMd }}>
-          <Text style={styles.seeAll}>Lihat Aktivitas Terbaru →</Text>
-        </TouchableOpacity>
-
         {unviewedOrders.length > 0 && (
-          <View style={{ marginTop: spacing.stackLg }}>
+          <View style={{ marginTop: spacing.stackMd }}>
             <OrderNotificationCard
               orders={unviewedOrders}
               onPressOrder={handleOrderPress}
@@ -181,7 +181,9 @@ export default function VendorDashboardScreen() {
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Pesanan Terbaru</Text>
-          <Text style={styles.seeAll} onPress={() => navigation.navigate('Orders')}>Lihat Semua</Text>
+          <Text style={styles.seeAll} onPress={() => navigation.navigate('Orders')}>
+            Lihat Semua
+          </Text>
         </View>
         {MOCK_ORDERS.map((order) => (
           <View key={order.id} style={{ marginBottom: spacing.stackSm }}>
@@ -191,17 +193,12 @@ export default function VendorDashboardScreen() {
               buyerName={order.buyerName}
               timeAgo={order.timeAgo}
               price={order.price}
+              icon={order.id === '2' ? IconlyCalendar : undefined}
             />
           </View>
         ))}
 
         <View style={{ height: spacing.stackSm }} />
-        <SellingTipCard
-          title="Tips Jualan Hari Ini"
-          message="Update foto produk Anda dengan pencahayaan alami untuk meningkatkan klik hingga 25%!"
-          ctaLabel="Pelajari Selengkapnya"
-          onPressCta={() => {/* TODO: konten edukasi vendor belum ada di scope MVP PRD */}}
-        />
       </ScrollView>
     </View>
   );
@@ -213,7 +210,8 @@ const styles = StyleSheet.create({
   greetingBlock: {
     backgroundColor: colors.secondaryContainer,
     borderRadius: radius.lg,
-    padding: spacing.stackLg,
+    padding: 14,
+    paddingTop: 14,
   },
   greeting: {
     fontFamily: typography.headlineLgMobile.fontFamily,

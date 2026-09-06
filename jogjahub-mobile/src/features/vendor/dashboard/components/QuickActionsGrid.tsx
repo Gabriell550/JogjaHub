@@ -27,20 +27,16 @@ export function QuickActionsGrid({ actions }: { actions: Action[] }) {
             onPress={action.onPress}
           >
             <View
-              style={styles.iconWrap}
+              style={[styles.iconWrap, { backgroundColor: action.iconBg }]}
             >
               {typeof action.icon === 'string' ? (
                 <Text style={styles.icon}>{action.icon}</Text>
               ) : (
-                <Icon />
+                <Icon size={22} color={colors.onSurface} />
               )}
             </View>
 
             <Text style={styles.label}>{action.label}</Text>
-
-            <Text style={styles.subtitle}>
-              {action.subtitle}
-            </Text>
           </Pressable>
         );
       })}
@@ -56,11 +52,14 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    width: '47%',
+    width: '23%',
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg,
-    padding: spacing.stackMd,
+    padding: spacing.stackSm,
+    paddingTop: 14,
     elevation: 1,
+    alignItems: 'center',
+    minHeight: 88,
   },
 
   cardPressed: {
@@ -68,28 +67,19 @@ const styles = StyleSheet.create({
   },
 
   iconWrap: {
-    width: 36,
-    height: 36,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.stackSm,
-  },
-
-  icon: {
-    fontSize: 16,
+    marginBottom: 8,
   },
 
   label: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 14,
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.onSurface,
-  },
-
-  subtitle: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
+    textAlign: 'center',
   },
 });
