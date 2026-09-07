@@ -1,7 +1,8 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { LayoutDashboard, Store, ClipboardList, User, Calendar } from "lucide-react-native";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, typography } from "../constants/theme";
 import { VendorDashboardStackNavigator } from "./VendorDashboardStackNavigator";
 import { VendorServicesStackNavigator } from "./VendorServicesStackNavigator";
@@ -30,22 +31,30 @@ const TAB_LABELS: Record<keyof VendorTabParamList, string> = {
 
 function TabIcon({ icon: Icon, focused, label }: { icon: any; focused: boolean; label: string }) {
   return (
-    <Pressable style={styles.tabButton}>
+    <View style={styles.tabButton}>
       <View style={[styles.iconPill, focused && styles.iconPillActive]}>
         <Icon size={18} color={focused ? colors.onPrimary : colors.onSurfaceVariant} />
       </View>
       <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
-    </Pressable>
+    </View>
   );
 }
 
 export function VendorTabNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 68 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+          },
+        ],
       }}
     >
       <Tab.Screen
@@ -97,13 +106,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopColor: colors.outlineVariant,
     borderTopWidth: 1,
-    height: 72,
     paddingTop: 8,
-    paddingBottom: 16,
   },
   tabButton: {
     alignItems: "center",
-    justifyContent: "center",
+    justify: "center",
     flex: 1,
     gap: 4,
   },
@@ -130,7 +137,7 @@ const styles = StyleSheet.create({
   },
   ordersTab: {
     alignItems: "center",
-    justifyContent: "center",
+    justify: "center",
     flex: 1,
     gap: 4,
     position: "relative",

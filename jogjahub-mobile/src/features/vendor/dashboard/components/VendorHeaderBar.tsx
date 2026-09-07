@@ -1,57 +1,41 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, TouchableOpacity } from 'react-native';
-import { Search, Bell } from 'lucide-react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { Search, Bell, User } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 
-// Header khusus dashboard vendor: nama app + toggle "Buka/Tutup Toko". Ini BUKAN dekorasi —
-// status ini yang menentukan apakah vendor masih bisa menerima booking baru dari customer.
-// TODO: begitu vendorApi siap, ganti useState lokal ini dengan field `isOpen` dari
-// vendorApi.getMyProfile(), dan panggil vendorApi.updateMyProfile({ isOpen }) tiap kali di-toggle.
-
 export function VendorHeaderBar({ name }: { name?: string }) {
-  const [isOpen, setIsOpen] = useState(true);
   const [query, setQuery] = useState('');
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
-      {/* Kiri: avatar + greeting */}
-      <View style={styles.left}>
-        <View style={styles.avatarBox}>
-          <Text style={styles.avatarEmoji}>✨</Text>
+    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={styles.container}>
+        {/* Search bar di sebelah kiri (memenuhi sisa ruang) */}
+        <View style={styles.searchBar}>
+          <Search size={18} color={colors.onSurfaceVariant} />
+          <TextInput
+            style={styles.searchInput}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Cari pesanan atau produk..."
+            placeholderTextColor={colors.onSurfaceVariant}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
         </View>
-        <View style={styles.greeting}>
-          <Text style={styles.greetingText}>Halo, {name ?? 'Vendor'}! 👋</Text>
-          <Text style={styles.subtitle}>Siap menerima pesanan wisuda & pernikahan</Text>
+
+        {/* Tombol Notifikasi & Profil di samping pencarian */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
+            <Bell size={20} color={colors.onSurface} />
+            <View style={styles.notifDot} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
+            <User size={20} color={colors.onSurface} />
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Kanan: notifikasi + toggle */}
-      <View style={styles.right}>
-        <TouchableOpacity style={styles.notifBtn}>
-          <Bell size={20} color={colors.onSurface} />
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
-        <Pressable
-          onPress={() => setIsOpen((v) => !v)}
-          style={[styles.toggle, { backgroundColor: isOpen ? colors.primary : colors.onSurfaceVariant }]}
-        >
-          <View style={[styles.toggleDot, { backgroundColor: isOpen ? '#ffffff' : 'transparent' }]} />
-          <Text style={styles.toggleText}>{isOpen ? 'BUKA' : 'TUTUP'}</Text>
-        </Pressable>
-      </View>
-
-      {/* Search bar di bawah header */}
-      <View style={styles.searchBar}>
-        <Search size={18} color={colors.onSurfaceVariant} />
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Cari pesanan atau produk..."
-          placeholderTextColor={colors.onSurfaceVariant}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
       </View>
     </View>
   );
@@ -61,49 +45,41 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.surfaceContainerLowest,
     paddingHorizontal: spacing.containerMargin,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
   },
-  left: {
+  container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 2,
   },
-  avatarBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarEmoji: {
-    fontSize: 20,
-  },
-  greeting: {
+  searchBar: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceContainerLowest,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
   },
-  greetingText: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSurface,
-  },
-  subtitle: {
+  searchInput: {
+    flex: 1,
     fontFamily: typography.bodyMd.fontFamily,
     fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
+    color: colors.onSurface,
+    padding: 0,
+    height: 20,
   },
-  right: {
+  actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  notifBtn: {
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -121,41 +97,4 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.notificationRed,
   },
-  toggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: radius.full,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-  },
-  toggleDot: { width: 6, height: 6, borderRadius: radius.full },
-  toggleText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLowest,
-    marginTop: 10,
-    marginHorizontal: spacing.containerMargin,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurface,
-    padding: 0,
-    height: 20,
-  },
 });
-

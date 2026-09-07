@@ -153,10 +153,9 @@ export default function VendorDashboardScreen() {
 
         <View style={{ height: spacing.stackMd }} />
         <PerformaCard
-          label="PERFORMA HARI INI"
+          label="Pendapatan Hari ini"
           amount={MOCK_REVENUE.amount}
-          subtitle="Dari 45 transaksi"
-          icon="🚀"
+          subtitle="Dari 45 order"
         />
 
         <View style={{ height: spacing.stackMd }} />
