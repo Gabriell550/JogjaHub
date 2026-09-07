@@ -23,8 +23,8 @@ import type { VendorServicesStackParamList } from '../../../../navigation/types'
 
 type ServiceFormRoute = RouteProp<VendorServicesStackParamList, 'ServiceForm'>;
 
-type Category = { id: number; name: string };
-type Subcategory = { id: number; name: string };
+type Subcategory = { id: number; name: string; category_id: number };
+type Category = { id: number; name: string; subcategories: Subcategory[] };
 type PickedPhoto = { uri: string; name: string; type: string };
 
 // Catatan scope: form ini pakai 1 harga per layanan (bukan multi-package) dan tidak
@@ -34,8 +34,11 @@ type PickedPhoto = { uri: string; name: string; type: string };
 // Catatan backend: ServiceController@update belum memproses `photos` maupun `is_active`
 // (cuma store() yang menerimanya). Jadi saat mode edit, upload foto & toggle available
 // ditampilkan tapi dinonaktifkan (disabled) supaya tidak menyesatkan pengguna.
+//
+// Catatan API: GET /categories sudah include nested `subcategories` per kategori —
+// tidak ada endpoint terpisah /categories/{id}/subcategories di backend.
 
-export default function ServiceForm() {
+export default function ServiceFormScreen() {
   const navigation = useNavigation();
   const { params } = useRoute<ServiceFormRoute>();
   const isEdit = params.mode === 'edit';
@@ -65,8 +68,10 @@ export default function ServiceForm() {
     (async () => {
       try {
         const res = await categoryApi.getCategories();
+        console.log('CATEGORY RESPONSE:', JSON.stringify(res.data).slice(0, 500));
         setCategories(res.data.data ?? res.data);
-      } catch {
+      } catch (err) {
+        console.log('CATEGORY FETCH ERROR:', err);
         Toast.show({ type: 'error', text1: 'Gagal memuat kategori', position: 'top' });
       } finally {
         setLoadingCategories(false);
@@ -74,20 +79,15 @@ export default function ServiceForm() {
     })();
   }, []);
 
+  // Subkategori sudah ikut nested di response GET /categories — tidak perlu fetch terpisah.
   useEffect(() => {
     if (!selectedCategoryId) {
       setSubcategories([]);
       return;
     }
-    (async () => {
-      try {
-        const res = await categoryApi.getSubcategories(selectedCategoryId);
-        setSubcategories(res.data.data ?? res.data);
-      } catch {
-        Toast.show({ type: 'error', text1: 'Gagal memuat sub-kategori', position: 'top' });
-      }
-    })();
-  }, [selectedCategoryId]);
+    const category = categories.find((c) => c.id === selectedCategoryId);
+    setSubcategories(category?.subcategories ?? []);
+  }, [selectedCategoryId, categories]);
 
   const handlePickPhoto = async () => {
     if (isEdit) return;

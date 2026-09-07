@@ -1,8 +1,6 @@
-// Endpoint: GET /categories, GET /categories/:id/subcategories
+// Endpoint: GET /categories (sudah include nested subcategories per kategori)
 import { apiClient } from './client';
 
 export const categoryApi = {
   getCategories: () => apiClient.get('/categories'),
-  getSubcategories: (categoryId: number | string) =>
-    apiClient.get(`/categories/${categoryId}/subcategories`),
 };

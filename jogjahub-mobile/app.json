@@ -6,20 +6,24 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "backgroundColor": "#f8f9ff"
     },
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jogjahub.app"
     },
+
     "android": {
       "package": "com.jogjahub.app"
     },
+
     "plugins": [
-      "expo-font",
-      "expo-status-bar"
+      "expo-font"
     ],
+
     "experiments": {
       "tsconfigPaths": true
     }
