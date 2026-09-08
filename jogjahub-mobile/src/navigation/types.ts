@@ -27,22 +27,6 @@ export type VendorProfileStackParamList = {
   EditBusinessProfile: undefined;
 };
 
-// Stack kecil di dalam tab Listing — ServicesList (daftar layanan) & ServiceForm (tambah/edit).
-export type VendorServicesStackParamList = {
-  ServicesList: undefined;
-  ServiceForm:
-    | { mode: 'create' }
-    | {
-        mode: 'edit';
-        service: {
-          id: number;
-          name: string;
-          price: number;
-          description?: string;
-          subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-        };
-      };
-};
 export type AdminStackParamList = {
   Dashboard: undefined;
   PendingVendors: undefined;
@@ -73,4 +57,24 @@ export type VendorOrdersStackParamList = {
     status: 'pending' | 'confirmed' | 'cancelled';
     photo_url?: string;
   };
+};
+
+// Stack kecil di dalam tab Listing — ServicesList (daftar layanan), ServiceForm (tambah/edit),
+// ServiceOrders (pesanan per layanan), ServiceReviews (ulasan per layanan).
+export type VendorServicesStackParamList = {
+  ServicesList: undefined;
+  ServiceForm:
+    | { mode: 'create' }
+    | {
+        mode: 'edit';
+        service: {
+          id: number;
+          name: string;
+          price: number;
+          description?: string;
+          subcategory?: { id: number; name: string; category?: { id: number; name: string } };
+        };
+      };
+  ServiceOrders: { serviceId: number; serviceName: string };
+  ServiceReviews: { serviceId: number; serviceName: string };
 };
