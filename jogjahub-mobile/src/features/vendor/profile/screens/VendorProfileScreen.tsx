@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Linking,Alert } from 'react-native';
 import {
   ChevronLeft, MoreVertical, CheckCircle2, Pencil, Clock,
   ChevronRight, ChevronDown, ExternalLink, MapPin, MessageSquare,
   Star, Plus,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { useSelector,useDispatch } from 'react-redux';
+import { logout } from '../../../../features/auth/store/authSlice';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
@@ -36,6 +37,9 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const [servicesLoading, setServicesLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+    const businessName = useSelector(
+    (state: RootState) => state.auth?.businessName
+  );
 
   const fetchServices = useCallback(async () => {
     try {
@@ -92,6 +96,28 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
       Linking.openURL(`https://wa.me/${number}`);
     }
   };
+
+  const dispatch = useDispatch();
+
+const handleLogout = () => {
+  Alert.alert(
+    'Logout',
+    'Apakah Anda yakin ingin keluar dari akun?',
+    [
+      {
+        text: 'Batal',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          dispatch(logout());
+        },
+      },
+    ],
+  );
+};
 
   const handleOpenMaps = useCallback(() => {
     if (!profile?.latitude || !profile?.longitude) return;
@@ -293,14 +319,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
           </View>
 
           <View style={styles.titleRow}>
-            <Text style={styles.businessName}>{profile?.business_name ?? 'Nama Bisnis'}</Text>
-            {profile?.status === 'approved' ? (
-              <CheckCircle2 size={18} color="#10B981" fill="#10B981" />
-            ) : profile?.status === 'rejected' ? (
-              <Clock size={18} color="#DC2626" fill="#DC2626" />
-            ) : (
-              <CheckCircle2 size={18} color="#10B981" fill="#10B981" />
-            )}
+            <Text style={styles.businessName}>{businessName ?? 'Vendor'}</Text>
           </View>
 
           <Text style={styles.businessCategory}>
@@ -479,6 +498,17 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
             </View>
           </View>
         </View>
+            <View style={styles.logoutSection}>
+  <TouchableOpacity
+    style={styles.logoutButton}
+    onPress={handleLogout}
+    activeOpacity={0.8}
+  >
+    <Text style={styles.logoutText}>Logout</Text>
+  </TouchableOpacity>
+</View>
+
+
       </ScrollView>
     </View>
   );
@@ -732,6 +762,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -spacing.containerMargin,
     paddingHorizontal: spacing.containerMargin,
   },
+
   serviceCard: {
     width: 170,
     backgroundColor: colors.surfaceContainerLowest,
@@ -1016,4 +1047,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
+  logoutSection: {
+  marginTop: spacing.xl,
+  marginBottom: spacing.xl,
+  paddingHorizontal: spacing.lg,
+},
+
+logoutButton: {
+  height: 52,
+  borderRadius: radius.md,
+  borderWidth: 1,
+  borderColor: '#E53935',
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+logoutText: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: '#E53935',
+},
 });
