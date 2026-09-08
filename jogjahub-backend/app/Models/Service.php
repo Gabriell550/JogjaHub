@@ -37,4 +37,5 @@ class Service extends Model
     {
         return $this->hasMany(TimeSlot::class);
     }
+
 }

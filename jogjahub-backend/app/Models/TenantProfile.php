@@ -40,4 +40,9 @@ class TenantProfile extends Model
     {
         return $this->belongsToMany(Category::class, 'tenant_categories', 'tenant_profile_id', 'category_id');
     }
+
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'tenant_id');
+    }
 }

@@ -21,5 +21,22 @@ class TenantController extends Controller
         ]);
     }
 
+    public function show(TenantProfile $tenant)
+    {
+        if ($tenant->status !== 'approved') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tenant tidak ditemukan atau belum disetujui'
+            ], 404);
+        }
+
+        $tenant->load(['categories', 'services' => fn($q) => $q->with('subcategory')]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $tenant
+        ]);
+    }
+
 
 }

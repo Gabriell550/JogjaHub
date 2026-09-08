@@ -45,4 +45,21 @@ class ProfileController extends Controller
             'data' => $tenantProfile->load('categories'),
         ]);
     }
+
+    public function show(Request $request)
+    {
+        $tenantProfile = $request->user()->tenantProfile()->with('categories')->first();
+
+        if (!$tenantProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil tenant tidak ditemukan',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $tenantProfile,
+        ]);
+    }
 }

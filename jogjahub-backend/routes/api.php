@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/tenants/map', [\App\Http\Controllers\Api\Customer\TenantController::class, 'map']);
     Route::get('/services', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'index']);
     Route::get('/services/{service}/slots', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'slots']);
+    Route::get('tenants/{tenant}', [\App\Http\Controllers\Api\Customer\TenantController::class, 'show']);
 
     // ===== Authenticated, semua role (logout dipisah, bukan punya 1 role spesifik) =====
     Route::middleware('auth:sanctum')->group(function () {
@@ -39,6 +40,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('time-slots', \App\Http\Controllers\Api\Tenant\TimeSlotController::class);
         Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
         Route::get('services/{service}/time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'index']);
+        Route::get('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'show']);
         Route::post('time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'store']);
         Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
         Route::delete('time-slots/{timeSlot}', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'destroy']);
