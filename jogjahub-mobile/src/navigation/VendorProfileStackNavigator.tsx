@@ -9,8 +9,8 @@ const Stack = createNativeStackNavigator<VendorProfileStackParamList>();
 export function VendorProfileStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileHome" component={VendorProfileScreen} />
-      <Stack.Screen name="EditBusinessProfile" component={VendorOnboardingScreen} />
+      <Stack.Screen name="ProfileHome" component={VendorProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="EditBusinessProfile" component={VendorOnboardingScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

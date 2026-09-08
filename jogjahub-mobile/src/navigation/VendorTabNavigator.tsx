@@ -8,7 +8,7 @@ import { VendorDashboardStackNavigator } from "./VendorDashboardStackNavigator";
 import { VendorServicesStackNavigator } from "./VendorServicesStackNavigator";
 import ManageCalendarScreen from "../features/vendor/calendar/screens/ManageCalendarScreen";
 import { VendorOrdersStackNavigator } from "./VendorOrdersStackNavigator";
-import VendorProfileScreen from "../features/vendor/profile/screens/VendorProfileScreen";
+import { VendorProfileStackNavigator } from "./VendorProfileStackNavigator";
 import { VendorTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<VendorTabParamList>();
@@ -92,9 +92,10 @@ export function VendorTabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={VendorProfileScreen}
+        component={VendorProfileStackNavigator}
         options={{
           tabBarIcon: ({ focused }) => <TabIcon icon={ICONS.Profile} focused={focused} label="Profil" />,
+          headerShown: false,
         }}
       />
     </Tab.Navigator>

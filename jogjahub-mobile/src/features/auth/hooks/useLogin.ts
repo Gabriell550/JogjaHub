@@ -54,7 +54,7 @@ export function useLogin() {
       console.log('ROLE:', user?.role);
       console.log('NORMALIZED:', normalizedUser);
 
-      dispatch(setSession({ 
+      dispatch(setSession({
         user: normalizedUser,
         token,
         tenantStatus: tenant_status ?? null,

@@ -1,9 +1,28 @@
 import React from 'react';
-import { TextInput, StyleSheet, TextInputProps } from 'react-native';
-import { colors, radius } from '../../constants/theme';
+import { TextInput, StyleSheet, TextInputProps, View, Text } from 'react-native';
+import { colors, radius, typography } from '../../constants/theme';
 
-export function Input({ style, ...rest }: TextInputProps) {
-  return <TextInput style={[styles.input, style]} placeholderTextColor={colors.outline} {...rest} />;
+type InputProps = TextInputProps & {
+  error?: string;
+};
+
+export function Input({ style, error, ...rest }: InputProps) {
+  return (
+    <>
+      <TextInput
+        style={[
+          styles.input,
+          error && { borderColor: colors.error, backgroundColor: '#FEF2F2' },
+          style,
+        ]}
+        placeholderTextColor={colors.outline}
+        {...rest}
+      />
+      {error && (
+        <Text style={styles.errorText}>{error}</Text>
+      )}
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -13,5 +32,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.DEFAULT,
     padding: 10,
     color: colors.onSurface,
+  },
+  errorText: {
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: typography.labelMd.fontFamily,
   },
 });
