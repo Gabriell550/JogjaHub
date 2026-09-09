@@ -15,6 +15,9 @@ class TenantProfile extends Model
         'longitude',
         'whatsapp_number',
         'status',
+        'ktp_url',
+        'nib_url',
+        'portfolio_url',
     ];
 
     protected $casts = [

@@ -35,4 +35,27 @@ class ServiceController extends Controller
             'data' => $slots
         ]);
     }
+
+    public function show(Service $service)
+    {
+        $service->load(['tenant', 'subcategory']);
+
+        $service->loadCount([
+            'bookings as confirmed_bookings_count' => fn($q) => $q->where('status', 'confirmed'),
+        ]);
+
+        $reviews = $service->bookings()
+            ->whereHas('review')
+            ->with('review')
+            ->get()
+            ->pluck('review');
+
+        $service->reviews_counts = $reviews->count();
+        $service->reviews_average_rating = $reviews->count() > 0 ? round($reviews->avg('rating'), 1) : null;
+
+        return response()->json([
+            'success' => true,
+            'data' => $service
+        ]);
+    }
 }

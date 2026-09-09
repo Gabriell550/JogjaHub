@@ -18,6 +18,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/categories', [\App\Http\Controllers\Api\Customer\CategoryController::class, 'index']);
     Route::get('/tenants/map', [\App\Http\Controllers\Api\Customer\TenantController::class, 'map']);
     Route::get('/services', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'index']);
+    Route::get('/services/{service}', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'show']);
     Route::get('/services/{service}/slots', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'slots']);
     Route::get('tenants/{tenant}', [\App\Http\Controllers\Api\Customer\TenantController::class, 'show']);
 

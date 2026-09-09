@@ -102,4 +102,17 @@ class ServiceController extends Controller
             'message' => 'Service berhasil dihapus',
         ]);
     }
+
+    public function show(Service $service)
+    {
+        $service->load(['subcategory', 'tenant']);
+        $service->loadCount(['bookings as bookings_count' => fn($q)=> $q->where('status', 'confirmed')]);
+        $service->reviews_avg_rating = $service->bookings()->whereHas('review')->with('review')->get()->avg(fn($b)=> $b->review->rating);
+        $service->reviews_count = $service->bookings()->whereHas('review')->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => $service,
+        ]);
+    }
 }

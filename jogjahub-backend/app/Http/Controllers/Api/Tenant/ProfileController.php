@@ -22,11 +22,29 @@ class ProfileController extends Controller
             'whatsapp_number' => 'required|string|max:20',
             'category_ids' => 'required|array|min:1',
             'category_ids.*' => 'exists:categories,id',
+
+            'ktp' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'nib' => 'required_without:portfolio|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'portfolio' => 'required_without:nib|file|mimes:jpg,jpeg,png,pdf|max:5020',
         ]);
+
+        $documentPaths = [];
+
+        if ($request->hasFile('ktp')) {
+            $documentPaths['ktp_url'] = $request->file('ktp')->store('tenant_documents', 'public');
+        }
+
+        if ($request->hasFile('nib')) {
+            $documentPaths['nib_url'] = $request->file('nib')->store('tenant_documents', 'public');
+        }
+
+        if ($request->hasFile('portfolio')) {
+            $documentPaths['portfolio_url'] = $request->file('portfolio')->store('tenant_documents', 'public');
+        }
 
         $tenantProfile = TenantProfile::updateOrCreate(
             ['user_id' => $request->user()->id],
-            [
+            array_merge([
                 'business_name' => $request->business_name,
                 'description' => $request->description,
                 'address' => $request->address,
@@ -34,7 +52,7 @@ class ProfileController extends Controller
                 'longitude' => $request->longitude,
                 'whatsapp_number' => $request->whatsapp_number,
                 'status' => 'pending',
-            ]
+            ], $documentPaths)
         );
 
         $tenantProfile->categories()->sync($request->category_ids);
