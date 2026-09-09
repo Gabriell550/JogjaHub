@@ -1,41 +1,54 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
-import { Search, Bell, User } from 'lucide-react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Bell, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 
-export function VendorHeaderBar({ name }: { name?: string }) {
-  const [query, setQuery] = useState('');
+type Props = {
+  businessName: string;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  onPressBell?: () => void;
+  onPressAvatar?: () => void;
+};
+
+// Header gelap dashboard vendor: logo app + notifikasi + avatar di baris atas,
+// sapaan + nama bisnis + status Buka/Tutup Toko di baris bawah.
+// Status Buka/Tutup ini BUKAN dekorasi — menentukan apakah vendor masih bisa menerima booking baru.
+// TODO: begitu vendorApi siap, ganti `isOpen` jadi field asli dari vendorApi.getMyProfile(),
+// dan panggil vendorApi.updateMyProfile({ isOpen }) tiap kali di-toggle.
+export function VendorHeaderBar({ businessName, isOpen, onToggleOpen, onPressBell, onPressAvatar }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <View style={styles.container}>
-        {/* Search bar di sebelah kiri (memenuhi sisa ruang) */}
-        <View style={styles.searchBar}>
-          <Search size={18} color={colors.onSurfaceVariant} />
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Cari pesanan atau produk..."
-            placeholderTextColor={colors.onSurfaceVariant}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
+      <View style={styles.topRow}>
+        <View style={styles.brandRow}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>JH</Text>
+          </View>
+          <Text style={styles.brandTitle}>JogjaHub</Text>
         </View>
 
-        {/* Tombol Notifikasi & Profil di samping pencarian */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-            <Bell size={20} color={colors.onSurface} />
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.iconBtn} onPress={onPressBell} hitSlop={8}>
+            <Bell size={18} color={colors.onNavy} />
             <View style={styles.notifDot} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7}>
-            <User size={20} color={colors.onSurface} />
-          </TouchableOpacity>
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={onPressAvatar} hitSlop={8}>
+            <User size={18} color={colors.onNavy} />
+          </Pressable>
         </View>
+      </View>
+
+      <Text style={styles.greetingLabel}>Selamat Datang,</Text>
+
+      <View style={styles.nameRow}>
+        <Text style={styles.businessName} numberOfLines={1}>{businessName} </Text>
+        <Pressable style={[styles.statusPill, isOpen ? styles.statusOpen : styles.statusClosed]} onPress={onToggleOpen}>
+          <View style={[styles.statusDot, { backgroundColor: isOpen ? colors.accentGreen : colors.onSurfaceVariant }]} />
+          <Text style={styles.statusText}>{isOpen ? 'Toko Buka' : 'Toko Tutup'}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -43,58 +56,28 @@ export function VendorHeaderBar({ name }: { name?: string }) {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: colors.surfaceContainerLowest,
+    backgroundColor: colors.navy,
     paddingHorizontal: spacing.containerMargin,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
+    paddingBottom: spacing.stackLg,
   },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLowest,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurface,
-    padding: 0,
-    height: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.stackMd },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoBox: { width: 28, height: 28, borderRadius: radius.md, backgroundColor: colors.primaryContainer, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: typography.labelMd.fontFamily, fontSize: 12, fontWeight: '800', color: colors.onPrimary },
+  brandTitle: { fontFamily: typography.titleMd.fontFamily, fontSize: 15, fontWeight: '700', color: colors.onNavy },
+  actionsRow: { flexDirection: 'row', gap: 8 },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.grayPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    width: 34, height: 34, borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  notifDot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.notificationRed,
-  },
+  notifDot: { position: 'absolute', top: 6, right: 7, width: 7, height: 7, borderRadius: 4, backgroundColor: colors.notificationRed },
+  greetingLabel: { fontFamily: typography.bodyMd.fontFamily, fontSize: 12, color: colors.navySub, marginBottom: 2 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.stackSm },
+  businessName: { flex: 1, fontFamily: typography.headlineLgMobile.fontFamily, fontSize: 19, fontWeight: '700', color: colors.onNavy },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.full, paddingVertical: 5, paddingHorizontal: 10 },
+  statusOpen: { backgroundColor: 'rgba(46,125,50,0.25)' },
+  statusClosed: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontFamily: typography.labelMd.fontFamily, fontSize: 11, fontWeight: '700', color: colors.onNavy },
 });

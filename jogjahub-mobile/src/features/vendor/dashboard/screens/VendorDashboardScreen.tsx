@@ -40,9 +40,6 @@ type OrderType = {
 // begitu endpoint vendor sudah tersedia dari backend. Bentuk datanya sudah disiapkan mendekati
 // response yang diharapkan supaya nanti tinggal ganti sumbernya, bukan tulis ulang tampilannya.
 
-const MOCK_REVENUE = {
-  amount: 12_450_000,
-};
 const MOCK_SUMMARY = {
   totalOrders: 128,
   totalOrdersGrowthPercent: 12,
@@ -62,9 +59,27 @@ const MOCK_ORDERS: OrderType[] = [
   { id: '4', title: 'Foto Prewedding', badgeLabel: 'TERBARU', buyerName: 'Dewi Lestari', timeAgo: '1 jam yang lalu', price: 350000, status: 'pending' },
 ];
 
+// TODO: 5 titik ini idealnya dari rekap booking per jam (bookingApi) begitu endpoint tenant
+// aktif. `peakHour` dipilih otomatis dari nilai tertinggi kalau nanti datanya dinamis.
+const MOCK_SALES_ACTIVITY = {
+  amount: 3_400_000,
+  growthPercent: 15,
+  completedCount: 18,
+  chartData: [
+    { hour: '08:00', value: 0.2 },
+    { hour: '11:00', value: 0.45 },
+    { hour: '14:00', value: 1 },
+    { hour: '17:00', value: 0.6 },
+    { hour: '20:00', value: 0.3 },
+  ],
+  peakHour: '14:00',
+  avgPerOrder: 188_800,
+};
+
 export default function VendorDashboardScreen() {
   const navigation = useNavigation<Nav>();
   const [refreshing, setRefreshing] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [orders, setOrders] = useState<OrderType[]>(MOCK_ORDERS);
   const [viewedOrderIds, setViewedOrderIds] = useState<Set<string>>(new Set());
   const businessName = useSelector(
@@ -89,7 +104,26 @@ export default function VendorDashboardScreen() {
       await orderTracking.markAsViewed(orderId);
       setViewedOrderIds((prev) => new Set(prev).add(orderId));
     }
-    navigation.navigate('OrderDetail', { orderId });
+
+    // FIX: 'OrderDetail' itu layar di DALAM stack Orders (VendorOrdersStackNavigator), bukan
+    // layar langsung yang dikenal dari stack Dashboard — jadi harus lewat nested navigation
+    // { screen, params }. Juga wajib kirim data booking LENGKAP (bukan cuma orderId), karena
+    // OrderDetailScreen baca field seperti price/order_code langsung dari route params.
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    navigation.navigate('Orders', {
+      screen: 'OrderDetail',
+      params: {
+        id: order.id,
+        order_code: `JH-${order.id.padStart(4, '0')}`,
+        service_name: order.title,
+        customer_name: order.buyerName,
+        customer_location: 'Yogyakarta', // TODO: ganti data asli begitu bookingApi sudah aktif
+        price: order.price,
+        status: order.status,
+      },
+    });
   };
 
   const handleMarkAllViewed = async () => {
@@ -141,29 +175,33 @@ export default function VendorDashboardScreen() {
 
   return (
     <View style={styles.screen}>
-      <VendorHeaderBar />
+      <VendorHeaderBar
+        businessName={businessName ?? 'Vendor'}
+        isOpen={isOpen}
+        onToggleOpen={() => setIsOpen((v) => !v)}
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <View style={styles.greetingBlock}>
-        <Text style={styles.greeting}> Halo, {businessName ?? 'Vendor'}! </Text>
-          <Text style={styles.subGreeting}>Semoga harimu produktif dan sukses.</Text>
-        </View>
-
-        <View style={{ height: spacing.stackMd }} />
-        <PerformaCard
-          label="Pendapatan Hari ini"
-          amount={MOCK_REVENUE.amount}
-          subtitle="Dari 45 order"
-        />
-
-        <View style={{ height: spacing.stackMd }} />
         <SaldoTokoCard
           balance={MOCK_SUMMARY.estimatedRevenue}
-          onTarik={() => {/* TODO */}}
-          onRiwayat={() => {/* TODO */}}
+          onTarik={() => {/* TODO: fitur tarik dana belum ada di scope MVP PRD */}}
+          onRiwayat={() => {/* TODO: fitur riwayat dompet belum ada di scope MVP PRD */}}
+          onPesanan={() => navigation.navigate('Orders')}
         />
+        <PerformaCard
+          label="Pendapatan Hari Ini"
+          amount={MOCK_SALES_ACTIVITY.amount}
+          growthPercent={MOCK_SALES_ACTIVITY.growthPercent}
+          completedCount={MOCK_SALES_ACTIVITY.completedCount}
+          chartData={MOCK_SALES_ACTIVITY.chartData}
+          peakHour={MOCK_SALES_ACTIVITY.peakHour}
+          avgPerOrder={MOCK_SALES_ACTIVITY.avgPerOrder}
+          onSeeAnalysis={() => navigation.navigate('Statistics')}
+        />
+
+        <View style={{ height: spacing.stackMd }} />
 
         <View style={{ height: spacing.stackMd }} />
         <QuickActionsGrid actions={actions} />
@@ -206,19 +244,6 @@ export default function VendorDashboardScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   content: { padding: spacing.containerMargin, paddingBottom: spacing.sectionGap },
-  greetingBlock: {
-    backgroundColor: colors.secondaryContainer,
-    borderRadius: radius.lg,
-    padding: 14,
-    paddingTop: 14,
-  },
-  greeting: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSecondaryContainer,
-  },
-  subGreeting: { fontFamily: typography.bodyMd.fontFamily, fontSize: typography.bodyMd.fontSize, color: colors.onSecondaryContainer, marginTop: 2 },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
