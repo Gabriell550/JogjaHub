@@ -19,6 +19,8 @@ export const vendorApi = {
 
   listMyServices: () => apiClient.get('/tenant/services'),
 
+  getMyProfile: () => apiClient.get('/tenant/profile'),
+
   createService: (payload: FormData | Record<string, unknown>) => {
     if (payload instanceof FormData) {
       return apiClient.post('/tenant/services', payload, { headers: { 'Content-Type': 'multipart/form-data' } });

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Linking,Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Linking, Alert } from 'react-native';
 import {
   ChevronLeft, MoreVertical, CheckCircle2, Pencil, Clock,
   ChevronRight, ChevronDown, ExternalLink, MapPin, MessageSquare,
   Star, Plus,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector,useDispatch } from 'react-redux';
-import { logout } from '../../../../features/auth/store/authSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout, setTenantProfile } from '../../../../features/auth/store/authSlice';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
@@ -37,7 +37,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const [servicesLoading, setServicesLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-    const businessName = useSelector(
+  const businessName = useSelector(
     (state: RootState) => state.auth?.businessName
   );
 
@@ -64,24 +64,35 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
     }
   }, []);
 
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await vendorApi.getMyProfile();
+      const data = res.data?.data;
+      if (data) {
+        dispatch(setTenantProfile(data));
+      }
+    } catch (err) {
+      console.log('Gagal ambil profil:', err);
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     fetchServices();
     fetchCategories();
-  }, [fetchServices, fetchCategories]);
+    fetchProfile();
+  }, [fetchServices, fetchCategories, fetchProfile]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchServices(), fetchCategories()]);
+    await Promise.all([fetchServices(), fetchCategories(), fetchProfile()]);
     setRefreshing(false);
-  }, [fetchServices, fetchCategories]);
+  }, [fetchServices, fetchCategories, fetchProfile]);
 
   const handleEditProfile = () => {
     navigation?.navigate('EditBusinessProfile');
   };
 
   const handleServicePress = (service: ServiceItem) => {
-    // ServiceForm tidak tersedia di VendorProfileStack.
-    // Arahkan ke tab Listing agar user bisa melihat/edit layanan dari sana.
     navigation?.getParent()?.navigate('Listing');
   };
 
@@ -99,25 +110,25 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
   const dispatch = useDispatch();
 
-const handleLogout = () => {
-  Alert.alert(
-    'Logout',
-    'Apakah Anda yakin ingin keluar dari akun?',
-    [
-      {
-        text: 'Batal',
-        style: 'cancel',
-      },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          dispatch(logout());
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Apakah Anda yakin ingin keluar dari akun?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
         },
-      },
-    ],
-  );
-};
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(logout());
+          },
+        },
+      ],
+    );
+  };
 
   const handleOpenMaps = useCallback(() => {
     if (!profile?.latitude || !profile?.longitude) return;
@@ -156,47 +167,47 @@ const handleLogout = () => {
       case 'approved':
         return {
           Icon: CheckCircle2,
-          iconColor: '#10B981',
+          iconColor: colors.accentGreen,
           title: 'Profil Disetujui',
           badgeText: 'APPROVED',
-          badgeColor: '#10B981',
+          badgeColor: colors.accentGreen,
           description: 'Profil bisnis Anda telah disetujui. Pelanggan dapat menemukan dan memesan layanan Anda.',
           actionText: 'Lihat Detail Peninjauan',
-          bgColor: '#D1FAE5',
-          borderColor: '#A7F3D0',
-          iconBgColor: '#A7F3D0',
-          textColor: '#065F46',
-          descColor: '#047857',
+          bgColor: colors.accentGreenContainer,
+          borderColor: colors.accentGreenContainer,
+          iconBgColor: colors.accentGreenContainer,
+          textColor: colors.accentGreen,
+          descColor: colors.accentGreen,
         };
       case 'rejected':
         return {
           Icon: Clock,
-          iconColor: '#DC2626',
+          iconColor: colors.error,
           title: 'Profil Ditolak',
           badgeText: 'REJECTED',
-          badgeColor: '#DC2626',
+          badgeColor: colors.error,
           description: 'Profil bisnis Anda tidak memenuhi persyaratan. Silakan perbaiki dan ajukan kembali.',
           actionText: 'Lihat Detail Peninjauan',
-          bgColor: '#FEE2E2',
-          borderColor: '#FECACA',
-          iconBgColor: '#FECACA',
-          textColor: '#991B1B',
-          descColor: '#B91C1C',
+          bgColor: colors.errorContainer,
+          borderColor: colors.errorContainer,
+          iconBgColor: colors.errorContainer,
+          textColor: colors.error,
+          descColor: colors.error,
         };
       default:
         return {
           Icon: Clock,
-          iconColor: '#D97706',
+          iconColor: colors.primary,
           title: 'Profil Sedang Ditinjau',
           badgeText: 'PENDING',
-          badgeColor: '#F59E0B',
+          badgeColor: colors.primary,
           description: 'Admin sedang memeriksa informasi bisnis Anda. Proses verifikasi biasanya memakan waktu 1x24 jam kerja.',
           actionText: 'Lihat Detail Peninjauan',
-          bgColor: '#FEF3C7',
-          borderColor: '#FDE68A',
-          iconBgColor: '#FEF08A',
-          textColor: '#92400E',
-          descColor: '#B45309',
+          bgColor: colors.surfaceContainerLow,
+          borderColor: colors.outline,
+          iconBgColor: colors.primaryContainer,
+          textColor: colors.onSurface,
+          descColor: colors.onSurfaceVariant,
         };
     }
   };
@@ -289,7 +300,6 @@ const handleLogout = () => {
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Profil Bisnis</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={() => {}}>
@@ -307,7 +317,6 @@ const handleLogout = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Profile Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarBox}>
@@ -334,7 +343,6 @@ const handleLogout = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Status Card */}
         {statusConfig && (
           <View style={[styles.pendingCard, {
             backgroundColor: statusConfig.bgColor,
@@ -365,7 +373,6 @@ const handleLogout = () => {
           </View>
         )}
 
-        {/* Section: Tentang Bisnis */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Tentang Bisnis</Text>
@@ -385,7 +392,6 @@ const handleLogout = () => {
           </View>
         </View>
 
-        {/* Section: Layanan yang Tersedia */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleWithBadge}>
@@ -405,7 +411,6 @@ const handleLogout = () => {
           </ScrollView>
         </View>
 
-        {/* Section: Kategori */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kategori</Text>
@@ -414,7 +419,7 @@ const handleLogout = () => {
           <View style={styles.chipRow}>
             {profile?.categories?.map((cat, idx) => (
               <View key={cat.id} style={styles.categoryChip}>
-                <View style={[styles.dot, { backgroundColor: idx === 0 ? colors.primary : idx === 1 ? '#8B5CF6' : '#0284C7' }]} />
+                <View style={[styles.dot, { backgroundColor: idx === 0 ? colors.primary : idx === 1 ? colors.tertiary : colors.secondary }]} />
                 <Text style={styles.categoryChipText}>{cat.name}</Text>
               </View>
             ))}
@@ -424,18 +429,17 @@ const handleLogout = () => {
           </View>
         </View>
 
-        {/* Section: Kontak Bisnis */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kontak Bisnis</Text>
             <View style={styles.connectedStatus}>
-              <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.dot, { backgroundColor: colors.accentGreen }]} />
               <Text style={styles.connectedText}>Terhubung</Text>
             </View>
           </View>
           <View style={styles.contactCard}>
             <View style={styles.contactIconBox}>
-              <MessageSquare size={20} color="#10B981" />
+              <MessageSquare size={20} color={colors.accentGreen} />
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactLabel}>WhatsApp Resmi</Text>
@@ -448,7 +452,6 @@ const handleLogout = () => {
           </View>
         </View>
 
-        {/* Section: Lokasi Bisnis */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Lokasi Bisnis</Text>
@@ -459,7 +462,6 @@ const handleLogout = () => {
           </View>
 
           <View style={styles.locationCard}>
-            {/* Map Mock View */}
             <View style={styles.mapContainer}>
               <View style={styles.mapBackground}>
                 <View style={styles.mapRoadHorizontal} />
@@ -478,7 +480,6 @@ const handleLogout = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Address detail */}
             <View style={styles.addressContainer}>
               <MapPin size={16} color={colors.primary} style={{ marginTop: 2 }} />
               <View style={styles.addressInfo}>
@@ -498,17 +499,16 @@ const handleLogout = () => {
             </View>
           </View>
         </View>
-            <View style={styles.logoutSection}>
-  <TouchableOpacity
-    style={styles.logoutButton}
-    onPress={handleLogout}
-    activeOpacity={0.8}
-  >
-    <Text style={styles.logoutText}>Logout</Text>
-  </TouchableOpacity>
-</View>
 
-
+        <View style={styles.logoutSection}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.containerMargin,
-    paddingBottom: 12,
+    paddingBottom: spacing.stackSm,
     backgroundColor: colors.surfaceContainerLowest,
   },
   headerBtn: {
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   countBadge: {
     minWidth: 22,
     height: 22,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.stackSm,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
@@ -544,9 +544,9 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
+    color: colors.onPrimary,
   },
   headerTitle: {
     fontFamily: typography.titleMd.fontFamily,
@@ -556,28 +556,28 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.containerMargin,
-    paddingTop: 16,
-    gap: 16,
+    paddingTop: spacing.stackMd,
+    gap: spacing.stackMd,
   },
 
   /* Hero Card */
   heroCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.xl,
-    padding: 20,
+    padding: spacing.containerMargin,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: colors.outline,
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: spacing.stackSm,
   },
   avatarBox: {
     width: 72,
     height: 72,
     borderRadius: radius.lg,
-    backgroundColor: '#FFF7ED',
+    backgroundColor: colors.primaryContainer,
     borderWidth: 2,
     borderColor: colors.primary,
     alignItems: 'center',
@@ -606,23 +606,23 @@ const styles = StyleSheet.create({
   },
   businessName: {
     fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: typography.headlineLgMobile.fontSize,
+    fontWeight: typography.headlineLgMobile.fontWeight,
     color: colors.onSurface,
   },
   businessCategory: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 13,
+    fontSize: typography.bodyMd.fontSize,
     color: colors.onSurfaceVariant,
-    marginTop: 2,
-    marginBottom: 14,
+    marginTop: spacing.stackSm,
+    marginBottom: spacing.stackMd,
   },
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.containerMargin,
+    paddingVertical: spacing.stackSm,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
@@ -630,15 +630,15 @@ const styles = StyleSheet.create({
   },
   editProfileText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.primary,
   },
 
   /* Pending Review Card */
   pendingCard: {
     borderRadius: radius.lg,
-    padding: 14,
+    padding: spacing.stackMd,
     borderWidth: 1,
   },
   pendingHeader: {
@@ -649,53 +649,53 @@ const styles = StyleSheet.create({
   pendingTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.stackSm,
   },
   pendingIconBox: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pendingTitle: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
   },
   pendingBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.stackSm,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: radius.sm,
   },
   pendingBadgeText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
+    color: colors.onPrimary,
   },
   pendingDesc: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11,
-    marginTop: 8,
-    lineHeight: 16,
+    fontSize: typography.bodyMd.fontSize,
+    marginTop: spacing.stackSm,
+    lineHeight: typography.bodyMd.lineHeight,
   },
   pendingAction: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 10,
+    marginTop: spacing.stackSm,
   },
   pendingActionText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.primary,
   },
 
   /* Generic Section */
   section: {
-    gap: 10,
+    gap: spacing.stackSm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -705,23 +705,23 @@ const styles = StyleSheet.create({
   titleWithBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.stackSm,
   },
   sectionTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: typography.titleMd.fontSize,
+    fontWeight: typography.titleMd.fontWeight,
     color: colors.onSurface,
   },
   actionLink: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.primary,
   },
   subtext: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
+    fontSize: typography.labelMd.fontSize,
     color: colors.onSurfaceVariant,
   },
   seeAllBtn: {
@@ -734,26 +734,26 @@ const styles = StyleSheet.create({
   aboutCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg,
-    padding: 14,
+    padding: spacing.stackMd,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: colors.outline,
   },
   aboutText: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12,
+    fontSize: typography.bodyMd.fontSize,
     color: colors.onSurfaceVariant,
-    lineHeight: 18,
+    lineHeight: typography.bodyMd.lineHeight,
   },
   readMoreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 8,
+    marginTop: spacing.stackSm,
   },
   readMoreText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.primary,
   },
 
@@ -767,10 +767,10 @@ const styles = StyleSheet.create({
     width: 170,
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg,
-    marginRight: 12,
+    marginRight: spacing.stackSm,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: colors.outline,
   },
   serviceImageContainer: {
     width: '100%',
@@ -783,10 +783,10 @@ const styles = StyleSheet.create({
   },
   statusChip: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: spacing.stackSm,
+    left: spacing.stackSm,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.stackSm,
     paddingVertical: 3,
     borderRadius: radius.sm,
   },
@@ -798,42 +798,42 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.onSurface,
   },
   serviceContent: {
-    padding: 10,
+    padding: spacing.stackSm,
   },
   serviceTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.titleMd.fontSize,
+    fontWeight: typography.titleMd.fontWeight,
     color: colors.onSurface,
   },
   serviceDesc: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 10,
+    fontSize: typography.bodyMd.fontSize,
     color: colors.onSurfaceVariant,
-    marginTop: 2,
-    height: 28,
+    marginTop: spacing.stackSm,
+    height: typography.bodyMd.lineHeight,
   },
   priceLabel: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 9,
+    fontSize: typography.labelMd.fontSize,
     color: colors.onSurfaceVariant,
-    marginTop: 6,
+    marginTop: spacing.stackSm,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: spacing.stackSm,
   },
   priceValue: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.titleMd.fontSize,
+    fontWeight: typography.titleMd.fontWeight,
     color: colors.primary,
   },
 
@@ -842,15 +842,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.stackSm,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.surfaceContainerLowest,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.stackMd,
+    paddingVertical: spacing.stackSm,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
@@ -862,8 +862,8 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.onSurface,
   },
   addChipBtn: {
@@ -885,25 +885,25 @@ const styles = StyleSheet.create({
   },
   connectedText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    color: '#10B981',
-    fontWeight: '600',
+    fontSize: typography.labelMd.fontSize,
+    color: colors.accentGreen,
+    fontWeight: typography.labelMd.fontWeight,
   },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg,
-    padding: 12,
+    padding: spacing.stackMd,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 12,
+    borderColor: colors.outline,
+    gap: spacing.stackMd,
   },
   contactIconBox: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.accentGreenContainer,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -912,13 +912,13 @@ const styles = StyleSheet.create({
   },
   contactLabel: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
+    fontSize: typography.labelMd.fontSize,
     color: colors.onSurfaceVariant,
   },
   contactNumber: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.titleMd.fontSize,
+    fontWeight: typography.titleMd.fontWeight,
     color: colors.onSurface,
   },
   contactAction: {
@@ -928,9 +928,9 @@ const styles = StyleSheet.create({
   },
   contactActionText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
+    fontSize: typography.labelMd.fontSize,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: typography.labelMd.fontWeight,
   },
 
   /* Location Section */
@@ -944,18 +944,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: colors.outline,
   },
   mapContainer: {
     height: 120,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.secondaryContainer,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
   },
   mapBackground: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.outline,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -963,29 +963,29 @@ const styles = StyleSheet.create({
     position: 'absolute',
     height: 12,
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.onPrimary,
   },
   mapRoadVertical: {
     position: 'absolute',
     width: 12,
     height: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.onPrimary,
   },
   mapPinContainer: {
     alignItems: 'center',
   },
   mapPinCallout: {
     backgroundColor: colors.onSurface,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.stackSm,
     paddingVertical: 3,
-    borderRadius: 4,
-    marginBottom: 4,
+    borderRadius: radius.sm,
+    marginBottom: spacing.stackSm,
   },
   mapPinCalloutText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 9,
-    color: '#FFFFFF',
-    fontWeight: '700',
+    fontSize: typography.labelMd.fontSize,
+    color: colors.onPrimary,
+    fontWeight: typography.labelMd.fontWeight,
   },
   mapPinIcon: {
     width: 28,
@@ -999,41 +999,41 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     right: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 6,
+    backgroundColor: colors.surfaceContainerLowest,
+    padding: spacing.stackSm,
     borderRadius: radius.sm,
     elevation: 2,
   },
   addressContainer: {
     flexDirection: 'row',
-    padding: 12,
-    gap: 8,
+    padding: spacing.stackMd,
+    gap: spacing.stackSm,
   },
   addressInfo: {
     flex: 1,
   },
   addressTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: typography.titleMd.fontSize,
+    fontWeight: typography.titleMd.fontWeight,
     color: colors.onSurface,
   },
   addressSub: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11,
+    fontSize: typography.bodyMd.fontSize,
     color: colors.onSurfaceVariant,
-    marginTop: 2,
+    marginTop: spacing.stackSm,
   },
   addressFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingHorizontal: spacing.stackMd,
+    paddingBottom: spacing.stackMd,
   },
   verifiedText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 10,
+    fontSize: typography.labelMd.fontSize,
     color: colors.onSurfaceVariant,
   },
   openMapsBtn: {
@@ -1043,28 +1043,27 @@ const styles = StyleSheet.create({
   },
   openMapsText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
     color: colors.primary,
   },
   logoutSection: {
-  marginTop: spacing.xl,
-  marginBottom: spacing.xl,
-  paddingHorizontal: spacing.lg,
-},
-
-logoutButton: {
-  height: 52,
-  borderRadius: radius.md,
-  borderWidth: 1,
-  borderColor: '#E53935',
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-logoutText: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: '#E53935',
-},
+    marginTop: spacing.stackLg,
+    marginBottom: spacing.stackLg,
+    paddingHorizontal: spacing.containerMargin,
+  },
+  logoutButton: {
+    height: 52,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: typography.labelMd.fontSize,
+    fontWeight: typography.labelMd.fontWeight,
+    color: colors.error,
+  },
 });

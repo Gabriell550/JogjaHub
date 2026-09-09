@@ -128,13 +128,24 @@ export default function VendorOnboardingScreen() {
         category_ids: selectedCategoryIds,
       });
 
-      // Update Redux with server response (source of truth)
+      // Update Redux with server response, but preserve existing approved status.
+      // Backend always returns status "pending" on update — we keep the previous
+      // status if it was already "approved" (edit form does not change approval state).
       const profileData = res.data?.data as TenantProfile | undefined;
-      if (profileData) {
+      if (profileData && existingProfile) {
+        if (existingProfile.status === 'approved') {
+          profileData.status = 'approved';
+        }
         dispatch(setTenantProfile(profileData));
       }
 
-      Toast.show({ type: 'success', text1: 'Profil bisnis tersimpan', text2: 'Menunggu approval admin.' });
+      const savedStatus = profileData?.status ?? existingProfile?.status ?? 'pending';
+      const statusLabel = savedStatus === 'approved'
+        ? 'Profil Anda sudah disetujui.'
+        : savedStatus === 'rejected'
+        ? 'Profil Anda ditolak.'
+        : 'Menunggu approval admin.';
+      Toast.show({ type: 'success', text1: 'Profil bisnis tersimpan', text2: statusLabel });
       hasChanges.current = false;
       navigation.goBack();
     } catch (err: any) {
