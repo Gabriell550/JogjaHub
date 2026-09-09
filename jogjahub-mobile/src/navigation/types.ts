@@ -59,22 +59,29 @@ export type VendorOrdersStackParamList = {
   };
 };
 
+// Bentuk data layanan yang dipakai bareng oleh ServiceForm (edit) & ServiceDetail,
+// supaya nggak duplikat definisi di dua tempat.
+export type ServiceParam = {
+  id: number;
+  name: string;
+  price: number;
+  description?: string;
+  photos?: { url: string; is_primary: boolean; sort_order: number }[];
+  subcategory?: { id: number; name: string; category?: { id: number; name: string } };
+};
+
 // Stack kecil di dalam tab Listing — ServicesList (daftar layanan), ServiceForm (tambah/edit),
-// ServiceOrders (pesanan per layanan), ServiceReviews (ulasan per layanan).
+// ServiceDetail (lihat deskripsi & galeri foto), ServiceOrders (pesanan per layanan),
+// ServiceReviews (ulasan per layanan).
 export type VendorServicesStackParamList = {
   ServicesList: undefined;
   ServiceForm:
     | { mode: 'create' }
     | {
         mode: 'edit';
-        service: {
-          id: number;
-          name: string;
-          price: number;
-          description?: string;
-          subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-        };
+        service: ServiceParam;
       };
+  ServiceDetail: { service: ServiceParam };
   ServiceOrders: { serviceId: number; serviceName: string };
   ServiceReviews: { serviceId: number; serviceName: string };
 };
