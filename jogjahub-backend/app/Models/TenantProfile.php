@@ -18,6 +18,7 @@ class TenantProfile extends Model
         'ktp_url',
         'nib_url',
         'portfolio_url',
+        'rejection_reason',
     ];
 
     protected $casts = [

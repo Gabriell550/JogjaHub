@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TenantProfile;
+use Illuminate\Http\Request;
 
 
 class TenantController extends Controller
@@ -22,7 +23,10 @@ class TenantController extends Controller
 
     public function approve(TenantProfile $tenant)
     {
-        $tenant->update(['status' => 'approved']);
+        $tenant->update([
+            'status' => 'approved',
+            'rejection_reason' => null,
+            ]);
 
         return response()->json([
             'success' => true,
@@ -31,13 +35,21 @@ class TenantController extends Controller
         ]);
     }
 
-    public function reject(TenantProfile $tenant)
+    public function reject(TenantProfile $tenant, Request $request)
     {
-        $tenant->update(['status' => 'rejected']);
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $tenant->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->input('rejection_reason')
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Tenant berhasil ditolak',
+            'message' => 'Tenant ditolak',
             'data' => $tenant,
         ]);
     }

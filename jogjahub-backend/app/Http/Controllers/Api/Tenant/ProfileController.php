@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\TenantProfile;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -15,10 +16,10 @@ class ProfileController extends Controller
             'description' => 'nullable|string',
             'address.street' => 'required|string',
             'address.city' => 'required|string',
-            'address.province' => 'required|string',
+            'address.province' => ['required', 'string', Rule::in(['DI Yogyakarta', 'Daerah Istimewa Yogyakarta'])],
             'address.postal_code' => 'nullable|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-8.5, -7.5',
+            'longitude' => 'required|numeric|between:110.0, 110.8',
             'whatsapp_number' => 'required|string|max:20',
             'category_ids' => 'required|array|min:1',
             'category_ids.*' => 'exists:categories,id',
@@ -52,6 +53,7 @@ class ProfileController extends Controller
                 'longitude' => $request->longitude,
                 'whatsapp_number' => $request->whatsapp_number,
                 'status' => 'pending',
+                'rejection_reason' => null,
             ], $documentPaths)
         );
 
