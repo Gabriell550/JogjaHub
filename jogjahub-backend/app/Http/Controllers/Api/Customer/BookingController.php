@@ -54,12 +54,12 @@ class BookingController extends Controller
         if ($booking->slot_id) {
             $booking->load('slot');
             $slotDateTime = \Carbon\Carbon::parse($booking->slot->slot_date . ' ' . $booking->slot->start_time);
-            $minimumCancelTime = now()->addHours(6);
+            $cancelDeadline = $slotDateTime->copy()->subHours(6);
 
-            if ($slotDateTime->lt($minimumCancelTime)) {
+            if (now()->gt($cancelDeadline)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Booking hanya bisa dibatalkan minimal 6 jam sebelum jadwal',
+                    'message' => 'Waktu pembatalan sudah lewat. Pembatalan hanya bisa dilakukan sebelum ' . $cancelDeadline->format('d M Y H:i'),
                 ], 422);
             }
         }

@@ -23,6 +23,22 @@ class Booking extends Model
         'details' => 'array',
     ];
 
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
+    }
+
+    public function getRouteKeyName()
+    {
+        return 'uuid';
+    }
+
     public function customer()
     {
         return $this->belongsTo(User::class, 'customer_id');
