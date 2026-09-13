@@ -11,9 +11,15 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ===== Public (belum login) =====
-    Route::post('/auth/register/customer', [\App\Http\Controllers\Api\Customer\AuthController::class, 'register']);
-    Route::post('/auth/register/tenant', [\App\Http\Controllers\Api\Tenant\AuthController::class, 'register']);
-    Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+    Route::middleware('throttle:5,1')->group(function () {
+        Route::post('/auth/register/customer', [\App\Http\Controllers\Api\Customer\AuthController::class, 'register']);
+        Route::post('/auth/register/tenant', [\App\Http\Controllers\Api\Tenant\AuthController::class, 'register']);
+    });
+
+    Route::middleware('throttle:5,1')->group(function () {
+        Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+    });
+
 
     Route::get('/categories', [\App\Http\Controllers\Api\Customer\CategoryController::class, 'index']);
     Route::get('/tenants/map', [\App\Http\Controllers\Api\Customer\TenantController::class, 'map']);

@@ -17,16 +17,19 @@ class AuthController extends Controller
         }
 
         $aliases = [
-            'salon_mua' => 'Beauty & Style',
-            'butik_wisuda' => 'Beauty & Style',
-            'penginapan' => 'Penginapan',
+            'salon_mua'       => 'Beauty & Style',
+            'butik_wisuda'    => 'Beauty & Style',
+            'penginapan'      => 'Penginapan',
             'selempang_plakat' => 'Gifting',
-            'akrilik' => 'Gifting',
-            'florist' => 'Gifting',
+            'akrilik'         => 'Gifting',
+            'florist'         => 'Gifting',
             'beauty_and_style' => 'Beauty & Style',
-            'gifting' => 'Gifting',
-            'hotel' => 'Penginapan',
+            'gifting'         => 'Gifting',
+            'hotel'           => 'Penginapan',
         ];
+
+        // Fetch semua kategori SEKALI, bukan per-item
+        $allCategories = Category::all();
 
         $categoryIds = [];
 
@@ -40,7 +43,7 @@ class AuthController extends Controller
             $raw = preg_replace('/[^a-z0-9]+/', '_', $raw);
             $raw = trim((string) $raw, '_');
 
-            $lookup = $aliases[$raw] ?? $raw;
+            $lookup     = $aliases[$raw] ?? $raw;
             $normalized = strtolower(trim((string) $lookup));
             $normalized = preg_replace('/[^a-z0-9]+/', '_', $normalized);
             $normalized = trim((string) $normalized, '_');
@@ -49,18 +52,22 @@ class AuthController extends Controller
                 continue;
             }
 
-            $matchedCategory = Category::query()
-                ->whereRaw('LOWER(REPLACE(name, " ", "_")) = ?', [$normalized])
-                ->orWhereRaw('LOWER(REPLACE(name, "_", "_")) = ?', [$normalized])
-                ->orWhereRaw('LOWER(name) = ?', [str_replace('_', ' ', $normalized)])
-                ->first();
+            // Filter in-memory
+            $matched = $allCategories->first(function ($cat) use ($normalized) {
+                $name = strtolower(trim($cat->name));
+                $nameNormalized = preg_replace('/[^a-z0-9]+/', '_', $name);
+                $nameNormalized = trim($nameNormalized, '_');
 
-            if ($matchedCategory) {
-                $categoryIds[] = (int) $matchedCategory->id;
+                return $nameNormalized === $normalized
+                    || str_replace('_', ' ', $nameNormalized) === str_replace('_', ' ', $normalized);
+            });
+
+            if ($matched) {
+                $categoryIds[] = (int) $matched->id;
             }
         }
 
-        return array_values(array_unique(array_filter($categoryIds, fn ($id) => $id > 0)));
+        return array_values(array_unique(array_filter($categoryIds, fn($id) => $id > 0)));
     }
 
     public function register(Request $request)
