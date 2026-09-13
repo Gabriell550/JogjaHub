@@ -14,6 +14,7 @@ class TimeSlotController extends Controller
         if ($service->tenant_id !== $request->user()->tenantProfile->id) {
             return response()->json([
                 'success' => 'false',
+                'success' => false,
                 'message' => 'Tidak diizinkan'
             ], 403);
         }

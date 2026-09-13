@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use App\Enums\BookingStatus;
 
 class ReviewController extends Controller
 {
@@ -14,7 +15,7 @@ class ReviewController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
-        if ($booking->status !== 'confirmed') {
+        if ($booking->status !== BookingStatus::CONFIRMED->value) {
             return response()->json(['success' => false, 'message' => 'Booking belum selesai'], 422);
         }
 

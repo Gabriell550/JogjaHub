@@ -40,6 +40,17 @@ class BookingController extends Controller
         ], 201);
     }
 
+    public function show(Request $request, Booking $booking)
+    {
+        if ($booking->customer_id !== $request->user()->id) {
+            return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
+        }
+
+        $booking->load(['service.tenant', 'slot', 'review']);
+
+        return response()->json(['success' => true, 'data' => $booking]);
+    }
+
     public function cancel(Request $request, Booking $booking)
     {
         if ($booking->customer_id !== $request->user()->id) {
