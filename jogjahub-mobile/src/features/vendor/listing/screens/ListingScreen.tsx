@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +33,15 @@ type ServiceItem = {
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
 };
 
+type StatusFilter = 'all' | 'active' | 'draft' | 'archived';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'Semua' },
+  { key: 'active', label: 'Aktif' },
+  { key: 'draft', label: 'Draf' },
+  { key: 'archived', label: 'Diarsipkan' },
+];
+
 const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
 
 const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/storage/';
@@ -52,6 +62,7 @@ export default function ListingScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleMap, setVisibleMap] = useState<Record<number, boolean>>({});
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const loadServices = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -72,14 +83,28 @@ export default function ListingScreen() {
   );
 
   const filteredServices = useMemo(() => {
-    if (!searchQuery.trim()) return services;
-    const q = searchQuery.trim().toLowerCase();
-    return services.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.subcategory?.name.toLowerCase().includes(q)
-    );
-  }, [services, searchQuery]);
+    // ⚠️ Draf/Diarsipkan belum punya data status di backend — sengaja
+    // dikosongkan (bukan bug) sampai field status ini tersedia dari server.
+    if (statusFilter === 'draft' || statusFilter === 'archived') {
+      return [];
+    }
+
+    let result = services;
+    if (statusFilter === 'active') {
+      result = result.filter((s) => visibleMap[s.id] ?? true);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.subcategory?.name.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [services, searchQuery, statusFilter, visibleMap]);
 
   const confirmDelete = (item: ServiceItem) => {
     Alert.alert(
@@ -139,6 +164,23 @@ export default function ListingScreen() {
             placeholderTextColor={colors.secondary}
           />
         </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {STATUS_FILTERS.map((filter) => {
+            const isActive = statusFilter === filter.key;
+            return (
+              <TouchableOpacity
+                key={filter.key}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setStatusFilter(filter.key)}
+              >
+                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <FlatList
@@ -155,8 +197,19 @@ export default function ListingScreen() {
               <View style={styles.emptyIconWrap}>
                 <PackagePlus size={32} color={colors.primary} />
               </View>
-              <Text style={styles.emptyTitle}>Kelola semua layananmu di sini.</Text>
-              <Text style={styles.emptySubtitle}>Tambahkan layanan baru untuk jangkauan yang lebih luas.</Text>
+              {statusFilter === 'draft' || statusFilter === 'archived' ? (
+                <>
+                  <Text style={styles.emptyTitle}>Fitur ini belum tersedia.</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Kategori "{STATUS_FILTERS.find((f) => f.key === statusFilter)?.label}" masih dalam pengembangan.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.emptyTitle}>Kelola semua layananmu di sini.</Text>
+                  <Text style={styles.emptySubtitle}>Tambahkan layanan baru untuk jangkauan yang lebih luas.</Text>
+                </>
+              )}
             </View>
           ) : null
         }
@@ -286,7 +339,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     paddingHorizontal: spacing.containerMargin,
     paddingTop: 60,
-    paddingBottom: spacing.sectionGap * 0.5,
+    paddingBottom: spacing.stackMd,
     backgroundColor: colors.primaryContainer,
     borderBottomLeftRadius: radius.xl * 1.5,
     borderBottomRightRadius: radius.xl * 1.5,
@@ -349,6 +402,17 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     padding: 0,
   },
+  filterScroll: { marginTop: spacing.stackMd, flexGrow: 0 },
+  filterChip: {
+    paddingHorizontal: spacing.stackMd,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLowest,
+    marginRight: spacing.stackSm,
+  },
+  filterChipActive: { backgroundColor: colors.onPrimaryContainer },
+  filterChipText: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, fontWeight: '600' },
+  filterChipTextActive: { color: '#fff' },
   listContent: {
     paddingHorizontal: spacing.containerMargin,
     paddingBottom: spacing.sectionGap + 56,
