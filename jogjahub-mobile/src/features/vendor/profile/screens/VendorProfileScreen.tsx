@@ -40,6 +40,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const businessName = useSelector(
     (state: RootState) => state.auth?.businessName
   );
+  const dispatch = useDispatch();
 
   const fetchServices = useCallback(async () => {
     try {
@@ -107,8 +108,6 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
       Linking.openURL(`https://wa.me/${number}`);
     }
   };
-
-  const dispatch = useDispatch();
 
   const handleLogout = () => {
     Alert.alert(

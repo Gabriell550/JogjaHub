@@ -17,8 +17,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Pencil, Trash2, ImageOff, Search, ShoppingBag, PackagePlus, Store, Plus } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
-import { API_BASE_URL } from '../../../../constants/config';
 import { vendorApi } from '../../../../api/vendorApi';
+import { getPrimaryPhotoUrl } from '../../../../utils/serviceImage';
 import Toast from 'react-native-toast-message';
 import type { VendorServicesStackParamList } from '../../../../navigation/types';
 
@@ -43,14 +43,6 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
-
-const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/storage/';
-
-function getPrimaryPhotoUrl(item: ServiceItem): string | null {
-  if (!item.photos || item.photos.length === 0) return null;
-  const primary = item.photos.find((p) => p.is_primary) ?? item.photos[0];
-  return `${STORAGE_BASE_URL}${primary.url}`;
-}
 
 // FR: kelola layanan/produk yang dijual vendor (create/read/update/delete).
 export default function ListingScreen() {
