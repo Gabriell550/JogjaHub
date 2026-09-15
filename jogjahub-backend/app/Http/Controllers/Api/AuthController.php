@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
 use App\Models\TenantProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,14 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-            'role' => 'required|string|in:customer,tenant,admin',
-        ]);
-
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -28,29 +23,29 @@ class AuthController extends Controller
         }
 
         // Validasi role: user harus login dengan role yang sesuai
-     $expectedRole = $request->role;
+        $expectedRole = $request->role;
 
-if ($user->role !== $expectedRole) {
-    $roleLabel = match ($expectedRole) {
-        'admin' => 'Admin',
-        'tenant' => 'Tenant',
-        'customer' => 'Customer',
-    };
+        if ($user->role !== $expectedRole) {
+            $roleLabel = match ($expectedRole) {
+                'admin'    => 'Admin',
+                'tenant'   => 'Tenant',
+                'customer' => 'Customer',
+            };
 
-    throw ValidationException::withMessages([
-        'email' => [
-            "Akun ini tidak bisa login sebagai {$roleLabel}. Silakan gunakan email/password yang sesuai."
-        ],
-    ]);
-}
+            throw ValidationException::withMessages([
+                'email' => [
+                    "Akun ini tidak bisa login sebagai {$roleLabel}. Silakan gunakan email/password yang sesuai."
+                ],
+            ]);
+        }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $response = [
             'success' => true,
             'message' => 'Login berhasil',
-            'data' => [
-                'user' => $user,
+            'data'    => [
+                'user'  => $user,
                 'token' => $token,
             ],
         ];
@@ -59,10 +54,9 @@ if ($user->role !== $expectedRole) {
         if ($user->role === 'tenant') {
             $tenantProfile = TenantProfile::where('user_id', $user->id)->first();
             if ($tenantProfile) {
-                $response['data']['tenant_status'] = $tenantProfile->status;
-                $response['data']['business_name'] = $tenantProfile->business_name;
+                $response['data']['tenant_status']  = $tenantProfile->status;
+                $response['data']['business_name']  = $tenantProfile->business_name;
             } else {
-                // Fallback jika tenant belum punya profile (seharusnya tidak terjadi)
                 $response['data']['tenant_status'] = 'pending';
                 $response['data']['business_name'] = $user->name;
             }

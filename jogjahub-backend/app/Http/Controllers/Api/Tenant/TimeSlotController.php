@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\StoreTimeSlotRequest;
 use App\Models\Service;
 use App\Models\TimeSlot;
 use Illuminate\Http\Request;
@@ -13,9 +14,8 @@ class TimeSlotController extends Controller
     {
         if ($service->tenant_id !== $request->user()->tenantProfile->id) {
             return response()->json([
-                'success' => 'false',
                 'success' => false,
-                'message' => 'Tidak diizinkan'
+                'message' => 'Tidak diizinkan',
             ], 403);
         }
 
@@ -26,20 +26,12 @@ class TimeSlotController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $slots
+            'data'    => $slots,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTimeSlotRequest $request)
     {
-        $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'slot_date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
-            'quota' => 'required|integer|min:1',
-        ]);
-
         $service = Service::findOrFail($request->service_id);
 
         if ($service->tenant_id !== $request->user()->tenantProfile->id) {
@@ -48,10 +40,10 @@ class TimeSlotController extends Controller
 
         $slot = TimeSlot::create([
             'service_id' => $request->service_id,
-            'slot_date' => $request->slot_date,
+            'slot_date'  => $request->slot_date,
             'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'quota' => $request->quota,
+            'end_time'   => $request->end_time,
+            'quota'      => $request->quota,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Slot berhasil dibuat', 'data' => $slot], 201);

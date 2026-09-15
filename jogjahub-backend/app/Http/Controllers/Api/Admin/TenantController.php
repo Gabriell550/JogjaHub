@@ -3,54 +3,48 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\RejectTenantRequest;
 use App\Models\TenantProfile;
-use Illuminate\Http\Request;
-
 
 class TenantController extends Controller
 {
     public function pending()
     {
-        $pendingTenants = TenantProfile::with (['user', 'categories'])
+        $pendingTenants = TenantProfile::with(['user', 'categories'])
             ->where('status', 'pending')
             ->paginate(15);
 
         return response()->json([
             'success' => true,
-            'data' => $pendingTenants,
+            'data'    => $pendingTenants,
         ]);
     }
 
     public function approve(TenantProfile $tenant)
     {
         $tenant->update([
-            'status' => 'approved',
+            'status'           => 'approved',
             'rejection_reason' => null,
-            ]);
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Tenant berhasil disetujui',
-            'data' => $tenant,
+            'data'    => $tenant,
         ]);
     }
 
-    public function reject(TenantProfile $tenant, Request $request)
+    public function reject(RejectTenantRequest $request, TenantProfile $tenant)
     {
-
-        $request->validate([
-            'rejection_reason' => 'required|string|max:500',
-        ]);
-
         $tenant->update([
-            'status' => 'rejected',
-            'rejection_reason' => $request->input('rejection_reason')
+            'status'           => 'rejected',
+            'rejection_reason' => $request->rejection_reason,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Tenant ditolak',
-            'data' => $tenant,
+            'data'    => $tenant,
         ]);
     }
 }

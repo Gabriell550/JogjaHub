@@ -24,6 +24,7 @@ class Booking extends Model
     ];
 
     public static function boot()
+    protected static function booted(): void
     {
         parent::boot();
 
