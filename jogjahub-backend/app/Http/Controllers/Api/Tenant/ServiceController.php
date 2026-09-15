@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\StoreServiceRequest;
+use App\Http\Requests\Tenant\UpdateServiceRequest;
 use App\Models\Service;
 use Illuminate\Http\Request;
 
@@ -16,27 +18,18 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $services,
+            'data'    => $services,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreServiceRequest $request)
     {
-        $request->validate([
-            'subcategory_id' => 'required|exists:subcategories,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'photos' => 'nullable|array',
-            'photos.*' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
-
         $photoData = [];
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $index => $file) {
-                $path = $file->store('services', 'public');
+                $path        = $file->store('services', 'public');
                 $photoData[] = [
-                    'url' => $path,
+                    'url'        => $path,
                     'is_primary' => $index === 0,
                     'sort_order' => $index,
                 ];
@@ -44,24 +37,23 @@ class ServiceController extends Controller
         }
 
         $service = Service::create([
-            'tenant_id' => $request->user()->tenantProfile->id,
+            'tenant_id'      => $request->user()->tenantProfile->id,
             'subcategory_id' => $request->subcategory_id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'photos' => $photoData,
+            'name'           => $request->name,
+            'description'    => $request->description,
+            'price'          => $request->price,
+            'photos'         => $photoData,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Service berhasil ditambahkan',
-            'data' => $service,
+            'data'    => $service,
         ]);
     }
 
-    public function update(Request $request, Service $service)
+    public function update(UpdateServiceRequest $request, Service $service)
     {
-        // tenant cuma bisa edit service miliknya sendiri
         if ($service->tenant_id !== $request->user()->tenantProfile->id) {
             return response()->json([
                 'success' => false,
@@ -69,25 +61,17 @@ class ServiceController extends Controller
             ], 403);
         }
 
-        $request->validate([
-            'subcategory_id' => 'sometimes|exists:subcategories,id',
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'sometimes|numeric|min:0',
-        ]);
-
-        $service->update($request->only(['subcategory_id', 'name', 'description', 'price']));
+        $service->update($request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Service berhasil diperbarui',
-            'data' => $service,
+            'data'    => $service,
         ]);
     }
 
     public function destroy(Request $request, Service $service)
     {
-        // tenant cuma bisa hapus service miliknya sendiri
         if ($service->tenant_id !== $request->user()->tenantProfile->id) {
             return response()->json([
                 'success' => false,
@@ -115,7 +99,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $service,
+            'data'    => $service,
         ]);
     }
 }

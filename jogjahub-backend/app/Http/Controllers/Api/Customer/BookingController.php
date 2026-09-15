@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Models\Booking;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
@@ -21,22 +22,14 @@ class BookingController extends Controller
         return response()->json(['success' => true, 'data' => $bookings]);
     }
 
-    public function store(Request $request)
+    public function store(StoreBookingRequest $request)
     {
-        $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'slot_id' => 'nullable|exists:time_slots,id',
-            'payment_method' => 'required|in:transfer,cod',
-            'payment_proof_url' => 'nullable|string',
-            'details' => 'nullable|array',
-        ]);
-
-        $booking = $this->bookingService->createBooking($request->user()->id, $request->all());
+        $booking = $this->bookingService->createBooking($request->user()->id, $request->validated());
 
         return response()->json([
             'success' => true,
             'message' => 'Booking berhasil dibuat',
-            'data' => $booking,
+            'data'    => $booking,
         ], 201);
     }
 
@@ -64,7 +57,7 @@ class BookingController extends Controller
         // Syarat waktu (FR-11): kalau ada slot, minimal 6 jam sebelum jadwal
         if ($booking->slot_id) {
             $booking->load('slot');
-            $slotDateTime = \Carbon\Carbon::parse($booking->slot->slot_date . ' ' . $booking->slot->start_time);
+            $slotDateTime   = \Carbon\Carbon::parse($booking->slot->slot_date . ' ' . $booking->slot->start_time);
             $cancelDeadline = $slotDateTime->copy()->subHours(6);
 
             if (now()->gt($cancelDeadline)) {

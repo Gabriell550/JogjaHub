@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class TenantProfile extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'user_id',
         'business_name',
@@ -27,6 +30,7 @@ class TenantProfile extends Model
     ];
 
     public static function boot()
+    protected static function booted(): void
     {
         parent::boot();
 

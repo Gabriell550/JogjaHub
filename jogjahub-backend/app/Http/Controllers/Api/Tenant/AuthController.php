@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Models\Category;
 use App\Models\TenantProfile;
 use App\Models\User;
-use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -17,15 +17,15 @@ class AuthController extends Controller
         }
 
         $aliases = [
-            'salon_mua'       => 'Beauty & Style',
-            'butik_wisuda'    => 'Beauty & Style',
-            'penginapan'      => 'Penginapan',
+            'salon_mua'        => 'Beauty & Style',
+            'butik_wisuda'     => 'Beauty & Style',
+            'penginapan'       => 'Penginapan',
             'selempang_plakat' => 'Gifting',
-            'akrilik'         => 'Gifting',
-            'florist'         => 'Gifting',
+            'akrilik'          => 'Gifting',
+            'florist'          => 'Gifting',
             'beauty_and_style' => 'Beauty & Style',
-            'gifting'         => 'Gifting',
-            'hotel'           => 'Penginapan',
+            'gifting'          => 'Gifting',
+            'hotel'            => 'Penginapan',
         ];
 
         // Fetch semua kategori SEKALI, bukan per-item
@@ -52,9 +52,9 @@ class AuthController extends Controller
                 continue;
             }
 
-            // Filter in-memory
+            // Filter in-memory, tidak hit DB lagi
             $matched = $allCategories->first(function ($cat) use ($normalized) {
-                $name = strtolower(trim($cat->name));
+                $name           = strtolower(trim($cat->name));
                 $nameNormalized = preg_replace('/[^a-z0-9]+/', '_', $name);
                 $nameNormalized = trim($nameNormalized, '_');
 
@@ -70,24 +70,14 @@ class AuthController extends Controller
         return array_values(array_unique(array_filter($categoryIds, fn($id) => $id > 0)));
     }
 
-    public function register(Request $request)
+    public function register(RegisterTenantRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'address' => 'nullable|string|max:1000',
-            'phone' => 'nullable|string|max:20',
-            'categories' => 'nullable|array|min:1',
-            'categories.*' => 'nullable|string',
-        ]);
-
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => bcrypt($request->password),
-            'role' => 'tenant',
-            'phone' => $request->phone,
+            'role'     => 'tenant',
+            'phone'    => $request->phone,
         ]);
 
         $address = $request->filled('address')
@@ -95,11 +85,11 @@ class AuthController extends Controller
             : ['street' => ''];
 
         $tenantProfile = TenantProfile::create([
-            'user_id' => $user->id,
-            'business_name' => $request->name,
-            'address' => $address,
+            'user_id'         => $user->id,
+            'business_name'   => $request->name,
+            'address'         => $address,
             'whatsapp_number' => $request->phone ?? '',
-            'status' => 'pending',
+            'status'          => 'pending',
         ]);
 
         $categoryIds = $this->resolveCategoryIds((array) $request->input('categories', []));
@@ -111,8 +101,8 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Registrasi vendor berhasil. Menunggu approval admin.',
-            'data' => [
-                'user' => $user,
+            'data'    => [
+                'user'           => $user,
                 'tenant_profile' => $tenantProfile->load('categories'),
             ],
         ], 201);

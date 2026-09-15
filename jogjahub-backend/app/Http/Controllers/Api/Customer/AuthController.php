@@ -3,28 +3,19 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\RegisterCustomerRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function register(RegisterCustomerRequest $request)
     {
-
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
-        ]);
-
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => bcrypt($request->password),
-            'role' => 'customer',
-            'phone' => $request->phone,
+            'role'     => 'customer',
+            'phone'    => $request->phone,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -32,8 +23,8 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Registrasi berhasil',
-            'data' => [
-                'user' => $user,
+            'data'    => [
+                'user'  => $user,
                 'token' => $token,
             ],
         ], 201);
