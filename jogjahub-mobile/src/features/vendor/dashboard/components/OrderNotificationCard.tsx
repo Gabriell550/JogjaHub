@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.titleMd.fontFamily,
     fontSize: typography.titleMd.fontSize,
     fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
+    
   },
   headerRight: {
     flexDirection: 'row',

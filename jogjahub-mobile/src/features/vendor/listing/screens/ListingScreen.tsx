@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pencil, Trash2, ImageOff, Search, ShoppingBag, Star, PackagePlus, Store, Plus } from 'lucide-react-native';
+import { Pencil, Trash2, ImageOff, Search, ShoppingBag, PackagePlus, Store, Plus } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { API_BASE_URL } from '../../../../constants/config';
 import { vendorApi } from '../../../../api/vendorApi';
@@ -40,17 +40,6 @@ function getPrimaryPhotoUrl(item: ServiceItem): string | null {
   if (!item.photos || item.photos.length === 0) return null;
   const primary = item.photos.find((p) => p.is_primary) ?? item.photos[0];
   return `${STORAGE_BASE_URL}${primary.url}`;
-}
-
-// ⚠️ DUMMY: backend belum punya field order_count/rating di Service model.
-// Angka di sini di-generate deterministik dari id, BUKAN data asli.
-// Ganti fungsi ini begitu backend nyediain field aslinya.
-function getDummyStats(id: number) {
-  const seed = id * 37;
-  return {
-    orders: 5 + (seed % 60),
-    rating: (4 + ((seed % 10) / 10)).toFixed(1),
-  };
 }
 
 // FR: kelola layanan/produk yang dijual vendor (create/read/update/delete).
@@ -174,7 +163,6 @@ export default function ListingScreen() {
         ItemSeparatorComponent={() => <View style={{ height: spacing.stackLg }} />}
         renderItem={({ item }) => {
           const photoUrl = getPrimaryPhotoUrl(item);
-          const stats = getDummyStats(item.id);
           const categoryLabel = item.subcategory?.category?.name ?? item.subcategory?.name ?? 'Layanan';
 
           return (
@@ -188,10 +176,6 @@ export default function ListingScreen() {
                       <ImageOff size={28} color={colors.secondary} />
                     </View>
                   )}
-                  <View style={styles.ratingBadge}>
-                    <Star size={12} color="#F5A623" fill="#F5A623" />
-                    <Text style={styles.ratingBadgeText}>{stats.rating}</Text>
-                  </View>
                   <View style={styles.categoryBadge}>
                     <Text style={styles.categoryBadgeText}>{categoryLabel.toUpperCase()}</Text>
                   </View>
@@ -235,7 +219,7 @@ export default function ListingScreen() {
                       onPress={() => navigation.navigate('ServiceOrders', { serviceId: item.id, serviceName: item.name })}
                     >
                       <ShoppingBag size={14} color={colors.primary} />
-                      <Text style={styles.statTextLink}>{stats.orders} dipesan</Text>
+                      <Text style={styles.statTextLink}>Lihat Pesanan</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.statItem}
@@ -370,10 +354,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sectionGap + 56,
     flexGrow: 1,
   },
-
-  // Outer wrapper: pegang shadow/elevation SAJA, tanpa overflow:hidden.
-  // Ini penting di Android — kalau overflow:hidden digabung sama elevation di view
-  // yang sama, shadow-nya suka hilang/berkedip pas FlatList recycle item saat discroll.
   card: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.md,
@@ -383,7 +363,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 3,
   },
-  // Inner wrapper: yang motong (clip) foto & konten biar rounded corner-nya rapi.
   cardInner: {
     borderRadius: radius.md,
     overflow: 'hidden',
@@ -395,19 +374,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ratingBadge: {
-    position: 'absolute',
-    top: spacing.stackSm,
-    left: spacing.stackSm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  ratingBadgeText: { fontFamily: typography.labelMd.fontFamily, fontSize: 12, fontWeight: '700', color: colors.onSurface },
   categoryBadge: {
     position: 'absolute',
     bottom: spacing.stackSm,
@@ -424,7 +390,6 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
     letterSpacing: 0.5,
   },
-
   cardBody: { padding: spacing.stackMd },
   serviceName: { fontFamily: typography.titleMd.fontFamily, fontSize: 16, fontWeight: '700', color: colors.onSurface },
   serviceDescriptionPreview: {
@@ -445,7 +410,6 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: spacing.stackSm },
   priceLabel: { fontFamily: typography.labelMd.fontFamily, fontSize: 11, color: colors.secondary },
   price: { fontFamily: typography.titleMd.fontFamily, fontSize: 16, fontWeight: '700', color: colors.primary },
-
   statsRow: {
     flexDirection: 'row',
     gap: spacing.stackLg,
@@ -456,7 +420,6 @@ const styles = StyleSheet.create({
   },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statTextLink: { fontFamily: typography.labelMd.fontFamily, fontSize: 12, color: colors.primary, fontWeight: '600' },
-
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -467,7 +430,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.surfaceContainerHigh,
   },
   toggleLabel: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurface },
-
   actionRow: {
     flexDirection: 'row',
     gap: spacing.stackLg,
@@ -476,7 +438,6 @@ const styles = StyleSheet.create({
   },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionText: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.primary, fontWeight: '600' },
-
   emptyState: { alignItems: 'center', paddingTop: spacing.sectionGap, paddingHorizontal: spacing.containerMargin },
   emptyIconWrap: {
     width: 64,
@@ -500,7 +461,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-
   fab: {
     position: 'absolute',
     right: spacing.containerMargin,

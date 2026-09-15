@@ -19,6 +19,11 @@ export const vendorApi = {
 
   listMyServices: () => apiClient.get('/tenant/services'),
 
+  // Detail 1 layanan — beda dari listMyServices(), endpoint ini yang punya field
+  // confirmed_bookings_count, reviews_counts, reviews_average_rating.
+  // ⚠️ Endpoint-nya "/services/{id}" (TANPA prefix "tenant"), sesuai hasil test Postman.
+  getServiceDetail: (serviceId: string | number) => apiClient.get(`/services/${serviceId}`),
+
   getMyProfile: () => apiClient.get('/tenant/profile'),
 
   createService: (payload: FormData | Record<string, unknown>) => {

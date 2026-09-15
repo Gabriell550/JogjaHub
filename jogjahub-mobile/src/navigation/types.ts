@@ -68,6 +68,9 @@ export type ServiceParam = {
   description?: string;
   photos?: { url: string; is_primary: boolean; sort_order: number }[];
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
+  confirmed_bookings_count?: number;
+  reviews_average_rating?: number | null;
+  reviews_counts?: number;
 };
 
 // Stack kecil di dalam tab Listing — ServicesList (daftar layanan), ServiceForm (tambah/edit),
