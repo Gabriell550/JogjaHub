@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreServiceRequest;
 use App\Http\Requests\Tenant\UpdateServiceRequest;
 use App\Models\Service;
+use App\Http\Resources\ServiceResource;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -18,7 +19,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $services,
+            'data'    => ServiceResource::collection($services),
         ]);
     }
 
@@ -48,7 +49,7 @@ class ServiceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Service berhasil ditambahkan',
-            'data'    => $service,
+            'data'    => new ServiceResource($service),
         ]);
     }
 
@@ -66,7 +67,7 @@ class ServiceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Service berhasil diperbarui',
-            'data'    => $service,
+            'data'    => new ServiceResource($service),
         ]);
     }
 
@@ -99,7 +100,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $service,
+            'data'    => new ServiceResource($service),
         ]);
     }
 }

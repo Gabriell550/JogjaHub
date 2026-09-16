@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\BookingService;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Http\Resources\BookingResource;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -23,7 +24,7 @@ class BookingController extends Controller
             ->latest()
             ->paginate(15);
 
-        return response()->json(['success' => true, 'data' => $bookings]);
+        return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
     }
 
     public function updateStatus(Request $request, Booking $booking)
@@ -57,7 +58,7 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status booking berhasil diubah',
-            'data' => $booking->fresh(),
+            'data' => new BookingResource($booking->fresh()),
         ]);
     }
 }

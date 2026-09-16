@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\UpdateProfileRequest;
 use App\Models\TenantProfile;
+use App\Http\Resources\TenantProfileResource;
 use Illuminate\Http\Request;
 
 class ProfileController extends Controller
@@ -44,7 +45,7 @@ class ProfileController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profil tenant berhasil disimpan, menunggu approval admin',
-            'data'    => $tenantProfile->load('categories'),
+            'data'    => new TenantProfileResource($tenantProfile->load('categories')),
         ]);
     }
 
@@ -61,7 +62,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $tenantProfile,
+            'data'    => new TenantProfileResource($tenantProfile),
         ]);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Http\Resources\ServiceResource;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -18,7 +19,7 @@ class ServiceController extends Controller
             })
             ->paginate(15);
 
-        return response()->json(['success' => true, 'data' => $services]);
+        return response()->json(['success' => true, 'data' => ServiceResource::collection($services)]);
     }
 
     public function slots(Service $service)
@@ -55,7 +56,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $service
+            'data' => new ServiceResource($service),
         ]);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Http\Resources\BookingResource;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -19,7 +20,7 @@ class BookingController extends Controller
             ->latest()
             ->paginate(15);
 
-        return response()->json(['success' => true, 'data' => $bookings]);
+        return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
     }
 
     public function store(StoreBookingRequest $request)
@@ -29,7 +30,7 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Booking berhasil dibuat',
-            'data'    => $booking,
+            'data'    => new BookingResource($booking),
         ], 201);
     }
 
@@ -41,7 +42,7 @@ class BookingController extends Controller
 
         $booking->load(['service.tenant', 'slot', 'review']);
 
-        return response()->json(['success' => true, 'data' => $booking]);
+        return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
     }
 
     public function cancel(Request $request, Booking $booking)

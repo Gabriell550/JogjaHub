@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterCustomerRequest;
 use App\Models\User;
+use App\Http\Resources\UserResource;
 
 class AuthController extends Controller
 {
@@ -24,7 +25,7 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Registrasi berhasil',
             'data'    => [
-                'user'  => $user,
+                'user'  => new UserResource($user),
                 'token' => $token,
             ],
         ], 201);
