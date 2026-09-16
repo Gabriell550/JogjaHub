@@ -29,11 +29,8 @@ class TenantProfile extends Model
         'address' => 'array'
     ];
 
-    public static function boot()
     protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
