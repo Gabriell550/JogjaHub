@@ -11,7 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { ChevronLeft, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { Card } from '../../../../components/Card/Card';
 import { Button } from '../../../../components/Button/Button';
@@ -359,25 +359,52 @@ export default function ManageCalendarScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Header */}
+      {/* ===== HEADER STICKY ===== */}
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>Calender</Text>
-        <View style={styles.headerCenter}>
+        {/* Logo & Nama Aplikasi (kiri) */}
+        <View style={styles.brandRow}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>JH</Text>
+          </View>
+          <Text style={styles.brandTitle}>JogjaHub</Text>
+        </View>
+
+        {/* Tombol Open (kanan) */}
+        <Pressable style={styles.openBtn}>
+          <Text style={styles.openBtnText}>Open</Text>
+        </Pressable>
+      </View>
+
+      {/* ===== JUDUL BULAN + SUBJUDUL ===== */}
+      <View style={styles.titleSection}>
+        <View style={styles.titleLeft}>
           <Text style={styles.monthYear}>{monthYearLabel}</Text>
           <Text style={styles.subtitle}>Kelola ketersediaan layanan Anda</Text>
         </View>
-        <View style={styles.datePickerRow}>
-          <Pressable style={styles.pickerBtn} onPress={() => setShowMonthPicker(true)}>
-            <Text style={styles.pickerLabel}>Bulan</Text>
-            <Text style={styles.pickerValue}>{monthName}</Text>
-            <ChevronDown size={16} color={colors.onSurfaceVariant} />
+
+        {/* Arrow navigasi bulan (kanan) */}
+        <View style={styles.navArrowRow}>
+          <Pressable onPress={goToPreviousMonth} style={styles.navArrowBtn}>
+            <ChevronLeft size={24} color={colors.onSurface} />
           </Pressable>
-          <Pressable style={styles.pickerBtn} onPress={() => setShowYearPicker(true)}>
-            <Text style={styles.pickerLabel}>Tahun</Text>
-            <Text style={styles.pickerValue}>{yearLabel}</Text>
-            <ChevronDown size={16} color={colors.onSurfaceVariant} />
+          <Pressable onPress={goToNextMonth} style={styles.navArrowBtn}>
+            <ChevronRight size={24} color={colors.onSurface} />
           </Pressable>
         </View>
+      </View>
+
+      {/* ===== PICKER BULAN & TAHUN ===== */}
+      <View style={styles.pickerRow}>
+        <Pressable style={styles.pickerBtn} onPress={() => setShowMonthPicker(true)}>
+          <Text style={styles.pickerLabel}>Bulan</Text>
+          <Text style={styles.pickerValue}>{monthName}</Text>
+          <ChevronDown size={16} color={colors.onSurfaceVariant} />
+        </Pressable>
+        <Pressable style={styles.pickerBtn} onPress={() => setShowYearPicker(true)}>
+          <Text style={styles.pickerLabel}>Tahun</Text>
+          <Text style={styles.pickerValue}>{yearLabel}</Text>
+          <ChevronDown size={16} color={colors.onSurfaceVariant} />
+        </Pressable>
       </View>
 
       {/* Legend */}
@@ -396,23 +423,25 @@ export default function ManageCalendarScreen() {
         </View>
       </View>
 
-      {/* Calendar Grid — border, scrollable */}
-      <View style={styles.calendarContainer}>
-        {/* Day names header */}
-        <View style={styles.dayNamesRow}>
-          {DAY_NAMES_SHORT.map((day, idx) => (
-            <Text key={idx} style={styles.dayName}>{day}</Text>
-          ))}
-        </View>
+      {/* ===== SCROLL VIEW UTAMA ===== */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={false} tintColor={colors.primary} />
+        }
+      >
+        {/* Calendar Grid — border, scrollable (sekarang di dalam scrollView utama) */}
+        <View style={styles.calendarContainer}>
+          {/* Day names header */}
+          <View style={styles.dayNamesRow}>
+            {DAY_NAMES_SHORT.map((day, idx) => (
+              <Text key={idx} style={styles.dayName}>{day}</Text>
+            ))}
+          </View>
 
-        {/* Day cells grid — dapat discroll ke bawah */}
-        <ScrollView
-          style={styles.calendarScroll}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={false} tintColor={colors.primary} />
-          }
-        >
+          {/* Day cells grid */}
           <View style={styles.weekContainer}>
             {calendarDays.map((day, idx) => (
               <Pressable
@@ -450,152 +479,157 @@ export default function ManageCalendarScreen() {
             ))}
           </View>
 
-          {/* Month navigation juga bisa diputar di sini */}
+          {/* Month navigation bar di dalam calendar */}
           <View style={styles.navRow}>
             <Pressable onPress={goToPreviousMonth} style={styles.navBtn}>
               <ChevronLeft size={22} color={colors.onSurface} />
             </Pressable>
             <Text style={styles.navMonthLabel}>{monthYearLabel}</Text>
             <Pressable onPress={goToNextMonth} style={styles.navBtn}>
-              <ChevronLeft size={22} color={colors.onSurface} style={styles.rotatedChevron} />
+              <ChevronRight size={22} color={colors.onSurface} />
             </Pressable>
           </View>
-        </ScrollView>
-        <View style={{height: spacing.stackMd}} />
-      </View>
-
-      {/* Detail Panel untuk tanggal yang dipilih */}
-      <View style={styles.detailContainer}>
-        {/* Judul detail */}
-        <View style={styles.detailHeader}>
-          <Text style={styles.detailTitle}>Pengaturan {formatSelectedDate(selectedDate)}</Text>
         </View>
 
-        {/* Form pengaturan tanggal */}
-        <Card style={styles.settingCard}>
-          {/* Toggle Buka Toko */}
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabel}>
-              <SlidersHorizontal size={20} color={colors.onSurfaceVariant} />
-              <Text style={styles.settingLabelText}>Buka Toko</Text>
-            </View>
-            <Pressable
-              onPress={handleToggleStoreOpen}
-              style={[styles.toggle, storeOpen && styles.toggleActive]}
-            >
-              <View style={[styles.toggleKnob, storeOpen && styles.toggleKnobActive]} />
-            </Pressable>
+        {/* Spacer kecil */}
+        <View style={{ height: spacing.stackMd }} />
+
+        {/* Detail Panel untuk tanggal yang dipilih */}
+        <View style={styles.detailContainer}>
+          {/* Judul detail */}
+          <View style={styles.detailHeader}>
+            <Text style={styles.detailTitle}>Pengaturan {formatSelectedDate(selectedDate)}</Text>
           </View>
 
-          {/* Slot Per Hari */}
-          <View style={styles.slotsSection}>
-            <Text style={styles.sectionText}>Slot Per Hari</Text>
-            <View style={styles.slotsCounter}>
-              <Pressable onPress={handleDecreaseSlots} style={styles.slotsButton}>
-                <Text style={styles.slotsButtonText}>−</Text>
-              </Pressable>
-              <Text style={styles.slotsCount}>{slotsPerDay}</Text>
-              <Pressable onPress={handleIncreaseSlots} style={styles.slotsButton}>
-                <Text style={styles.slotsButtonText}>+</Text>
+          {/* Form pengaturan tanggal */}
+          <Card style={styles.settingCard}>
+            {/* Toggle Buka Toko */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabel}>
+                <SlidersHorizontal size={20} color={colors.onSurfaceVariant} />
+                <Text style={styles.settingLabelText}>Buka Toko</Text>
+              </View>
+              <Pressable
+                onPress={handleToggleStoreOpen}
+                style={[styles.toggle, storeOpen && styles.toggleActive]}
+              >
+                <View style={[styles.toggleKnob, storeOpen && styles.toggleKnobActive]} />
               </Pressable>
             </View>
-          </View>
 
-          {/* Info status hari */}
-          <View style={styles.dayInfoCard}>
-            <View style={styles.dayInfoRow}>
-              <CalendarDays size={16} color={colors.onSurfaceVariant} />
-              <Text style={styles.dayInfoText}>
-                {todayStatus?.status === 'available'
-                  ? 'Tersedia — Pelanggan bisa memesan'
-                  : todayStatus?.status === 'full'
-                  ? 'Penuh — Semua slot sudah terbooking'
-                  : todayStatus?.status === 'blocked'
-                  ? 'Libur/Blok — Layanan ditutup hari ini'
-                  : 'Belum ada pengaturan'}
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        {/* Jam Kerja */}
-        <Card style={styles.workingHoursCard}>
-          <View style={styles.cardHeader}>
-            <Clock size={20} color={colors.onSurfaceVariant} />
-            <Text style={styles.cardTitle}>Jam Kerja</Text>
-          </View>
-
-          {/* List sesi per hari */}
-          <View style={styles.sessionsList}>
-            {workingHours.map((wh) => (
-              <View key={wh.id} style={styles.sessionRow}>
-                <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionLabel}>{wh.label}</Text>
-                  <Text style={styles.sessionTime}>
-                    {wh.start_time} - {wh.end_time}
-                  </Text>
-                </View>
-                <Pressable onPress={() => handleEditWorkingHour(wh.id)} style={styles.editButton}>
-                  <Text style={styles.editText}>✎</Text>
+            {/* Slot Per Hari */}
+            <View style={styles.slotsSection}>
+              <Text style={styles.sectionText}>Slot Per Hari</Text>
+              <View style={styles.slotsCounter}>
+                <Pressable onPress={handleDecreaseSlots} style={styles.slotsButton}>
+                  <Text style={styles.slotsButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.slotsCount}>{slotsPerDay}</Text>
+                <Pressable onPress={handleIncreaseSlots} style={styles.slotsButton}>
+                  <Text style={styles.slotsButtonText}>+</Text>
                 </Pressable>
               </View>
-            ))}
-          </View>
+            </View>
 
-          {/* Tambah Sesi */}
+            {/* Info status hari */}
+            <View style={styles.dayInfoCard}>
+              <View style={styles.dayInfoRow}>
+                <CalendarDays size={16} color={colors.onSurfaceVariant} />
+                <Text style={styles.dayInfoText}>
+                  {todayStatus?.status === 'available'
+                    ? 'Tersedia — Pelanggan bisa memesan'
+                    : todayStatus?.status === 'full'
+                    ? 'Penuh — Semua slot sudah terbooking'
+                    : todayStatus?.status === 'blocked'
+                    ? 'Libur/Blok — Layanan ditutup hari ini'
+                    : 'Belum ada pengaturan'}
+                </Text>
+              </View>
+            </View>
+          </Card>
+
+          {/* Jam Kerja */}
+          <Card style={styles.workingHoursCard}>
+            <View style={styles.cardHeader}>
+              <Clock size={20} color={colors.onSurfaceVariant} />
+              <Text style={styles.cardTitle}>Jam Kerja</Text>
+            </View>
+
+            {/* List sesi per hari */}
+            <View style={styles.sessionsList}>
+              {workingHours.map((wh) => (
+                <View key={wh.id} style={styles.sessionRow}>
+                  <View style={styles.sessionInfo}>
+                    <Text style={styles.sessionLabel}>{wh.label}</Text>
+                    <Text style={styles.sessionTime}>
+                      {wh.start_time} - {wh.end_time}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => handleEditWorkingHour(wh.id)} style={styles.editButton}>
+                    <Text style={styles.editText}>✎</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+
+            {/* Tambah Sesi */}
+            <Pressable
+              style={styles.addSessionButton}
+              onPress={handleAddSession}
+              disabled={savingWorkingHours}
+            >
+              <Text style={styles.addSessionText}>+ Tambah Sesi</Text>
+            </Pressable>
+
+            {/* Save button */}
+            <Button
+              label={savingWorkingHours ? 'Menyimpan...' : 'Simpan Jam Kerja'}
+              onPress={handleSaveWorkingHours}
+              disabled={savingWorkingHours}
+              style={styles.saveButton}
+            />
+          </Card>
+
+          {/* Blokir Tanggal Massal */}
           <Pressable
-            style={styles.addSessionButton}
-            onPress={handleAddSession}
-            disabled={savingWorkingHours}
+            style={styles.blockDateCard}
+            onPress={handleBlockDatePress}
           >
-            <Text style={styles.addSessionText}>+ Tambah Sesi</Text>
+            <View style={styles.blockDateIcon}>
+              <Lock size={20} color={colors.primary} />
+            </View>
+            <View style={styles.blockDateInfo}>
+              <Text style={styles.blockDateTitle}>Blokir Tanggal Massal</Text>
+              <Text style={styles.blockDateDesc}>Tutup semua layanan untuk periode libur panjang.</Text>
+            </View>
+            <View style={styles.blockDateArrow}>
+              <ChevronRight size={20} color={colors.onSurfaceVariant} />
+            </View>
           </Pressable>
 
-          {/* Save button */}
-          <Button
-            label={savingWorkingHours ? 'Menyimpan...' : 'Simpan Jam Kerja'}
-            onPress={handleSaveWorkingHours}
-            disabled={savingWorkingHours}
-            style={styles.saveButton}
-          />
-        </Card>
+          {/* Batas Booking H-1 */}
+          <Pressable
+            style={styles.bookingLimitCard}
+            onPress={handleBookingLimitPress}
+          >
+            <View style={styles.bookingLimitIcon}>
+              <CalendarDays size={20} color="#3B82F6" />
+            </View>
+            <View style={styles.bookingLimitInfo}>
+              <Text style={styles.bookingLimitTitle}>Batas Booking H-1</Text>
+              <Text style={styles.bookingLimitDesc}>
+                Cegah pelanggan memesan di hari yang sama (minimum {bookingLimitH1} jam pertama).
+              </Text>
+            </View>
+            <View style={styles.bookingLimitArrow}>
+              <ChevronRight size={20} color={colors.onSurfaceVariant} />
+            </View>
+          </Pressable>
+        </View>
 
-        {/* Blokir Tanggal Massal */}
-        <Pressable
-          style={styles.blockDateCard}
-          onPress={handleBlockDatePress}
-        >
-          <View style={styles.blockDateIcon}>
-            <Lock size={20} color={colors.primary} />
-          </View>
-          <View style={styles.blockDateInfo}>
-            <Text style={styles.blockDateTitle}>Blokir Tanggal Massal</Text>
-            <Text style={styles.blockDateDesc}>Tutup semua layanan untuk periode libur panjang.</Text>
-          </View>
-          <View style={styles.blockDateArrow}>
-            <ChevronLeft size={20} color={colors.onSurfaceVariant} style={styles.rotatedChevron} />
-          </View>
-        </Pressable>
-
-        {/* Batas Booking H-1 */}
-        <Pressable
-          style={styles.bookingLimitCard}
-          onPress={handleBookingLimitPress}
-        >
-          <View style={styles.bookingLimitIcon}>
-            <CalendarDays size={20} color="#3B82F6" />
-          </View>
-          <View style={styles.bookingLimitInfo}>
-            <Text style={styles.bookingLimitTitle}>Batas Booking H-1</Text>
-            <Text style={styles.bookingLimitDesc}>
-              Cegah pelanggan memesan di hari yang sama (minimum {bookingLimitH1} jam pertama).
-            </Text>
-          </View>
-          <View style={styles.bookingLimitArrow}>
-            <ChevronLeft size={20} color={colors.onSurfaceVariant} style={styles.rotatedChevron} />
-          </View>
-        </Pressable>
-      </View>
+        {/* Spacer bawah untuk padding */}
+        <View style={{ height: spacing.sectionGap }} />
+      </ScrollView>
 
       {/* Month Picker Modal */}
       <Modal visible={showMonthPicker} transparent animationType="fade" onRequestClose={() => setShowMonthPicker(false)}>
@@ -669,6 +703,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.sectionGap,
+  },
+  // ---- Header ----
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -676,36 +717,86 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.containerMargin,
     paddingTop: 60,
     paddingBottom: spacing.stackMd,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
   },
-  pageTitle: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSurface,
-    flex: 1,
-  },
-  headerCenter: {
+  brandRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.stackMd,
+    gap: 8,
   },
-  monthYear: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSurface,
+  logoBox: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  subtitle: {
+  logoText: {
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 13,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
+    fontWeight: '800',
+    color: colors.onPrimary,
   },
-  datePickerRow: {
+  brandTitle: {
+    fontFamily: typography.titleMd.fontFamily,
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.onSurface,
+  },
+  openBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.stackMd,
+    paddingVertical: spacing.stackSm,
+    borderRadius: radius.full,
+  },
+  openBtnText: {
+    fontFamily: typography.button.fontFamily,
+    fontSize: typography.button.fontSize,
+    fontWeight: typography.button.fontWeight,
+    color: colors.onPrimary,
+  },
+  // ---- Title Section ----
+  titleSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.containerMargin,
+    paddingTop: spacing.stackMd,
+    paddingBottom: spacing.stackSm,
+  },
+  titleLeft: {
+    flex: 1,
+  },
+  monthYear: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: typography.headlineLg.fontSize,
+    fontWeight: typography.headlineLg.fontWeight,
+    color: colors.onSurface,
+    lineHeight: 32,
+  },
+  subtitle: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+    marginTop: 4,
+  },
+  navArrowRow: {
     flexDirection: 'row',
     gap: spacing.stackMd,
-    marginLeft: spacing.stackMd,
+  },
+  navArrowBtn: {
+    padding: spacing.stackSm,
+  },
+  // ---- Picker Row ----
+  pickerRow: {
+    flexDirection: 'row',
+    gap: spacing.stackMd,
+    paddingHorizontal: spacing.containerMargin,
+    paddingTop: spacing.stackSm,
+    paddingBottom: spacing.stackMd,
   },
   pickerBtn: {
     flexDirection: 'row',
@@ -730,6 +821,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 50,
   },
+  // ---- Legend ----
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -752,6 +844,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceVariant,
   },
+  // ---- Calendar Container ----
   calendarContainer: {
     marginHorizontal: spacing.containerMargin,
     marginBottom: spacing.stackMd,
@@ -760,9 +853,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.stackMd,
     backgroundColor: colors.surfaceContainerLowest,
-  },
-  calendarScroll: {
-    maxHeight: 420,
   },
   dayNamesRow: {
     flexDirection: 'row',
@@ -866,12 +956,9 @@ const styles = StyleSheet.create({
     minWidth: 120,
     textAlign: 'center',
   },
-  rotatedChevron: {
-    transform: [{ rotate: '180deg' }],
-  },
+  // ---- Detail Container ----
   detailContainer: {
     paddingHorizontal: spacing.containerMargin,
-    paddingBottom: spacing.sectionGap,
   },
   detailHeader: {
     marginBottom: spacing.stackMd,
