@@ -7,6 +7,8 @@ use App\Http\Requests\Auth\RegisterTenantRequest;
 use App\Models\Category;
 use App\Models\TenantProfile;
 use App\Models\User;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\TenantProfileResource;
 
 class AuthController extends Controller
 {
@@ -102,8 +104,8 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Registrasi vendor berhasil. Menunggu approval admin.',
             'data'    => [
-                'user'           => $user,
-                'tenant_profile' => $tenantProfile->load('categories'),
+                'user'           => new UserResource($user),
+                'tenant_profile' => new TenantProfileResource($tenantProfile->load('categories')),
             ],
         ], 201);
     }

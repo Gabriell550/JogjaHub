@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreTimeSlotRequest;
 use App\Models\Service;
 use App\Models\TimeSlot;
+use App\Http\Resources\TimeSlotResource;
 use Illuminate\Http\Request;
 
 class TimeSlotController extends Controller
@@ -26,7 +27,7 @@ class TimeSlotController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $slots,
+            'data'    => TimeSlotResource::collection($slots),
         ]);
     }
 
@@ -46,7 +47,7 @@ class TimeSlotController extends Controller
             'quota'      => $request->quota,
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Slot berhasil dibuat', 'data' => $slot], 201);
+        return response()->json(['success' => true, 'message' => 'Slot berhasil dibuat', 'data' => new TimeSlotResource($slot)], 201);
     }
 
     public function destroy(Request $request, TimeSlot $timeSlot)

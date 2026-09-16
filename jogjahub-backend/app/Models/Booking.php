@@ -23,6 +23,7 @@ class Booking extends Model
         'details' => 'array',
     ];
 
+
     protected static function booted(): void
     {
         static::creating(function ($model) {

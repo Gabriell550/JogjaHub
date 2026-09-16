@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Http\Resources\BookingResource;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -17,6 +18,6 @@ class BookingController extends Controller
             ->latest()
             ->paginate(20);
 
-        return response()->json(['success' => true, 'data' => $bookings]);
+        return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RejectTenantRequest;
+use App\Http\Resources\TenantProfileResource;
 use App\Models\TenantProfile;
 
 class TenantController extends Controller
@@ -16,7 +17,7 @@ class TenantController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $pendingTenants,
+            'data'    => TenantProfileResource::collection($pendingTenants),
         ]);
     }
 
@@ -30,7 +31,7 @@ class TenantController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Tenant berhasil disetujui',
-            'data'    => $tenant,
+            'data'    => new TenantProfileResource($tenant),
         ]);
     }
 
@@ -44,7 +45,7 @@ class TenantController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Tenant ditolak',
-            'data'    => $tenant,
+            'data'    => new TenantProfileResource($tenant),
         ]);
     }
 }
