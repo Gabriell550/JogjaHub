@@ -2,11 +2,13 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CustomerTabNavigator } from './CustomerTabNavigator';
 import NotificationsScreen from '../features/shared/notifications/NotificationsScreen';
+import BookingScreen from '../features/customer/booking/screens/BookingScreen';
+import BookingConfirmationScreen from '../features/customer/booking/screens/BookingConfirmationScreen';
 import { CustomerStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
 
-// Stack pembungkus tab, supaya bisa navigasi ke layar di luar tab (seperti Notifications)
+// Stack pembungkus tab, supaya bisa navigasi ke layar di luar tab (seperti Notifications, Booking, Konfirmasi)
 export function CustomerStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -16,6 +18,8 @@ export function CustomerStackNavigator() {
         component={NotificationsScreen}
         options={{ headerShown: true, title: 'Notifikasi' }}
       />
+      <Stack.Screen name="Booking" component={BookingScreen} />
+      <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
     </Stack.Navigator>
   );
 }

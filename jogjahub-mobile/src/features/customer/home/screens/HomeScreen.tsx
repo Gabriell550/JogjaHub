@@ -11,14 +11,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { CustomerTabParamList, CustomerStackParamList } from '../../../../navigation/types';
 
 import PromoBanner from '../components/PromoBanner';
 import CategoryGrid from '../components/CategoryGrid';
 import VendorCard from '../components/VendorCard';
 import { verifiedVendors } from '../data/mockData';
 
+type HomeScreenNavProp = CompositeNavigationProp<
+  BottomTabNavigationProp<CustomerTabParamList, 'Home'>,
+  NativeStackNavigationProp<CustomerStackParamList>
+>;
+
 export default function HomeScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeScreenNavProp>();
   const [searchQuery, setSearchQuery] = useState('');
   const [vendors, setVendors] = useState(verifiedVendors);
 
@@ -88,7 +97,14 @@ export default function HomeScreen() {
             <VendorCard
               key={vendor.id}
               vendor={vendor}
-              onPressBook={() => console.log('pesan:', vendor.id)}
+              onPressBook={() => {
+                navigation.navigate('Booking', {
+                  serviceId: vendor.id,
+                  serviceName: vendor.name,
+                  vendorName: vendor.name,
+                  price: vendor.priceFrom,
+                });
+              }}
               onToggleFavorite={() => toggleFavorite(vendor.id)}
             />
           ))}

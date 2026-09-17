@@ -44,6 +44,22 @@ export type AdminStackParamList = {
 export type CustomerStackParamList = {
   CustomerTabs: undefined;
   Notifications: undefined;
+  Booking: {
+    serviceId?: number | string;
+    serviceName?: string;
+    vendorName?: string;
+    price?: number;
+  } | undefined;
+  BookingConfirmation: {
+    bookingId?: string | number;
+    serviceId?: number | string;
+    serviceName?: string;
+    vendorName?: string;
+    date: string;
+    timeSlot: string;
+    price: number;
+    paymentMethod?: 'transfer' | 'cod';
+  };
 };
 
 export type VendorDashboardStackParamList = {
