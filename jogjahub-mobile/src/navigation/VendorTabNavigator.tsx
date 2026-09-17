@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     alignItems: "center",
-    justify: "center",
+    justifyContent: "center",
     flex: 1,
     gap: 4,
   },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   ordersTab: {
     alignItems: "center",
-    justify: "center",
+    justifyContent: "center",
     flex: 1,
     gap: 4,
     position: "relative",

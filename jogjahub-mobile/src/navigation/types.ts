@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type AuthStackParamList = {
   Login: undefined;
   RegisterCustomer: undefined;
@@ -14,9 +16,14 @@ export type CustomerTabParamList = {
 
 export type VendorTabParamList = {
   Dashboard: undefined;
-  Listing: undefined;
+  // Sama seperti Orders — Listing juga sebenarnya sebuah stack (VendorServicesStackNavigator),
+  // butuh tipe nested supaya bisa navigate langsung ke ServiceForm dari luar (mis. dashboard).
+  Listing: NavigatorScreenParams<VendorServicesStackParamList> | undefined;
   Calendar: undefined;
-  Orders: undefined;
+  // Sebelumnya `undefined` — diubah jadi NavigatorScreenParams supaya TypeScript tahu tab
+  // "Orders" itu sebenarnya nge-render sebuah stack (VendorOrdersStackNavigator) yang punya
+  // layar sendiri di dalamnya (OrdersList, OrderDetail), bukan satu layar tunggal.
+  Orders: NavigatorScreenParams<VendorOrdersStackParamList> | undefined;
   Profile: undefined;
 };
 

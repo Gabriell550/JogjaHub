@@ -20,6 +20,7 @@ import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
 import { orderTracking } from '../../../../utils/orderTracking';
 import { PerformaCard } from '../components/PerformaCard';
 import { SaldoTokoCard } from '../components/SaldoTokoCard';
+import { MyServicesSection } from '../components/MyServicesSection';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<VendorDashboardStackParamList>,
@@ -171,6 +172,19 @@ export default function VendorDashboardScreen() {
     },
   ];
 
+  const handleSeeAllServices = () => {
+    navigation.navigate('Listing', { screen: 'ServicesList' });
+  };
+
+  const handleAddService = () => {
+    navigation.navigate('Listing', { screen: 'ServiceForm', params: { mode: 'create' } });
+  };
+
+  const handlePressService = (service: { id: number; name: string; price: number; photos?: any[] }) => {
+    // Konsisten dengan tap kartu layanan di ListingScreen sendiri -> langsung ke mode edit.
+    navigation.navigate('Listing', { screen: 'ServiceForm', params: { mode: 'edit', service } });
+  };
+
   const unviewedOrders = getUnviewedOrders();
 
   return (
@@ -205,6 +219,12 @@ export default function VendorDashboardScreen() {
 
         <View style={{ height: spacing.stackMd }} />
         <QuickActionsGrid actions={actions} />
+
+        <MyServicesSection
+          onSeeAll={handleSeeAllServices}
+          onAddService={handleAddService}
+          onPressService={handlePressService}
+        />
 
         {unviewedOrders.length > 0 && (
           <View style={{ marginTop: spacing.stackMd }}>

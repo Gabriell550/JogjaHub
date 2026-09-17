@@ -6,7 +6,7 @@ type Action = {
   key: string;
   icon: string | React.ComponentType<any>;
   label: string;
-  subtitle: string;
+  subtitle?: string;
   iconBg: string;
   onPress: () => void;
 };
@@ -81,5 +81,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.onSurface,
     textAlign: 'center',
+  },
+
+
+  icon: {
+    fontSize: 22,
   },
 });
