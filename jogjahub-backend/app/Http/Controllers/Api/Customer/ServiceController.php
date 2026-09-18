@@ -51,7 +51,7 @@ class ServiceController extends Controller
             ->get()
             ->pluck('review');
 
-        $service->reviews_counts = $reviews->count();
+        $service->reviews_count = $reviews->count();
         $service->reviews_average_rating = $reviews->count() > 0 ? round($reviews->avg('rating'), 1) : null;
 
         return response()->json([

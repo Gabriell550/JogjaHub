@@ -16,7 +16,7 @@ class TenantController extends Controller
             ->get();
 
         return response()->json([
-            'status' => 'success',
+            'status' => true,
             'data' => $tenant
         ]);
     }
@@ -25,7 +25,7 @@ class TenantController extends Controller
     {
         if ($tenant->status !== 'approved') {
             return response()->json([
-                'status' => 'error',
+                'status' => false,
                 'message' => 'Tenant tidak ditemukan atau belum disetujui'
             ], 404);
         }
@@ -33,7 +33,7 @@ class TenantController extends Controller
         $tenant->load(['categories', 'services' => fn($q) => $q->with('subcategory')]);
 
         return response()->json([
-            'status' => 'success',
+            'status' => true,
             'data' => $tenant
         ]);
     }
