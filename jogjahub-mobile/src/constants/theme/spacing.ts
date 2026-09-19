@@ -5,6 +5,7 @@ export const spacing = {
   stackSm: 8,           // 0.5rem
   stackMd: 16,          // 1rem
   stackLg: 24,          // 1.5rem
+  stackXl: 32,
   sectionGap: 40,        // 2.5rem
 } as const;
 

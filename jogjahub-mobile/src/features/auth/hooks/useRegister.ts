@@ -23,11 +23,11 @@ type RegisterVendorPayload = {
   email: string;
   password: string;
   passwordConfirmation: string;
-  // Opsional — backend saat ini TIDAK punya kolom/penyimpanan untuk file ini sama sekali
-  // (tenant_profiles tidak ada field id_card_url/business_license_url). Kalau diisi, tetap
-  // dikirim ke server (siapa tahu nanti backend-nya nambah dukungan), tapi tidak wajib lagi.
-  idCardFile?: SelectedDocument;
-  businessLicenseFile?: SelectedDocument;
+  // File documents will be uploaded here. Note: currently backend may process these via 
+  // ProfileController@update later, but we prepare the payload format.
+  ktpFile?: SelectedDocument;
+  nibFile?: SelectedDocument;
+  portfolioFile?: SelectedDocument;
 };
 
 const categoryValueMap: Record<string, string> = {
@@ -55,8 +55,7 @@ const getErrorMessage = (err: any, fallback: string) => {
   return err?.response?.data?.message ?? fallback;
 };
 
-// Dipakai bareng oleh RegisterCustomerScreen & RegisterVendorScreen — dua fungsi terpisah
-// karena bentuk payload-nya beda (vendor multipart dengan file, customer JSON biasa).
+// Dipakai bareng oleh RegisterCustomerScreen & RegisterVendorScreen
 export function useRegister() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,21 +99,30 @@ export function useRegister() {
         formData.append('categories[]', normalizedCategory);
       });
 
-      if (payload.idCardFile?.uri) {
-        // @ts-ignore - format file React Native (uri/name/type), bukan File API browser biasa
-        formData.append('id_card', {
-          uri: payload.idCardFile.uri,
-          name: payload.idCardFile.name ?? 'id_card.pdf',
-          type: payload.idCardFile.type ?? 'application/octet-stream',
+      if (payload.ktpFile?.uri) {
+        // @ts-ignore
+        formData.append('ktp', {
+          uri: payload.ktpFile.uri,
+          name: payload.ktpFile.name ?? 'ktp.jpg',
+          type: payload.ktpFile.type ?? 'image/jpeg',
         });
       }
 
-      if (payload.businessLicenseFile?.uri) {
+      if (payload.nibFile?.uri) {
         // @ts-ignore
-        formData.append('business_license', {
-          uri: payload.businessLicenseFile.uri,
-          name: payload.businessLicenseFile.name ?? 'business_license.pdf',
-          type: payload.businessLicenseFile.type ?? 'application/octet-stream',
+        formData.append('nib', {
+          uri: payload.nibFile.uri,
+          name: payload.nibFile.name ?? 'nib.jpg',
+          type: payload.nibFile.type ?? 'image/jpeg',
+        });
+      }
+
+      if (payload.portfolioFile?.uri) {
+        // @ts-ignore
+        formData.append('portfolio', {
+          uri: payload.portfolioFile.uri,
+          name: payload.portfolioFile.name ?? 'portfolio.pdf',
+          type: payload.portfolioFile.type ?? 'application/pdf',
         });
       }
 

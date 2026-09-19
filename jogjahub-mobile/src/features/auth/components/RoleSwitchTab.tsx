@@ -13,9 +13,17 @@ export default function RoleSwitchTab({ value, onChange }: Props) {
   return (
     <View style={styles.wrap}>
       <Pressable style={[styles.tab, value === 'customer' && styles.tabActive]} onPress={() => onChange('customer')}>
+      <Pressable 
+        style={[styles.tab, value === 'customer' && styles.tabActive]} 
+        onPress={() => onChange('customer')}
+      >
         <Text style={[styles.label, value === 'customer' && styles.labelActive]}>Customer</Text>
       </Pressable>
       <Pressable style={[styles.tab, value === 'vendor' && styles.tabActive]} onPress={() => onChange('vendor')}>
+      <Pressable 
+        style={[styles.tab, value === 'vendor' && styles.tabActive]} 
+        onPress={() => onChange('vendor')}
+      >
         <Text style={[styles.label, value === 'vendor' && styles.labelActive]}>Tenant</Text>
       </Pressable>
     </View>
@@ -26,17 +34,39 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     backgroundColor: colors.secondaryContainer,
+    backgroundColor: colors.surfaceContainerHigh,
     borderRadius: radius.full,
     padding: 4,
     marginBottom: 20,
+    padding: 6,
+    marginBottom: 24,
   },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radius.full, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primaryContainer },
+  tab: { 
+    flex: 1, 
+    paddingVertical: 12, 
+    borderRadius: radius.full, 
+    alignItems: 'center',
+  },
+  tabActive: { 
+    backgroundColor: colors.surfaceContainerLowest,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   label: {
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 14,
     color: colors.onSecondaryContainer,
+    color: colors.onSurfaceVariant,
     fontWeight: '600',
   },
   labelActive: { color: colors.onPrimary },
+  labelActive: { 
+    color: colors.primaryContainer,
+    fontWeight: '700',
+  },
 });

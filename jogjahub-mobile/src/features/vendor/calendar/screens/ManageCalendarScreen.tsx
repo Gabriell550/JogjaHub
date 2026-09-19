@@ -20,6 +20,8 @@ import { vendorApi } from '../../../../api/vendorApi';
 import { timeSlotApi } from '../../../../api/timeSlotApi';
 
 // ============ TYPES ============\ntype ServiceItem = { id: number; name: string };
+// ============ TYPES ============
+type ServiceItem = { id: number; name: string };
 type SlotItem = {
   id: number; slot_date: string; start_time: string; end_time: string; quota: number; booked_count: number;
 };

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import type { DocumentPickerAsset } from 'expo-document-picker';
-import { colors, typography, spacing } from '../../../constants/theme';
+import { colors, typography, spacing, radius } from '../../../constants/theme';
 import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import { FileUploadField } from '../../../components/FileUploadField/FileUploadField';
@@ -12,10 +12,10 @@ import CategoryMultiSelect from '../components/CategoryMultiSelect';
 import { useRegister } from '../hooks/useRegister';
 import type { AuthStackParamList } from '../../../navigation/types';
 import Toast from 'react-native-toast-message';
+import { User, Mail, Lock, Phone, ArrowLeft, MapPin, Building2, Store } from 'lucide-react-native';
 
 type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
-// (nama, kategori, alamat) dan upload 2 dokumen verifikasi (KTP + Surat Badan Usaha) di awal,
 export default function RegisterVendorScreen() {
   const navigation = useNavigation<RegisterVendorNav>();
   const { registerVendor, loading, error } = useRegister();
@@ -27,10 +27,10 @@ export default function RegisterVendorScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // Simpan objek file lengkap (uri, name, type), bukan cuma nama-nya — uri ini yang nanti
-  // dipakai buildFileFormData() (services/fileUploadService.ts) saat upload beneran ke backend.
-  const [idCardFile, setIdCardFile] = useState<DocumentPickerAsset | null>(null);
-  const [businessLicenseFile, setBusinessLicenseFile] = useState<DocumentPickerAsset | null>(null);
+
+  const [ktpFile, setKtpFile] = useState<DocumentPickerAsset | null>(null);
+  const [nibFile, setNibFile] = useState<DocumentPickerAsset | null>(null);
+  const [portfolioFile, setPortfolioFile] = useState<DocumentPickerAsset | null>(null);
 
   const pickDocument = async (
     setFile: (file: DocumentPickerAsset | null) => void,
@@ -49,9 +49,6 @@ export default function RegisterVendorScreen() {
       Alert.alert('Gagal memilih file', `Terjadi kesalahan saat memilih ${label}. Coba lagi.`);
     }
   };
-
-  const handlePickIdCard = () => pickDocument(setIdCardFile, 'KTP');
-  const handlePickBusinessLicense = () => pickDocument(setBusinessLicenseFile, 'Surat Badan Usaha');
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
@@ -74,7 +71,6 @@ export default function RegisterVendorScreen() {
       });
       return;
     }
-    //upload KTP & Surat Badan Usaha SENGAJA tidak lagi wajib di sini — backend belum buat
   
     const result = await registerVendor({
       businessName,
@@ -84,95 +80,210 @@ export default function RegisterVendorScreen() {
       email,
       password,
       passwordConfirmation: confirmPassword,
-      ...(idCardFile && {
-        idCardFile: {
-          uri: idCardFile.uri,
-          name: idCardFile.name ?? undefined,
-          type: idCardFile.mimeType ?? 'application/octet-stream',
+      ...(ktpFile && {
+        ktpFile: {
+          uri: ktpFile.uri,
+          name: ktpFile.name ?? undefined,
+          type: ktpFile.mimeType ?? 'application/octet-stream',
         },
       }),
-      ...(businessLicenseFile && {
-        businessLicenseFile: {
-          uri: businessLicenseFile.uri,
-          name: businessLicenseFile.name ?? undefined,
-          type: businessLicenseFile.mimeType ?? 'application/octet-stream',
+      ...(nibFile && {
+        nibFile: {
+          uri: nibFile.uri,
+          name: nibFile.name ?? undefined,
+          type: nibFile.mimeType ?? 'application/octet-stream',
+        },
+      }),
+      ...(portfolioFile && {
+        portfolioFile: {
+          uri: portfolioFile.uri,
+          name: portfolioFile.name ?? undefined,
+          type: portfolioFile.mimeType ?? 'application/octet-stream',
         },
       }),
     });
 
     if (result.success) {
-      // reset (bukan navigate) supaya form registrasi hilang dari history — back dari
-      // PendingApproval tidak bisa balik ke form ini lagi.
       navigation.reset({
         index: 0,
         routes: [{ name: 'PendingApproval', params: { businessName } }],
       });
     }
-    // Kalau gagal, pesan errornya sudah otomatis tampil lewat `error` dari useRegister.
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => navigation.goBack()} style={styles.backRow}>
-        <Text style={styles.backText}>{'← Kembali ke Login'}</Text>
-      </Pressable>
+    <KeyboardAvoidingView 
+      style={styles.screen} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+            <ArrowLeft size={24} color={colors.onSurface} />
+          </Pressable>
+          <Text style={styles.title}>Daftar Tenant</Text>
+          <Text style={styles.subtitle}>Mari berkembang bersama JogjaHub dan jangkau lebih banyak pelanggan</Text>
+        </View>
 
-      <Text style={styles.title}>Daftar sebagai Vendor</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1. Informasi Bisnis</Text>
+          <Input 
+            label="Nama Bisnis / Toko" 
+            placeholder="Masukkan nama bisnis Anda" 
+            value={businessName} 
+            onChangeText={setBusinessName}
+            leftIcon={<Store size={20} color={colors.outline} />}
+          />
+          
+          <Text style={styles.inputLabel}>Kategori Layanan</Text>
+          <CategoryMultiSelect selected={categories} onChange={setCategories} />
+          <View style={{ height: 16 }} />
 
-      <Input placeholder="Nama Bisnis" value={businessName} onChangeText={setBusinessName} style={styles.inputSpacing} />
+          <Input
+            label="Alamat Lengkap"
+            placeholder="Contoh: Jl. Kaliurang KM 5..."
+            value={address}
+            onChangeText={setAddress}
+            multiline
+            numberOfLines={3}
+            leftIcon={<MapPin size={20} color={colors.outline} style={{ marginTop: 12 }} />}
+            style={styles.textArea}
+          />
+        </View>
 
-      <Text style={styles.sectionLabel}>Kategori Layanan (bisa pilih lebih dari satu)</Text>
-      <CategoryMultiSelect selected={categories} onChange={setCategories} />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>2. Informasi Akun</Text>
+          <Input 
+            label="Email" 
+            placeholder="Masukkan email aktif" 
+            keyboardType="email-address" 
+            autoCapitalize="none" 
+            value={email} 
+            onChangeText={setEmail}
+            leftIcon={<Mail size={20} color={colors.outline} />}
+          />
+          <Input 
+            label="Nomor Telepon / WhatsApp" 
+            placeholder="Masukkan nomor HP" 
+            keyboardType="phone-pad" 
+            value={phone} 
+            onChangeText={setPhone}
+            leftIcon={<Phone size={20} color={colors.outline} />}
+          />
+          <Input 
+            label="Password" 
+            placeholder="Buat password" 
+            isPassword 
+            value={password} 
+            onChangeText={setPassword}
+            leftIcon={<Lock size={20} color={colors.outline} />}
+          />
+          <Input 
+            label="Konfirmasi Password" 
+            placeholder="Ulangi password" 
+            isPassword 
+            value={confirmPassword} 
+            onChangeText={setConfirmPassword}
+            leftIcon={<Lock size={20} color={colors.outline} />}
+          />
+        </View>
 
-      <Input
-        placeholder="Alamat Lengkap"
-        value={address}
-        onChangeText={setAddress}
-        multiline
-        numberOfLines={3}
-        style={[styles.inputSpacing, styles.textArea, { marginTop: spacing.stackMd }]}
-      />
-      <Input placeholder="Nomor Telepon" keyboardType="phone-pad" value={phone} onChangeText={setPhone} style={styles.inputSpacing} />
-      <Input placeholder="Email" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} style={styles.inputSpacing} />
-      <Input placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} style={styles.inputSpacing} />
-      <Input placeholder="Konfirmasi Password" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} style={styles.inputSpacing} />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>3. Dokumen Verifikasi</Text>
+          <Text style={styles.helperText}>Bisa dilengkapi nanti melalui menu Profil setelah akun aktif.</Text>
+          
+          <View style={{ marginTop: 16 }}>
+            <FileUploadField 
+              label="KTP Pemilik" 
+              fileName={ktpFile?.name} 
+              onPress={() => pickDocument(setKtpFile, 'KTP')} 
+              onRemove={() => setKtpFile(null)}
+            />
+            <FileUploadField 
+              label="NIB (Nomor Induk Berusaha)" 
+              fileName={nibFile?.name} 
+              onPress={() => pickDocument(setNibFile, 'NIB')} 
+              onRemove={() => setNibFile(null)}
+            />
+            <FileUploadField 
+              label="Portofolio Layanan" 
+              fileName={portfolioFile?.name} 
+              onPress={() => pickDocument(setPortfolioFile, 'Portofolio')} 
+              onRemove={() => setPortfolioFile(null)}
+            />
+          </View>
+        </View>
 
-      <Text style={styles.sectionLabel}>Dokumen Verifikasi (Opsional)</Text>
-      <Text style={styles.helperText}>Belum wajib diisi sekarang — bisa dilengkapi lagi nanti.</Text>
-      <FileUploadField label="Upload KTP" fileName={idCardFile?.name} onPress={handlePickIdCard} />
-      <View style={{ height: spacing.stackSm }} />
-      <FileUploadField label="Upload Surat Badan Usaha" fileName={businessLicenseFile?.name} onPress={handlePickBusinessLicense} />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <View style={{ height: spacing.stackLg }} />
-      <Button label={loading ? 'Memproses...' : 'Sign Up'} onPress={handleRegister} disabled={loading} />
-    </ScrollView>
+        <View style={styles.footerSpacing}>
+          <Button label="Daftar Sekarang" onPress={handleRegister} loading={loading} />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   content: { padding: spacing.containerMargin, paddingTop: 60, paddingBottom: spacing.sectionGap },
-  backRow: { marginBottom: spacing.stackLg },
-  backText: { color: colors.onSurfaceVariant, fontFamily: typography.bodyMd.fontFamily, fontSize: typography.bodyMd.fontSize },
+  header: { marginBottom: spacing.stackXl },
+  backBtn: { marginBottom: spacing.stackLg },
   title: {
     fontFamily: typography.headlineLg.fontFamily,
     fontSize: typography.headlineLg.fontSize,
-    fontWeight: typography.headlineLg.fontWeight,
+    fontWeight: '800',
+    color: colors.onSurface,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: typography.bodyMd.fontSize,
+    color: colors.onSurfaceVariant,
+    lineHeight: 22,
+  },
+  section: {
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: radius.xl,
+    padding: spacing.stackLg,
+    marginBottom: spacing.stackLg,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  sectionTitle: {
+    fontFamily: typography.headlineSm.fontFamily,
+    fontSize: typography.headlineSm.fontSize,
+    fontWeight: '700',
     color: colors.onSurface,
     marginBottom: spacing.stackLg,
   },
-  sectionLabel: {
+  inputLabel: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.onSurfaceVariant,
-    marginBottom: spacing.stackSm,
-    marginTop: spacing.stackSm,
+    fontSize: typography.labelMd.fontSize,
+    color: colors.onSurface,
+    marginBottom: 6,
   },
-  inputSpacing: { marginBottom: spacing.stackSm },
-  textArea: { minHeight: 70, textAlignVertical: 'top' },
-  errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginTop: spacing.stackSm },
-  helperText: { color: colors.onSurfaceVariant, fontFamily: typography.labelMd.fontFamily, fontSize: 12, marginTop: -4, marginBottom: spacing.stackSm },
+  textArea: { 
+    minHeight: 80, 
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  helperText: { 
+    color: colors.onSurfaceVariant, 
+    fontFamily: typography.bodySm.fontFamily, 
+    fontSize: typography.bodySm.fontSize, 
+    lineHeight: 20 
+  },
+  errorText: { 
+    color: colors.error, 
+    fontFamily: typography.bodyMd.fontFamily, 
+    fontSize: 13, 
+    marginTop: spacing.stackSm,
+    marginBottom: spacing.stackLg,
+    textAlign: 'center'
+  },
+  footerSpacing: { marginBottom: spacing.stackXl },
 });
