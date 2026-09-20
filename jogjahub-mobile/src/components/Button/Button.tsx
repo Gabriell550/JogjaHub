@@ -1,30 +1,25 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, StyleProp } from 'react-native';
+import { Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors, radius, typography } from '../../constants/theme';
 
-type Props = { label: string; onPress: () => void; disabled?: boolean };
-type Props = { 
-  label: string; 
-  onPress: () => void; 
+type Props = {
+  label: string;
+  onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  style?: StyleProp<ViewStyle>;
+  style?: any;
 };
 
-export function Button({ label, onPress, disabled }: Props) {
 export function Button({ label, onPress, disabled, loading, style }: Props) {
   return (
-    <Pressable style={[styles.base, disabled && styles.disabled]} onPress={onPress} disabled={disabled}>
-      <Text style={styles.label}>{label}</Text>
-    <Pressable 
+    <Pressable
       style={({ pressed }) => [
-        styles.base, 
+        styles.base,
         (disabled || loading) && styles.disabled,
         pressed && !disabled && !loading && styles.pressed,
-        style
-      ]} 
-      onPress={onPress} 
+        style,
+      ]}
+      onPress={onPress}
       disabled={disabled || loading}
     >
       {loading ? (
@@ -39,7 +34,6 @@ export function Button({ label, onPress, disabled, loading, style }: Props) {
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.primaryContainer, // Bright Orange, sesuai DESIGN.md
-    paddingVertical: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: radius.DEFAULT, // 8px, sesuai "Standard Components" di DESIGN.md
@@ -47,13 +41,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 48,
   },
-  disabled: { opacity: 0.5 },
-  pressed: {
-    opacity: 0.8,
-  },
-  disabled: { 
+  disabled: {
     opacity: 0.5,
     backgroundColor: colors.outlineVariant,
+  },
+  pressed: {
+    opacity: 0.8,
   },
   label: {
     color: colors.onPrimary,

@@ -190,7 +190,7 @@ export default function RegisterVendorScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>3. Dokumen Verifikasi</Text>
-          <Text style={styles.helperText}>Bisa dilengkapi nanti melalui menu Profil setelah akun aktif.</Text>
+          <Text style={styles.helperText}>wajib dilengkapi untuk Verifikasi admin</Text>
           
           <View style={{ marginTop: 16 }}>
             <FileUploadField 

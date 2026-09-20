@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { View, Text, StyleSheet, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,21 +36,17 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}>
-      <AuthHeader title="Hello!" subtitle="Selamat datang di JogjaHub" />
-    <KeyboardAvoidingView 
-      style={styles.screen} 
+    <KeyboardAvoidingView
+      style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}>
         <AuthHeader title="Masuk Akun" subtitle="Lanjutkan perjalanan Anda di JogjaHub" />
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Login</Text>
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Login</Text>
           <RoleSwitchTab value={role} onChange={setRole} />
 
-        <RoleSwitchTab value={role} onChange={setRole} />
           <Input
             label="Email"
             placeholder="Masukkan email Anda"
@@ -61,7 +56,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             leftIcon={<Mail size={20} color={colors.outline} />}
           />
-          
+
           <Input
             label="Password"
             placeholder="Masukkan password Anda"
@@ -71,31 +66,12 @@ export default function LoginScreen() {
             leftIcon={<Lock size={20} color={colors.outline} />}
           />
 
-        <Input
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.inputSpacing}
-        />
-        <Input
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          style={styles.inputSpacing}
-        />
           <Pressable style={styles.forgotWrap} hitSlop={12}>
             <Text style={styles.forgotText}>Lupa Password?</Text>
           </Pressable>
 
-        <Pressable style={styles.forgotWrap}>
-          <Text style={styles.forgotText}>Lupa Password?</Text>
-        </Pressable>
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Button
             label={`Masuk sebagai ${role === 'customer' ? 'Customer' : 'Tenant'}`}
             onPress={handleLogin}
@@ -103,26 +79,13 @@ export default function LoginScreen() {
             style={styles.loginBtn}
           />
 
-        <Button
-          label={loading ? 'Memproses...' : `Login sebagai ${role === 'customer' ? 'Customer' : 'Vendor'}`}
-          onPress={handleLogin}
-          disabled={loading}
-        />
-
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Belum punya akun? </Text>
-          <Pressable onPress={goToRegister}>
-            <Text style={styles.footerLink}>Daftar</Text>
-          </Pressable>
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Belum punya akun? </Text>
-            <Pressable onPress={goToRegister} hitSlop={12}>
-              <Text style={styles.footerLink}>Daftar Sekarang</Text>
+            <Pressable onPress={goToRegister}>
+              <Text style={styles.footerLink}>Daftar</Text>
             </Pressable>
           </View>
         </View>
-      </View>
-    </ScrollView>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -137,7 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.xl,
     padding: spacing.stackLg,
-    elevation: 3,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -150,17 +112,23 @@ const styles = StyleSheet.create({
     fontWeight: typography.headlineLg.fontWeight,
     color: colors.onSurface,
     marginBottom: spacing.stackMd,
+  },
   loginBtn: {
     marginTop: spacing.stackMd,
   },
-  inputSpacing: { marginBottom: spacing.stackSm },
-  errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginBottom: spacing.stackSm },
-  forgotWrap: { alignSelf: 'flex-end', marginBottom: spacing.stackMd },
-  forgotText: { color: colors.primary, fontFamily: typography.labelMd.fontFamily, fontSize: 13 },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.stackLg },
-  errorText: { color: colors.error, fontFamily: typography.bodyMd.fontFamily, fontSize: 13, marginBottom: spacing.stackMd },
+  errorText: {
+    color: colors.error,
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 13,
+    marginBottom: spacing.stackMd,
+  },
   forgotWrap: { alignSelf: 'flex-end', marginBottom: spacing.stackLg },
-  forgotText: { color: colors.primary, fontFamily: typography.labelMd.fontFamily, fontSize: 13, fontWeight: '600' },
+  forgotText: {
+    color: colors.primary,
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.stackXl },
   footerText: {
     color: colors.onSurfaceVariant,
@@ -168,7 +136,6 @@ const styles = StyleSheet.create({
     fontSize: typography.bodyMd.fontSize,
   },
   footerLink: {
-    color: colors.primary,
     color: colors.primaryContainer,
     fontFamily: typography.bodyMd.fontFamily,
     fontSize: typography.bodyMd.fontSize,

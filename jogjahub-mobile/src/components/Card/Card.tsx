@@ -1,12 +1,9 @@
 import React, { PropsWithChildren } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { colors, radius } from '../../constants/theme';
 
-export function Card({ children }: PropsWithChildren) {
-  return <View style={styles.card}>{children}</View>;
 type Props = PropsWithChildren & {
-  style?: StyleProp<ViewStyle>;
+  style?: any;
 };
 
 export function Card({ children, style }: Props) {
@@ -21,4 +18,3 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 });
-

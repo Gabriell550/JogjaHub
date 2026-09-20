@@ -1,5 +1,3 @@
-import React from 'react';
-import { TextInput, StyleSheet, TextInputProps, View, Text } from 'react-native';
 import React, { useState } from 'react';
 import { TextInput, StyleSheet, TextInputProps, View, Text, Pressable } from 'react-native';
 import { colors, radius, typography } from '../../constants/theme';
@@ -12,30 +10,21 @@ type InputProps = TextInputProps & {
   isPassword?: boolean;
 };
 
-export function Input({ style, error, ...rest }: InputProps) {
 export function Input({ style, error, label, leftIcon, isPassword, ...rest }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <>
-      <TextInput
-        style={[
-          styles.input,
-          error && { borderColor: colors.error, backgroundColor: '#FEF2F2' },
-          style,
-        ]}
-        placeholderTextColor={colors.outline}
-        {...rest}
-      />
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+
       <View style={[
         styles.inputContainer,
         isFocused && styles.inputFocused,
         error && styles.inputError,
       ]}>
-        {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
+        {leftIcon ? <View style={styles.iconContainer}>{leftIcon}</View> : null}
+
         <TextInput
           style={[styles.input, style]}
           placeholderTextColor={colors.outline}
@@ -44,9 +33,10 @@ export function Input({ style, error, label, leftIcon, isPassword, ...rest }: In
           secureTextEntry={isPassword && !showPassword}
           {...rest}
         />
-        {isPassword && (
-          <Pressable 
-            style={styles.eyeIcon} 
+
+        {isPassword ? (
+          <Pressable
+            style={styles.eyeIcon}
             onPress={() => setShowPassword(!showPassword)}
             hitSlop={12}
           >
@@ -56,18 +46,15 @@ export function Input({ style, error, label, leftIcon, isPassword, ...rest }: In
               <Eye color={colors.outline} size={20} />
             )}
           </Pressable>
-        )}
+        ) : null}
       </View>
-      {error && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
-    </>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  input: {
   container: {
     marginBottom: 16,
   },
@@ -98,7 +85,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    padding: 10,
     paddingHorizontal: 12,
     color: colors.onSurface,
     fontFamily: typography.bodyMd.fontFamily,
@@ -108,11 +94,9 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   errorText: {
-    fontSize: 11,
-    marginTop: 2,
-    color: colors.error,
     fontSize: 12,
     marginTop: 4,
+    color: colors.error,
     fontFamily: typography.labelMd.fontFamily,
   },
 });
