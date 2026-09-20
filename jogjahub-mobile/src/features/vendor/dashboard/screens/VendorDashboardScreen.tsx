@@ -237,7 +237,7 @@ export default function VendorDashboardScreen() {
         )}
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Pesanan Terbaru</Text>
+          <Text style={styles.sectionTitle}>Pesanan masuk</Text>
           <Text style={styles.seeAll} onPress={() => navigation.navigate('Orders')}>
             Lihat Semua
           </Text>

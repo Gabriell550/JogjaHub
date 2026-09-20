@@ -2,8 +2,12 @@ import React, { PropsWithChildren } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { colors, radius } from '../../constants/theme';
 
-export function Card({ children }: PropsWithChildren) {
-  return <View style={styles.card}>{children}</View>;
+type Props = PropsWithChildren & {
+  style?: any;
+};
+
+export function Card({ children, style }: Props) {
+  return <View style={[styles.card, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

@@ -21,6 +21,12 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 28,
   },
+  headlineSm: {
+    fontFamily: 'Lexend-SemiBold',
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 24,
+  },
   titleMd: {
     fontFamily: 'Lexend-SemiBold',
     fontSize: 18,
@@ -39,12 +45,30 @@ export const typography = {
     fontWeight: '400' as const,
     lineHeight: 20,
   },
+  bodySm: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    fontWeight: '400' as const,
+    lineHeight: 16,
+  },
+  labelLg: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    fontWeight: '500' as const,
+    lineHeight: 20,
+  },
   labelMd: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
     fontWeight: '500' as const,
     lineHeight: 16,
     letterSpacing: 0.05 * 12,
+  },
+  labelSm: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    fontWeight: '500' as const,
+    lineHeight: 16,
   },
   button: {
     fontFamily: 'Lexend-SemiBold',
