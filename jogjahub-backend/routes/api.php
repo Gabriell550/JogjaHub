@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/services', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'index']);
     Route::get('/services/{service}', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'show']);
     Route::get('/services/{service}/slots', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'slots']);
+    Route::get('services/{service}/reviews', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'reviews']);
     Route::get('tenants/{tenant}', [\App\Http\Controllers\Api\Customer\TenantController::class, 'show']);
 
     // ===== Authenticated, semua role (logout dipisah, bukan punya 1 role spesifik) =====

@@ -102,7 +102,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Registrasi vendor berhasil. Menunggu approval admin.',
+            'message' => 'Registrasi tenant berhasil. Menunggu approval admin.',
             'data'    => [
                 'user'           => new UserResource($user),
                 'tenant_profile' => new TenantProfileResource($tenantProfile->load('categories')),
