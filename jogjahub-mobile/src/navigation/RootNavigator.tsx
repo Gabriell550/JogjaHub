@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   NavigationContainer,
 } from '@react-navigation/native';
 import {
   createNativeStackNavigator,
 } from '@react-navigation/native-stack';
-import { useSelector } from 'react-redux';
-import { View } from 'react-native';
-import { RootState } from '../store';
+import { useDispatch, useSelector } from 'react-redux';
+import { ActivityIndicator, View } from 'react-native';
+import { RootState, AppDispatch } from '../store';
+import { bootstrapAuth } from '../features/auth/store/bootstrapAuth';
 import { AuthStack } from './AuthStack';
 import { CustomerStackNavigator } from './CustomerStackNavigator';
 import { VendorTabNavigator } from './VendorTabNavigator';
@@ -55,6 +56,12 @@ function ToastOverlay() {
 }
 
 export function RootNavigator() {
+  const dispatch = useDispatch<AppDispatch>();
+
+  const isHydrated = useSelector(
+    (state: RootState) => state.auth?.isHydrated ?? false,
+  );
+
   const user = useSelector(
     (state: RootState) => state.auth?.user
   );
@@ -66,6 +73,30 @@ export function RootNavigator() {
   const businessName = useSelector(
     (state: RootState) => state.auth?.businessName
   );
+
+  // Bootstrap satu kali saat app dibuka: cek token + sesi tersimpan di
+  // AsyncStorage, kalau ada → restore, kalau tidak → siapkan AuthStack.
+  useEffect(() => {
+    dispatch(bootstrapAuth());
+  }, [dispatch]);
+
+  // Selama sesi belum selesai di-hydrate, tampilkan splash sederhana SEBELUM
+  // merender NavigationContainer — supaya tidak flash ke layar Login lalu
+  // pindah lagi ke tab yang benar.
+  if (!isHydrated) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.surface,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const normalizedRole =
     user?.role === 'tenant'
