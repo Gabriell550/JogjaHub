@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Http\Resources\ServiceResource;
+use App\Http\Resources\TimeSlotResource;
+use App\Http\Resources\ReviewResource;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -33,7 +35,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $slots
+            'data' => new TimeSlotResource($slots),
         ]);
     }
 
@@ -57,6 +59,20 @@ class ServiceController extends Controller
         return response()->json([
             'success' => true,
             'data' => new ServiceResource($service),
+        ]);
+    }
+
+    public function reviews(Service $service)
+    {
+        $reviews = $service->bookings()
+            ->whereHas('review')
+            ->with('review.customer:id,name')
+            ->get()
+            ->pluck('review');
+
+        return response()->json([
+            'success' => true,
+            'data' => ReviewResource::collection($reviews),
         ]);
     }
 }

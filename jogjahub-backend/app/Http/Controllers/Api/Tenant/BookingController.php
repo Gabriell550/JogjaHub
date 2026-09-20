@@ -7,6 +7,7 @@ use App\Services\BookingService;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Http\Resources\BookingResource;
+use App\Http\Requests\Tenant\UpdateBookingStatusRequest;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -27,7 +28,7 @@ class BookingController extends Controller
         return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
     }
 
-    public function updateStatus(Request $request, Booking $booking)
+    public function updateStatus(UpdateBookingStatusRequest $request, Booking $booking)
     {
 
         $tenantId = $request->user()->tenantProfile->id;
@@ -36,10 +37,6 @@ class BookingController extends Controller
         if ($booking->service->tenant_id !== $tenantId) {
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
-
-        $request->validate([
-            'status' => 'required|in:confirmed,cancelled',
-        ]);
 
         if ($booking->status !== BookingStatus::PENDING->value) {
             return response()->json([
