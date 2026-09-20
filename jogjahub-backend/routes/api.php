@@ -47,6 +47,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('services', \App\Http\Controllers\Api\Tenant\ServiceController::class);
         Route::apiResource('time-slots', \App\Http\Controllers\Api\Tenant\TimeSlotController::class);
         Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
+        Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
         Route::get('services/{service}/time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'index']);
         Route::get('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'show']);
         Route::post('time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'store']);
