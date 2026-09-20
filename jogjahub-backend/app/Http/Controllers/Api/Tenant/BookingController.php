@@ -28,6 +28,19 @@ class BookingController extends Controller
         return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
     }
 
+    public function show(Request $request, Booking $booking)
+    {
+        $tenantId = $request->user()->tenantProfile->id;
+
+        if ($booking->service->tenant_id !== $tenantId) {
+            return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
+        }
+
+        $booking->load(['customer:id,name,email,phone', 'service:id,name', 'slot', 'review']);
+
+        return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
+    }
+
     public function updateStatus(UpdateBookingStatusRequest $request, Booking $booking)
     {
 
