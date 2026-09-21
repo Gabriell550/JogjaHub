@@ -15,7 +15,12 @@ class ServiceController extends Controller
     {
         $services = Service::where('tenant_id', $request->user()->tenantProfile->id)
             ->with('subcategory')
-            ->paginate(15);
+            // orderBy created_at desc → layanan terbaru selalu tampil paling atas & urutan deterministik
+            // (tanpa ORDER BY eksplisit, MySQL tidak menjamin urutan hasil query).
+            // paginate(100) → scope MVP: mobile app tidak pernah minta halaman berikutnya, jadi semua
+            // layanan tenant harus muat di halaman pertama supaya tidak "hilang" tak ter-fetch.
+            ->orderBy('created_at', 'desc')
+            ->paginate(100);
 
         return response()->json([
             'success' => true,

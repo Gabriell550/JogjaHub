@@ -5,6 +5,7 @@ import { ImageOff, ChevronRight } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { getPrimaryPhotoUrl, type ServiceWithPhotos } from '../../../../utils/serviceImage';
+import Toast from 'react-native-toast-message';
 
 type ServiceItem = ServiceWithPhotos & { id: number; name: string; price: number };
 
@@ -31,6 +32,11 @@ export function MyServicesSection({ onSeeAll, onAddService, onPressService }: Pr
       setServices(res.data?.data?.data ?? []);
     } catch (err) {
       console.log('Gagal ambil layanan untuk dashboard:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Gagal memuat layanan',
+        position: 'top',
+      });
     } finally {
       setLoading(false);
     }

@@ -63,6 +63,12 @@ export default function ListingScreen() {
       setServices(res.data?.data?.data ?? []);
     } catch (err) {
       console.log('Gagal ambil layanan:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Gagal memuat layanan',
+        text2: 'Coba refresh lagi.',
+        position: 'top',
+      });
     } finally {
       isRefresh ? setRefreshing(false) : setLoading(false);
     }
