@@ -161,6 +161,8 @@ flowchart LR
 
 | Tanggal | Modul | Deskripsi Perubahan / Bug Fix | Status | Issue Ref |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-21 | Listing (Mobile) | Fix "Listing Layanan Tidak Muncul di ListingScreen, Dashboard, Profile, dan Kalender" (issue #24): Perbaikan root cause gagalnya parsing data `services`. Frontend salah menangkap response dari endpoint `/tenant/services`. Diubah polanya agar mendukung array mentah (`res.data.data` yang tidak memiliki property `.data`) maupun paginator (mendukung fallback). Diperbaiki di 4 file (`ListingScreen.tsx`, `MyServicesSection.tsx`, `VendorProfileScreen.tsx`, `ManageCalendarScreen.tsx`). `npm run typecheck` → 0 error. | Selesai | #24 |
+| 2026-09-21 | Listing (Backend & Mobile) | Fix "listing baru tidak muncul di ListingScreen & Dashboard" (issue #22): `ServiceController@index()` tambah `->orderBy('created_at', 'desc')` (urutan deterministik, layanan terbaru selalu paling atas) dan ubah `->paginate(15)` → `->paginate(100)` (mobile app tidak pernah minta halaman berikutnya, jadi layanan ke-16+ sebelumnya tersembunyi di halaman 2 yang tak pernah di-fetch); `ListingScreen.tsx` & `MyServicesSection.tsx` tambah `Toast.show` error di blok `catch` `loadServices()` supaya kegagalan reload tidak diam-diam (user lihat list lama tanpa keterangan). Response shape tidak berubah (tidak ada breaking change). `npm run typecheck` → 0 error. | Selesai | #22 |
 | 2026-09-21 | Auth (Mobile) | Persistensi sesi login dengan AsyncStorage (issue #21): `tokenStore.ts` simpan/hapus token ke `@jogjahub/token` (fire-and-forget) + tambah `loadPersistedToken()`; `authSlice.ts` tambah state `isHydrated` & reducer `restoreSession`; file baru `authListener.ts` (middleware listener → tulis/hapus `@jogjahub/session` saat `setSession`/`setTenantProfile`/`logout`); file baru `bootstrapAuth.ts` (thunk restore sesi saat app start, cleanup data korup); `RootNavigator.tsx` guard splash loading selama `isHydrated=false` + panggil `bootstrapAuth()`; `store/index.ts` pasang listener middleware. `useLogout.ts` tidak diubah (listener middleware sudah handle clear session saat logout). `npm run typecheck` → 0 error. | Selesai | #21 |
 | 2026-09-20 | Auth (Mobile) | Fix bug kompilasi folder auth: commit "design page auth v1" (0fef9775) diduplica kode lama+nova di RoleSwitchTab (Pressable tanpa closing tag), AuthHeader (style key duplicat), LoginScreen & RegisterCustomerScreen (blok UI double, nesting JSX broken, brace hilang), dan shared components Button/Input/Card/FileUploadField yang dipakai screens auth. Di-rewrite bersih, pakai design nova. Frontend only (backend 0 ubah). `npm run typecheck` → 0 error. | Selesai | - |
 | 2026-09-19 | Core Docs | Pembuatan `agent.md` sebagai basis konteks PRD, arsitektur, dan SOP 4 tahap pengerjaan. | Selesai | - |
@@ -169,16 +171,14 @@ flowchart LR
 
 ## 6. Antrean Tugas & Prioritas Selanjutnya (Backlog Prioritas)
 
-1. **[Auth & State] Persistensi Sesi Login**:
-   - Sambungkan `tokenStore.ts` dan `authSlice.ts` ke `@react-native-async-storage/async-storage` agar token dan user info tidak hilang saat reload aplikasi.
-2. **[Customer] Routing & CatalogScreen**:
+1. **[Customer] Routing & CatalogScreen**:
    - Daftarkan layar `Catalog` dan `VendorDetail` di `CustomerStackNavigator.tsx`.
    - Bangun UI `CatalogScreen.tsx` untuk menampilkan daftar vendor dan layanan berdasarkan kategori/sub-kategori wisuda dengan filter.
-3. **[Customer] VendorDetailScreen**:
+2. **[Customer] VendorDetailScreen**:
    - Tampilkan informasi profil vendor, paket layanan wisuda, alamat/lokasi, dan tombol direct ke WhatsApp eksternal (sesuai aturan PRD: tanpa in-app chat).
-4. **[Customer] MyBookingsScreen & BookingDetailScreen**:
+3. **[Customer] MyBookingsScreen & BookingDetailScreen**:
    - Hubungkan ke `bookingApi.listMyBookings()` dan `bookingApi.cancelBooking()`.
-5. **[Copywriting & Cleanup] Penyelarasan Istilah**:
+4. **[Copywriting & Cleanup] Penyelarasan Istilah**:
    - Ubah terminologi di `HomeScreen.tsx` ("Renter Dashboard" & "Wisatamu") menjadi konteks resmi JogjaHub Wisuda.
    - Bersihkan peringatan `baseUrl` di `tsconfig.json`.
 
