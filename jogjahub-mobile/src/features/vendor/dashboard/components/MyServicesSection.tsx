@@ -29,7 +29,13 @@ export function MyServicesSection({ onSeeAll, onAddService, onPressService }: Pr
   const loadServices = useCallback(async () => {
     try {
       const res = await vendorApi.listMyServices();
-      setServices(res.data?.data?.data ?? []);
+      const rawData = res.data?.data;
+      const items = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+      setServices(items);
     } catch (err) {
       console.log('Gagal ambil layanan untuk dashboard:', err);
       Toast.show({

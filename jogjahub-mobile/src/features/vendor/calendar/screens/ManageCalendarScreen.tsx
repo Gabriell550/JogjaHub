@@ -145,7 +145,12 @@ export default function ManageCalendarScreen() {
     (async () => {
       try {
         const res = await vendorApi.listMyServices();
-        const list = res.data?.data?.data ?? [];
+        const rawData = res.data?.data;
+        const list = Array.isArray(rawData)
+          ? rawData
+          : Array.isArray(rawData?.data)
+          ? rawData.data
+          : [];
         setServices(list);
         if (list.length > 0 && !selectedServiceId) {
           setSelectedServiceId(list[0].id);

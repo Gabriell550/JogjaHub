@@ -60,7 +60,13 @@ export default function ListingScreen() {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
       const res = await vendorApi.listMyServices();
-      setServices(res.data?.data?.data ?? []);
+      const rawData = res.data?.data;
+      const items = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+      setServices(items);
     } catch (err) {
       console.log('Gagal ambil layanan:', err);
       Toast.show({
