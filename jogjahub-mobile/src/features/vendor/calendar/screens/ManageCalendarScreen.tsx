@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ChevronLeft, ChevronRight, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown, Trash2, Store } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { Card } from '../../../../components/Card/Card';
 import { Button } from '../../../../components/Button/Button';
@@ -106,6 +107,7 @@ export default function ManageCalendarScreen() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth()); // 0-11
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO());
+  const [lastTapInfo, setLastTapInfo] = useState<{ date: string; time: number } | null>(null);
 
   // --- State form edit ---
   const [storeOpen, setStoreOpen] = useState(true);
@@ -118,28 +120,33 @@ export default function ManageCalendarScreen() {
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
-  // Load layanan vendor
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await vendorApi.listMyServices();
-        const rawData = res.data?.data;
-        const list = Array.isArray(rawData)
-          ? rawData
-          : Array.isArray(rawData?.data)
-          ? rawData.data
-          : [];
-        setServices(list);
-        if (list.length > 0 && !selectedServiceId) {
-          setSelectedServiceId(list[0].id);
-        }
-      } catch (err) {
-        console.log('Gagal ambil layanan:', err);
-      } finally {
-        setLoadingServices(false);
-      }
-    })();
+  const loadServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const res = await vendorApi.listMyServices();
+      const rawData = res.data?.data;
+      const list: ServiceItem[] = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+      setServices(list);
+      setSelectedServiceId((previousId) => {
+        if (previousId && list.some((service) => service.id === previousId)) return previousId;
+        return list.length > 0 ? list[0].id : null;
+      });
+    } catch (err) {
+      console.log('Gagal ambil layanan:', err);
+    } finally {
+      setLoadingServices(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadServices();
+    }, [loadServices]),
+  );
 
   // Load slot dari API tiap service berubah
   useEffect(() => {
@@ -238,7 +245,24 @@ export default function ManageCalendarScreen() {
 
   // Handle pilih tanggal
   const handleSelectDate = (dateStr: string) => {
+    const now = Date.now();
+    const isDoubleTap = lastTapInfo?.date === dateStr && now - lastTapInfo.time < 300;
+
     setSelectedDate(dateStr);
+    setLastTapInfo(isDoubleTap ? null : { date: dateStr, time: now });
+
+    if (isDoubleTap) {
+      if (!selectedServiceId) {
+        Toast.show({
+          type: 'info',
+          text1: 'Pilih layanan dulu',
+          text2: 'Pilih salah satu layanan di atas sebelum menambah slot.',
+          position: 'top',
+        });
+        return;
+      }
+      setShowAddSlotModal(true);
+    }
   };
 
   // Handle previous/next month
@@ -364,6 +388,7 @@ export default function ManageCalendarScreen() {
           <Text style={styles.legendLabel}>Penuh</Text>
         </View>
       </View>
+      <Text style={styles.calendarHint}>Tips: ketuk 2x tanggal untuk langsung tambah slot</Text>
 
       {/* ===== SCROLL VIEW UTAMA ===== */}
       <ScrollView
@@ -826,6 +851,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 12,
     color: colors.onSurfaceVariant,
+  },
+  calendarHint: {
+    paddingHorizontal: spacing.containerMargin,
+    paddingBottom: spacing.stackSm,
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
   },
   // ---- Calendar Container ----
   calendarContainer: {
