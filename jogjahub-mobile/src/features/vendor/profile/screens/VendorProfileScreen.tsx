@@ -1,18 +1,39 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, Linking, Alert } from 'react-native';
 import {
-  ChevronLeft, MoreVertical, CheckCircle2, Pencil, Clock,
-  ChevronRight, ChevronDown, ExternalLink, MapPin, MessageSquare,
-  Star, Plus,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  RefreshControl,
+  Linking,
+  Alert,
+  Share,
+} from 'react-native';
+import {
+  CheckCircle2,
+  Pencil,
+  Clock,
+  ChevronRight,
+  ExternalLink,
+  MapPin,
+  MessageSquare,
+  Star,
+  Plus,
+  LayoutGrid,
+  ClipboardList,
+  Share2,
+  Camera,
+  LogOut,
+  ShoppingBag,
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, setTenantProfile } from '../../../../features/auth/store/authSlice';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
 import type { RootState } from '../../../../store';
-import type { TenantProfile } from '../../../../types/vendor';
 
 type ServiceItem = {
   id: number;
@@ -29,24 +50,20 @@ type CategoryItem = {
 };
 
 export default function VendorProfileScreen({ navigation }: { navigation: any }) {
-  const insets = useSafeAreaInsets();
-  const profile = useSelector((state: RootState) => state.auth.tenantProfile);
+  const profile      = useSelector((state: RootState) => state.auth.tenantProfile);
+  const businessName = useSelector((state: RootState) => state.auth?.businessName);
+  const dispatch     = useDispatch();
 
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [services, setServices]               = useState<ServiceItem[]>([]);
+  const [categories, setCategories]           = useState<CategoryItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const businessName = useSelector(
-    (state: RootState) => state.auth?.businessName
-  );
-  const dispatch = useDispatch();
+  const [refreshing, setRefreshing]           = useState(false);
 
   const fetchServices = useCallback(async () => {
     try {
-      const res = await vendorApi.listMyServices();
+      const res     = await vendorApi.listMyServices();
       const rawData = res.data?.data;
-      const items = Array.isArray(rawData)
+      const items   = Array.isArray(rawData)
         ? rawData
         : Array.isArray(rawData?.data)
         ? rawData.data
@@ -61,23 +78,19 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await categoryApi.getCategories();
+      const res  = await categoryApi.getCategories();
       const list = (res.data?.data ?? []).map((c: any) => ({ id: c.id, name: c.name }));
       setCategories(list);
     } catch (err) {
       console.log('Gagal ambil kategori:', err);
-    } finally {
-      setCategoriesLoading(false);
     }
   }, []);
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await vendorApi.getMyProfile();
+      const res  = await vendorApi.getMyProfile();
       const data = res.data?.data;
-      if (data) {
-        dispatch(setTenantProfile(data));
-      }
+      if (data) dispatch(setTenantProfile(data));
     } catch (err) {
       console.log('Gagal ambil profil:', err);
     }
@@ -95,24 +108,21 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
     setRefreshing(false);
   }, [fetchServices, fetchCategories, fetchProfile]);
 
-  const handleEditProfile = () => {
-    navigation?.navigate('EditBusinessProfile');
-  };
-
-  const handleServicePress = (service: ServiceItem) => {
-    navigation?.getParent()?.navigate('Listing');
-  };
-
-  const handleSeeAllServices = () => {
-    navigation?.getParent()?.navigate('Listing');
-  };
+  // ── Actions ──────────────────────────────────────────────────────────────────
+  const handleEditProfile = () => navigation?.navigate('EditBusinessProfile');
+  const handleServicePress = () => navigation?.getParent()?.navigate('Listing');
+  const handleGoToOrders   = () => navigation?.getParent()?.navigate('Orders');
+  const handleGoToListing  = () => navigation?.getParent()?.navigate('Listing');
 
   const handleWhatsApp = () => {
     if (!profile?.whatsapp_number) return;
     const number = profile.whatsapp_number.replace(/[^0-9]/g, '');
-    if (number.length >= 10) {
-      Linking.openURL(`https://wa.me/${number}`);
-    }
+    if (number.length >= 10) Linking.openURL(`https://wa.me/${number}`);
+  };
+
+  const handleOpenMaps = () => {
+    if (!profile?.latitude || !profile?.longitude) return;
+    Linking.openURL(`https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`);
   };
 
   const handleLogout = () => {
@@ -120,343 +130,370 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
       'Logout',
       'Apakah Anda yakin ingin keluar dari akun?',
       [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            dispatch(logout());
-          },
-        },
-      ],
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: () => dispatch(logout()) },
+      ]
     );
   };
 
-  const handleOpenMaps = useCallback(() => {
-    if (!profile?.latitude || !profile?.longitude) return;
-    const url = `https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`;
-    Linking.openURL(url);
-  }, [profile]);
-
-  const handleOpenGoogleMaps = useCallback(() => {
-    handleOpenMaps();
-  }, [handleOpenMaps]);
-
-  const handleUbah = () => {
-    handleEditProfile();
+  const handleShareProfile = async () => {
+    try {
+      await Share.share({
+        message: `Temukan layanan dari ${businessName ?? 'kami'} di JogjaHub! 🎉`,
+        title: businessName ?? 'JogjaHub Vendor',
+      });
+    } catch {}
   };
 
-  const handleReadMore = () => {
-    handleEditProfile();
-  };
-
-  const getStatusConfig = (): {
-    Icon: any;
-    iconColor: string;
-    title: string;
-    badgeText: string;
-    badgeColor: string;
-    description: string;
-    actionText: string;
-    bgColor: string;
-    borderColor: string;
-    iconBgColor: string;
-    textColor: string;
-    descColor: string;
-  } | null => {
+  // ── Status config ─────────────────────────────────────────────────────────────
+  const getStatusConfig = () => {
     if (!profile) return null;
     switch (profile.status) {
       case 'approved':
         return {
-          Icon: CheckCircle2,
-          iconColor: colors.accentGreen,
-          title: 'Profil Disetujui',
-          badgeText: 'APPROVED',
-          badgeColor: colors.accentGreen,
+          Icon: CheckCircle2, iconColor: colors.accentGreen,
+          title: 'Profil Disetujui', badgeText: 'APPROVED', badgeColor: colors.accentGreen,
           description: 'Profil bisnis Anda telah disetujui. Pelanggan dapat menemukan dan memesan layanan Anda.',
-          actionText: 'Lihat Detail Peninjauan',
-          bgColor: colors.accentGreenContainer,
-          borderColor: colors.accentGreenContainer,
-          iconBgColor: colors.accentGreenContainer,
-          textColor: colors.accentGreen,
-          descColor: colors.accentGreen,
+          bgColor: colors.accentGreenContainer, borderColor: colors.accentGreenContainer,
+          iconBgColor: colors.accentGreenContainer, textColor: colors.accentGreen, descColor: colors.accentGreen,
         };
       case 'rejected':
         return {
-          Icon: Clock,
-          iconColor: colors.error,
-          title: 'Profil Ditolak',
-          badgeText: 'REJECTED',
-          badgeColor: colors.error,
+          Icon: Clock, iconColor: colors.error,
+          title: 'Profil Ditolak', badgeText: 'REJECTED', badgeColor: colors.error,
           description: 'Profil bisnis Anda tidak memenuhi persyaratan. Silakan perbaiki dan ajukan kembali.',
-          actionText: 'Lihat Detail Peninjauan',
-          bgColor: colors.errorContainer,
-          borderColor: colors.errorContainer,
-          iconBgColor: colors.errorContainer,
-          textColor: colors.error,
-          descColor: colors.error,
+          bgColor: colors.errorContainer, borderColor: colors.errorContainer,
+          iconBgColor: colors.errorContainer, textColor: colors.error, descColor: colors.error,
         };
       default:
         return {
-          Icon: Clock,
-          iconColor: colors.primary,
-          title: 'Profil Sedang Ditinjau',
-          badgeText: 'PENDING',
-          badgeColor: colors.primary,
-          description: 'Admin sedang memeriksa informasi bisnis Anda. Proses verifikasi biasanya memakan waktu 1x24 jam kerja.',
-          actionText: 'Lihat Detail Peninjauan',
-          bgColor: colors.surfaceContainerLow,
-          borderColor: colors.outline,
-          iconBgColor: colors.primaryContainer,
-          textColor: colors.onSurface,
-          descColor: colors.onSurfaceVariant,
+          Icon: Clock, iconColor: colors.primary,
+          title: 'Profil Sedang Ditinjau', badgeText: 'PENDING', badgeColor: colors.primary,
+          description: 'Admin sedang memeriksa informasi bisnis Anda. Proses verifikasi biasanya 1×24 jam kerja.',
+          bgColor: colors.surfaceContainerLow, borderColor: colors.outline,
+          iconBgColor: colors.primaryContainer, textColor: colors.onSurface, descColor: colors.onSurfaceVariant,
         };
     }
   };
 
   const statusConfig = getStatusConfig();
 
-  const address = profile?.address;
-  const street = address?.street ?? '';
-  const city = address?.city ?? '';
-  const province = address?.province ?? '';
-  const postalCode = address?.postal_code ?? '';
-  const fullAddress = [street, city, province].filter(Boolean).join(', ');
-  const addressSub = postalCode ? `${city}, ${province} ${postalCode}` : `${city}, ${province}`;
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+  const addr        = profile?.address;
+  const fullAddress = [addr?.street, addr?.city, addr?.province].filter(Boolean).join(', ');
+  const addressSub  = addr?.postal_code
+    ? `${addr.city}, ${addr.province} ${addr.postal_code}`
+    : `${addr?.city ?? ''}, ${addr?.province ?? ''}`;
+  const city        = addr?.city ?? 'Yogyakarta';
 
-  const categoryIds = profile?.categories?.map((c) => c.id) ?? [];
   const categoryNames = profile?.categories?.map((c) => c.name) ?? [];
-  const selectedCategoryCount = categoryIds.length;
+  const formatRupiah  = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
 
-  const displayServices = services.slice(0, 2);
-  const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
+  const initials = (businessName ?? 'V')
+    .split(' ')
+    .slice(0, 2)
+    .map((w: string) => w[0]?.toUpperCase() ?? '')
+    .join('');
 
-  const renderServicesCarousel = () => {
-    if (servicesLoading) {
-      return (
-        <View style={[styles.serviceCard, { backgroundColor: colors.surfaceContainerLowest }]}>
-          <View style={styles.serviceImageContainer}>
-            <View style={[styles.statusChip, { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
-              <Text style={styles.statusChipText}>Loading...</Text>
+  // ─────────────────────────────────────────────────────────────────────────────
+  return (
+    <View style={styles.container}>
+
+      {/* ── Header Banner ── */}
+      <View style={styles.headerBanner}>
+        {/* Dekorasi lingkaran */}
+        <View style={styles.bannerDecorA} />
+        <View style={styles.bannerDecorB} />
+        <View style={styles.bannerDecorC} />
+
+        {/* Baris atas: label + share */}
+        <View style={styles.bannerTopRow}>
+          <View>
+            <Text style={styles.bannerLabel}>JogjaHub Vendor</Text>
+            <Text style={styles.bannerTitle}>Profil Bisnis</Text>
+          </View>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShareProfile}>
+            <Share2 size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Divider tipis */}
+        <View style={styles.bannerDivider} />
+
+        {/* Avatar + info bisnis */}
+        <View style={styles.avatarRow}>
+          {/* Avatar */}
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
             </View>
+            <TouchableOpacity style={styles.cameraBtn} onPress={handleEditProfile}>
+              <Camera size={11} color={colors.primary} />
+            </TouchableOpacity>
           </View>
-          <View style={styles.serviceContent}>
-            <View style={{ height: 12 }} />
-            <View style={{ height: 28 }} />
-            <View style={{ height: 14 }} />
-          </View>
-        </View>
-      );
-    }
 
-    if (services.length === 0) {
-      return (
-        <View style={[styles.serviceCard, { backgroundColor: colors.surfaceContainerLowest, alignItems: 'center', justifyContent: 'center' }]}>
-          <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>Belum ada layanan</Text>
-        </View>
-      );
-    }
+          {/* Info */}
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={styles.businessName} numberOfLines={1}>
+              {businessName ?? 'Nama Bisnis'}
+            </Text>
+            {categoryNames.length > 0 && (
+              <Text style={styles.businessCategory} numberOfLines={1}>
+                {categoryNames.join(' • ')}
+              </Text>
+            )}
+            <Text style={styles.businessCity}>📍 {city}</Text>
 
-    return displayServices.map((service) => {
-      const photo = service.photos?.[0];
-      const imageUri = photo?.url
-        ? `http://192.168.100.30:8000/storage/${photo.url}`
-        : 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=400';
-      const isFavorite = service.subcategory?.name === 'Wisuda';
-
-      return (
-        <TouchableOpacity
-          key={service.id}
-          style={styles.serviceCard}
-          activeOpacity={0.8}
-          onPress={() => handleServicePress(service)}
-        >
-          <View style={styles.serviceImageContainer}>
-            <Image source={{ uri: imageUri }} style={styles.serviceImage} />
-            {isFavorite ? (
-              <View style={[styles.statusChip, styles.favoriteChip]}>
-                <Star size={10} color="#FFFFFF" fill="#FFFFFF" />
-                <Text style={[styles.statusChipText, { color: '#FFFFFF' }]}>Favorit</Text>
+            {/* Badge status */}
+            {profile?.status === 'approved' && (
+              <View style={styles.verifiedBadge}>
+                <CheckCircle2 size={10} color="#fff" />
+                <Text style={styles.verifiedText}>Terverifikasi</Text>
               </View>
-            ) : (
-              <View style={styles.statusChip}>
-                <Text style={styles.statusChipText}>Tersedia</Text>
+            )}
+            {profile?.status === 'pending' && (
+              <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                <Clock size={10} color="#fff" />
+                <Text style={styles.verifiedText}>Menunggu Verifikasi</Text>
+              </View>
+            )}
+            {profile?.status === 'rejected' && (
+              <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(220,38,38,0.7)' }]}>
+                <Text style={styles.verifiedText}>Ditolak</Text>
               </View>
             )}
           </View>
-          <View style={styles.serviceContent}>
-            <Text style={styles.serviceTitle} numberOfLines={1}>{service.name}</Text>
-            <Text style={styles.serviceDesc} numberOfLines={2}>
-              {service.description || 'Tidak ada deskripsi.'}
-            </Text>
-            <Text style={styles.priceLabel}>Mulai dari</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceValue}>{formatRupiah(service.price)}</Text>
-              <ChevronRight size={16} color={colors.onSurfaceVariant} />
-            </View>
-          </View>
-        </TouchableOpacity>
-      );
-    });
-  };
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>Profil Bisnis</Text>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => {}}>
-          <MoreVertical size={20} color={colors.onSurface} />
-        </TouchableOpacity>
+          {/* Edit button */}
+          <TouchableOpacity style={styles.editBtn} onPress={handleEditProfile}>
+            <Pencil size={13} color={colors.primary} />
+            <Text style={styles.editBtnText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 24 },
-        ]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        <View style={styles.heroCard}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarBox}>
-              <Text style={styles.avatarEmoji}>💄</Text>
-            </View>
-            <View style={styles.avatarBadge}>
-              <Pencil size={10} color={colors.primary} />
-            </View>
+        {/* ── Stat cards ── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <ShoppingBag size={18} color={colors.primary} />
+            <Text style={styles.statValue}>{services.length}</Text>
+            <Text style={styles.statLabel}>Layanan</Text>
           </View>
-
-          <View style={styles.titleRow}>
-            <Text style={styles.businessName}>{businessName ?? 'Vendor'}</Text>
+          <View style={styles.statCardDivider} />
+          <View style={styles.statCard}>
+            <ClipboardList size={18} color="#2563EB" />
+            <Text style={[styles.statValue, { color: '#2563EB' }]}>--</Text>
+            <Text style={styles.statLabel}>Pesanan</Text>
           </View>
+          <View style={styles.statCardDivider} />
+          <View style={styles.statCard}>
+            <Star size={18} color="#F59E0B" />
+            <Text style={[styles.statValue, { color: '#F59E0B' }]}>--</Text>
+            <Text style={styles.statLabel}>Rating</Text>
+          </View>
+        </View>
 
-          <Text style={styles.businessCategory}>
-            {categoryNames.length > 0
-              ? `${categoryNames.join(' • ')} • ${city || 'Yogyakarta'}`
-              : `${city || 'Yogyakarta'}`}
-          </Text>
-
-          <TouchableOpacity style={styles.editProfileBtn} onPress={handleEditProfile}>
-            <Pencil size={14} color={colors.primary} />
-            <Text style={styles.editProfileText}>Edit Profil</Text>
+        {/* ── Quick actions ── */}
+        <View style={styles.quickRow}>
+          <TouchableOpacity style={styles.quickCard} onPress={handleGoToListing}>
+            <View style={[styles.quickIconBox, { backgroundColor: '#EFF6FF' }]}>
+              <LayoutGrid size={20} color="#2563EB" />
+            </View>
+            <Text style={styles.quickLabel}>Layanan Saya</Text>
+            <Text style={styles.quickSub}>Kelola listing</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickCard} onPress={handleGoToOrders}>
+            <View style={[styles.quickIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <ClipboardList size={20} color="#D97706" />
+            </View>
+            <Text style={styles.quickLabel}>Pesanan</Text>
+            <Text style={styles.quickSub}>Kelola booking</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickCard} onPress={handleShareProfile}>
+            <View style={[styles.quickIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Share2 size={20} color="#16A34A" />
+            </View>
+            <Text style={styles.quickLabel}>Bagikan</Text>
+            <Text style={styles.quickSub}>Share profil</Text>
           </TouchableOpacity>
         </View>
 
+        {/* ── Status verifikasi ── */}
         {statusConfig && (
-          <View style={[styles.pendingCard, {
+          <View style={[styles.statusCard, {
             backgroundColor: statusConfig.bgColor,
             borderColor: statusConfig.borderColor,
           }]}>
-            <View style={styles.pendingHeader}>
-              <View style={styles.pendingTitleGroup}>
-                <View style={[styles.pendingIconBox, { backgroundColor: statusConfig.iconBgColor }]}>
+            <View style={styles.statusCardHeader}>
+              <View style={styles.statusTitleGroup}>
+                <View style={[styles.statusIconBox, { backgroundColor: statusConfig.iconBgColor }]}>
                   <statusConfig.Icon size={16} color={statusConfig.iconColor} />
                 </View>
-                <Text style={[styles.pendingTitle, { color: statusConfig.textColor }]}>
+                <Text style={[styles.statusTitle, { color: statusConfig.textColor }]}>
                   {statusConfig.title}
                 </Text>
               </View>
-              <View style={[styles.pendingBadge, { backgroundColor: statusConfig.badgeColor }]}>
-                <Text style={styles.pendingBadgeText}>{statusConfig.badgeText}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusConfig.badgeColor }]}>
+                <Text style={styles.statusBadgeText}>{statusConfig.badgeText}</Text>
               </View>
             </View>
-
-            <Text style={[styles.pendingDesc, { color: statusConfig.descColor }]}>
+            <Text style={[styles.statusDesc, { color: statusConfig.descColor }]}>
               {statusConfig.description}
             </Text>
-
-            <TouchableOpacity style={styles.pendingAction} onPress={handleEditProfile}>
-              <Text style={styles.pendingActionText}>{statusConfig.actionText}</Text>
+            <TouchableOpacity style={styles.statusAction} onPress={handleEditProfile}>
+              <Text style={styles.statusActionText}>Lihat Detail Peninjauan</Text>
               <ChevronRight size={14} color={colors.primary} />
             </TouchableOpacity>
           </View>
         )}
 
+        {/* ── Tentang Bisnis ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Tentang Bisnis</Text>
-            <TouchableOpacity onPress={handleUbah}>
+            <TouchableOpacity onPress={handleEditProfile}>
               <Text style={styles.actionLink}>Ubah</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.aboutCard}>
+          <View style={styles.card}>
             <Text style={styles.aboutText}>
               {profile?.description ||
                 'Belum ada deskripsi bisnis. Lengkapi profil Anda untuk memberikan informasi lebih lanjut kepada pelanggan.'}
             </Text>
-            <TouchableOpacity style={styles.readMoreBtn} onPress={handleReadMore}>
-              <Text style={styles.readMoreText}>Lihat selengkapnya</Text>
-              <ChevronDown size={14} color={colors.primary} />
+            <TouchableOpacity style={styles.readMoreBtn} onPress={handleEditProfile}>
+              <Text style={styles.readMoreText}>Edit deskripsi</Text>
+              <ChevronRight size={14} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* ── Layanan ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.titleWithBadge}>
-              <Text style={styles.sectionTitle}>Layanan yang Tersedia</Text>
+              <Text style={styles.sectionTitle}>Layanan Tersedia</Text>
               <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{services.length} Layanan</Text>
+                <Text style={styles.countBadgeText}>{services.length}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.seeAllBtn} onPress={handleSeeAllServices}>
+            <TouchableOpacity style={styles.seeAllBtn} onPress={handleServicePress}>
               <Text style={styles.actionLink}>Lihat semua</Text>
               <ChevronRight size={14} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-            {renderServicesCarousel()}
-          </ScrollView>
+          {servicesLoading ? (
+            <View style={styles.serviceLoadingCard}>
+              <Text style={{ color: colors.secondary, fontSize: 13 }}>Memuat layanan...</Text>
+            </View>
+          ) : services.length === 0 ? (
+            <TouchableOpacity style={styles.addServiceCard} onPress={handleGoToListing}>
+              <Plus size={24} color={colors.primary} />
+              <Text style={styles.addServiceText}>Tambah Layanan Pertama</Text>
+              <Text style={styles.addServiceSub}>Tampilkan jasa Anda kepada pelanggan</Text>
+            </TouchableOpacity>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              {services.slice(0, 4).map((service) => {
+                const photo    = service.photos?.[0];
+                const imageUri = photo?.url
+                  ? `http://192.168.100.30:8000/storage/${photo.url}`
+                  : 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=400';
+                return (
+                  <TouchableOpacity
+                    key={service.id}
+                    style={styles.serviceCard}
+                    activeOpacity={0.8}
+                    onPress={handleServicePress}
+                  >
+                    <Image source={{ uri: imageUri }} style={styles.serviceImage} />
+                    <View style={styles.serviceContent}>
+                      <Text style={styles.serviceTitle} numberOfLines={1}>{service.name}</Text>
+                      <Text style={styles.serviceDesc} numberOfLines={2}>
+                        {service.description || 'Tidak ada deskripsi.'}
+                      </Text>
+                      <Text style={styles.servicePrice}>{formatRupiah(service.price)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity style={styles.addMoreCard} onPress={handleGoToListing}>
+                <Plus size={22} color={colors.primary} />
+                <Text style={styles.addMoreText}>Tambah{'\n'}Layanan</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
         </View>
 
+        {/* ── Kategori ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kategori</Text>
-            <Text style={styles.subtext}>{selectedCategoryCount} Terpilih</Text>
+            <Text style={styles.subtext}>{profile?.categories?.length ?? 0} Terpilih</Text>
           </View>
-          <View style={styles.chipRow}>
-            {profile?.categories?.map((cat, idx) => (
-              <View key={cat.id} style={styles.categoryChip}>
-                <View style={[styles.dot, { backgroundColor: idx === 0 ? colors.primary : idx === 1 ? colors.tertiary : colors.secondary }]} />
-                <Text style={styles.categoryChipText}>{cat.name}</Text>
+          <View style={styles.card}>
+            {profile?.categories && profile.categories.length > 0 ? (
+              <View style={styles.chipRow}>
+                {profile.categories.map((cat, idx) => (
+                  <View key={cat.id} style={styles.categoryChip}>
+                    <View style={[styles.dot, {
+                      backgroundColor:
+                        idx === 0 ? colors.primary :
+                        idx === 1 ? colors.tertiary :
+                        colors.secondary,
+                    }]} />
+                    <Text style={styles.categoryChipText}>{cat.name}</Text>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addChipBtn} onPress={handleEditProfile}>
+                  <Plus size={14} color={colors.onSurfaceVariant} />
+                </TouchableOpacity>
               </View>
-            ))}
-            <TouchableOpacity style={styles.addChipBtn} onPress={handleEditProfile}>
-              <Plus size={14} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.emptyChipRow} onPress={handleEditProfile}>
+                <Plus size={16} color={colors.primary} />
+                <Text style={styles.emptyChipText}>Tambah kategori bisnis</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
+        {/* ── Kontak ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kontak Bisnis</Text>
-            <View style={styles.connectedStatus}>
-              <View style={[styles.dot, { backgroundColor: colors.accentGreen }]} />
-              <Text style={styles.connectedText}>Terhubung</Text>
-            </View>
+            {profile?.whatsapp_number && (
+              <View style={styles.connectedStatus}>
+                <View style={[styles.dot, { backgroundColor: colors.accentGreen }]} />
+                <Text style={styles.connectedText}>Terhubung</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.contactCard}>
+          <TouchableOpacity style={[styles.card, styles.contactCard]} onPress={handleWhatsApp}>
             <View style={styles.contactIconBox}>
               <MessageSquare size={20} color={colors.accentGreen} />
             </View>
-            <View style={styles.contactInfo}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.contactLabel}>WhatsApp Resmi</Text>
-              <Text style={styles.contactNumber}>{profile?.whatsapp_number ?? '0812-3456-7890'}</Text>
+              <Text style={styles.contactNumber}>
+                {profile?.whatsapp_number ?? 'Belum diisi'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.contactAction} onPress={handleWhatsApp}>
+            <View style={styles.contactAction}>
               <Text style={styles.contactActionText}>Hubungi</Text>
               <ChevronRight size={14} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
+        {/* ── Lokasi ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Lokasi Bisnis</Text>
@@ -465,610 +502,505 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
               <ExternalLink size={12} color={colors.primary} />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.locationCard}>
+          <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
             <View style={styles.mapContainer}>
               <View style={styles.mapBackground}>
                 <View style={styles.mapRoadHorizontal} />
                 <View style={styles.mapRoadVertical} />
                 <View style={styles.mapPinContainer}>
                   <View style={styles.mapPinCallout}>
-                    <Text style={styles.mapPinCalloutText}>{profile?.business_name ?? 'Nama Bisnis'}</Text>
+                    <Text style={styles.mapPinCalloutText}>
+                      {profile?.business_name ?? 'Lokasi Bisnis'}
+                    </Text>
                   </View>
                   <View style={styles.mapPinIcon}>
-                    <MapPin size={18} color="#FFFFFF" />
+                    <MapPin size={18} color="#fff" />
                   </View>
                 </View>
               </View>
-              <TouchableOpacity style={styles.mapTargetBtn} onPress={handleOpenMaps}>
-                <Text style={{ fontSize: 10 }}>🎯</Text>
+              <TouchableOpacity style={styles.mapOpenBtn} onPress={handleOpenMaps}>
+                <ExternalLink size={13} color={colors.primary} />
+                <Text style={styles.mapOpenBtnText}>Buka Google Maps</Text>
               </TouchableOpacity>
             </View>
-
             <View style={styles.addressContainer}>
-              <MapPin size={16} color={colors.primary} style={{ marginTop: 2 }} />
-              <View style={styles.addressInfo}>
-                <Text style={styles.addressTitle}>{fullAddress || 'Jl. Malioboro No. 123, Umbulharjo'}</Text>
+              <View style={styles.addressIconBox}>
+                <MapPin size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressTitle}>
+                  {fullAddress || 'Jl. Malioboro No. 123, Umbulharjo'}
+                </Text>
                 <Text style={styles.addressSub}>
-                  {addressSub || 'Kota Yogyakarta, Daerah Istimewa Yogyakarta 55161'}
+                  {addressSub || 'Kota Yogyakarta, DI Yogyakarta 55161'}
                 </Text>
               </View>
-            </View>
-
-            <View style={styles.addressFooter}>
-              <Text style={styles.verifiedText}>Alamat terverifikasi</Text>
-              <TouchableOpacity style={styles.openMapsBtn} onPress={handleOpenGoogleMaps}>
-                <Text style={styles.openMapsText}>Buka Google Maps</Text>
-                <ChevronRight size={14} color={colors.primary} />
-              </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        <View style={styles.logoutSection}>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ── Logout ── */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+          <LogOut size={16} color="#fff" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
 }
 
+// ─── STYLES ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+
+  // ── Header Banner ─────────────────────────────────────────────────────────
+  headerBanner: {
+    backgroundColor: colors.primary,   // oranye solid — bukan primaryContainer
+    paddingTop: 52,
     paddingHorizontal: spacing.containerMargin,
-    paddingBottom: spacing.stackSm,
-    backgroundColor: colors.surfaceContainerLowest,
+    paddingBottom: 22,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  headerBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+  bannerDecorA: {
+    position: 'absolute', top: -50, right: -40,
+    width: 180, height: 180, borderRadius: 90,
+    backgroundColor: '#fff', opacity: 0.08,
   },
-  countBadge: {
-    minWidth: 22,
-    height: 22,
-    paddingHorizontal: spacing.stackSm,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
+  bannerDecorB: {
+    position: 'absolute', bottom: -40, left: -30,
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: '#fff', opacity: 0.06,
   },
-  countBadgeText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.onPrimary,
-  },
-  headerTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.containerMargin,
-    paddingTop: spacing.stackMd,
-    gap: spacing.stackMd,
+  bannerDecorC: {
+    position: 'absolute', top: 10, left: 60,
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#fff', opacity: 0.05,
   },
 
-  /* Hero Card */
-  heroCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.xl,
-    padding: spacing.containerMargin,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.outline,
+  bannerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: spacing.stackSm,
+  bannerLabel: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
-  avatarBox: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primaryContainer,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  bannerTitle: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
   },
-  avatarEmoji: {
-    fontSize: 32,
+  shareBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
   },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+  bannerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 14,
   },
-  titleRow: {
+
+  // Avatar row
+  avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
   },
+  avatarWrap: { position: 'relative' },
+  avatarCircle: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  avatarInitials: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: 22, fontWeight: '800',
+    color: colors.primary,
+  },
+  cameraBtn: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.outlineVariant,
+  },
+
+  // Teks info bisnis — semua putih
   businessName: {
     fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSurface,
+    fontSize: 16, fontWeight: '700',
+    color: '#fff',                   // ← putih
   },
   businessCategory: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurfaceVariant,
-    marginTop: spacing.stackSm,
-    marginBottom: spacing.stackMd,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)', // ← putih transparan
   },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.containerMargin,
-    paddingVertical: spacing.stackSm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    backgroundColor: colors.surfaceContainerLowest,
-  },
-  editProfileText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.primary,
+  businessCity: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
   },
 
-  /* Pending Review Card */
-  pendingCard: {
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    borderWidth: 1,
-  },
-  pendingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pendingTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
-  },
-  pendingIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingTitle: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-  },
-  pendingBadge: {
-    paddingHorizontal: spacing.stackSm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  pendingBadgeText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.onPrimary,
-  },
-  pendingDesc: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    marginTop: spacing.stackSm,
-    lineHeight: typography.bodyMd.lineHeight,
-  },
-  pendingAction: {
+  // Badge status di dalam header
+  verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: spacing.stackSm,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(22,163,74,0.75)',
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: radius.full,
+    marginTop: 2,
   },
-  pendingActionText: {
+  verifiedText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
+    fontSize: 10, fontWeight: '700',
+    color: '#fff',
+  },
+
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
+  },
+  editBtnText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12, fontWeight: '700',
     color: colors.primary,
   },
 
-  /* Generic Section */
-  section: {
-    gap: spacing.stackSm,
+  // ── Scroll content ──────────────────────────────────────────────────────────
+  scrollContent: {
+    paddingHorizontal: spacing.containerMargin,
+    paddingTop: 16,
+    gap: 16,
+    paddingBottom: 16,
   },
+
+  // ── Stat cards ──────────────────────────────────────────────────────────────
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: radius.lg,
+    paddingVertical: 16, paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4,
+    elevation: 2,
+  },
+  statCard: { flex: 1, alignItems: 'center', gap: 4 },
+  statCardDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
+  statValue: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: 20, fontWeight: '700',
+    color: colors.primary,
+  },
+  statLabel: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 11, color: colors.secondary,
+  },
+
+  // ── Quick actions ───────────────────────────────────────────────────────────
+  quickRow: { flexDirection: 'row', gap: 10 },
+  quickCard: {
+    flex: 1, backgroundColor: '#fff',
+    borderRadius: radius.lg, padding: 14,
+    alignItems: 'center', gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3,
+    elevation: 1,
+  },
+  quickIconBox: {
+    width: 44, height: 44, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quickLabel: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12, fontWeight: '700', color: colors.onSurface,
+  },
+  quickSub: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 10, color: colors.secondary, textAlign: 'center',
+  },
+
+  // ── Status card ─────────────────────────────────────────────────────────────
+  statusCard: { borderRadius: radius.lg, padding: 14, borderWidth: 1 },
+  statusCardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  statusTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusIconBox: {
+    width: 28, height: 28, borderRadius: radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statusTitle: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13, fontWeight: '700',
+  },
+  statusBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm,
+  },
+  statusBadgeText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 10, fontWeight: '700', color: '#fff',
+  },
+  statusDesc: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 13, marginTop: 8, lineHeight: 19,
+  },
+  statusAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
+  },
+  statusActionText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13, fontWeight: '600', color: colors.primary,
+  },
+
+  // ── Generic section / card ──────────────────────────────────────────────────
+  section: { gap: 8 },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  titleWithBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
   sectionTitle: {
     fontFamily: typography.titleMd.fontFamily,
     fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
+    fontWeight: '700', color: colors.onSurface,
   },
   actionLink: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.primary,
+    fontSize: 13, fontWeight: '600', color: colors.primary,
   },
   subtext: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.onSurfaceVariant,
+    fontSize: 12, color: colors.secondary,
   },
-  seeAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
+  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  titleWithBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  countBadge: {
+    minWidth: 22, height: 22, paddingHorizontal: 6,
+    borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  countBadgeText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 11, fontWeight: '700', color: '#fff',
+  },
+  card: {
+    backgroundColor: '#fff', borderRadius: radius.lg, padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3,
+    elevation: 1,
   },
 
-  /* About Section */
-  aboutCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    borderWidth: 1,
-    borderColor: colors.outline,
-  },
+  // About
   aboutText: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurfaceVariant,
-    lineHeight: typography.bodyMd.lineHeight,
+    fontSize: 13, color: colors.secondary, lineHeight: 20,
   },
-  readMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: spacing.stackSm,
-  },
+  readMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
   readMoreText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.primary,
+    fontSize: 13, fontWeight: '600', color: colors.primary,
   },
 
-  /* Service Cards */
+  // Services horizontal scroll
   horizontalScroll: {
     marginHorizontal: -spacing.containerMargin,
-    paddingHorizontal: spacing.containerMargin,
+    paddingLeft: spacing.containerMargin,
   },
-
   serviceCard: {
-    width: 170,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    marginRight: spacing.stackSm,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.outline,
+    width: 160, backgroundColor: '#fff', borderRadius: radius.lg,
+    marginRight: 10, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
-  serviceImageContainer: {
-    width: '100%',
-    height: 100,
-    position: 'relative',
-  },
-  serviceImage: {
-    width: '100%',
-    height: '100%',
-  },
-  statusChip: {
-    position: 'absolute',
-    top: spacing.stackSm,
-    left: spacing.stackSm,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: spacing.stackSm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-  },
-  favoriteChip: {
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statusChipText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.onSurface,
-  },
-  serviceContent: {
-    padding: spacing.stackSm,
-  },
+  serviceImage: { width: '100%', height: 95 },
+  serviceContent: { padding: 10 },
   serviceTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
+    fontSize: 13, fontWeight: '700', color: colors.onSurface,
   },
   serviceDesc: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurfaceVariant,
-    marginTop: spacing.stackSm,
-    height: typography.bodyMd.lineHeight,
+    fontSize: 11, color: colors.secondary, marginTop: 3, lineHeight: 16,
   },
-  priceLabel: {
+  servicePrice: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.onSurfaceVariant,
-    marginTop: spacing.stackSm,
+    fontSize: 12, fontWeight: '700', color: colors.primary, marginTop: 6,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.stackSm,
+  addMoreCard: {
+    width: 90, minHeight: 140,
+    backgroundColor: '#F8FAFC', borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.outline, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginRight: 16,
   },
-  priceValue: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.primary,
+  addMoreText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 11, fontWeight: '600', color: colors.primary, textAlign: 'center',
+  },
+  serviceLoadingCard: {
+    height: 120, backgroundColor: '#fff', borderRadius: radius.lg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  addServiceCard: {
+    height: 120, backgroundColor: '#fff', borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.outline, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  addServiceText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13, fontWeight: '700', color: colors.primary,
+  },
+  addServiceSub: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 12, color: colors.secondary,
   },
 
-  /* Category Chips */
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.stackSm,
-  },
+  // Category chips
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surfaceContainerLowest,
-    paddingHorizontal: spacing.stackMd,
-    paddingVertical: spacing.stackSm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   categoryChipText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.onSurface,
+    fontSize: 12, fontWeight: '600', color: colors.onSurface,
   },
   addChipBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: colors.outlineVariant,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  emptyChipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  emptyChipText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13, fontWeight: '600', color: colors.primary,
   },
 
-  /* Contact Section */
-  connectedStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+  // Contact
+  connectedStatus: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   connectedText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.accentGreen,
-    fontWeight: typography.labelMd.fontWeight,
+    fontSize: 12, color: colors.accentGreen, fontWeight: '600',
   },
-  contactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    gap: spacing.stackMd,
-  },
+  contactCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   contactIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+    width: 42, height: 42, borderRadius: radius.md,
     backgroundColor: colors.accentGreenContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contactInfo: {
-    flex: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
   contactLabel: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.onSurfaceVariant,
+    fontSize: 11, color: colors.secondary,
   },
   contactNumber: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
+    fontSize: 14, fontWeight: '700', color: colors.onSurface, marginTop: 2,
   },
-  contactAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
+  contactAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   contactActionText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.primary,
-    fontWeight: typography.labelMd.fontWeight,
+    fontSize: 13, fontWeight: '600', color: colors.primary,
   },
 
-  /* Location Section */
-  externalLinkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.outline,
-  },
+  // Location
+  externalLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   mapContainer: {
-    height: 120,
-    backgroundColor: colors.secondaryContainer,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 130, backgroundColor: '#CBD5E1',
+    position: 'relative', justifyContent: 'center', alignItems: 'center',
   },
   mapBackground: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: colors.outline,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  ...StyleSheet.absoluteFill,
+  backgroundColor: '#CBD5E1',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
   mapRoadHorizontal: {
-    position: 'absolute',
-    height: 12,
-    width: '100%',
-    backgroundColor: colors.onPrimary,
+    position: 'absolute', height: 12, width: '100%', backgroundColor: '#fff',
   },
   mapRoadVertical: {
-    position: 'absolute',
-    width: 12,
-    height: '100%',
-    backgroundColor: colors.onPrimary,
+    position: 'absolute', width: 12, height: '100%', backgroundColor: '#fff',
   },
-  mapPinContainer: {
-    alignItems: 'center',
-  },
+  mapPinContainer: { alignItems: 'center' },
   mapPinCallout: {
     backgroundColor: colors.onSurface,
-    paddingHorizontal: spacing.stackSm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    marginBottom: spacing.stackSm,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: radius.sm, marginBottom: 4,
   },
   mapPinCalloutText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.onPrimary,
-    fontWeight: typography.labelMd.fontWeight,
+    fontSize: 11, color: '#fff', fontWeight: '600',
   },
   mapPinIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  mapTargetBtn: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: colors.surfaceContainerLowest,
-    padding: spacing.stackSm,
-    borderRadius: radius.sm,
-    elevation: 2,
+  mapOpenBtn: {
+    position: 'absolute', bottom: 8, right: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#fff',
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: radius.md,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
+  },
+  mapOpenBtnText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 11, fontWeight: '600', color: colors.primary,
   },
   addressContainer: {
-    flexDirection: 'row',
-    padding: spacing.stackMd,
-    gap: spacing.stackSm,
+    flexDirection: 'row', padding: 14, gap: 10, alignItems: 'flex-start',
   },
-  addressInfo: {
-    flex: 1,
+  addressIconBox: {
+    width: 32, height: 32, borderRadius: radius.sm,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center', justifyContent: 'center',
   },
   addressTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
+    fontSize: 13, fontWeight: '600', color: colors.onSurface, lineHeight: 18,
   },
   addressSub: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: typography.bodyMd.fontSize,
-    color: colors.onSurfaceVariant,
-    marginTop: spacing.stackSm,
+    fontSize: 12, color: colors.secondary, marginTop: 3,
   },
-  addressFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.stackMd,
-    paddingBottom: spacing.stackMd,
-  },
-  verifiedText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    color: colors.onSurfaceVariant,
-  },
-  openMapsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  openMapsText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.primary,
-  },
-  logoutSection: {
-    marginTop: spacing.stackLg,
-    marginBottom: spacing.stackLg,
-    paddingHorizontal: spacing.containerMargin,
-  },
+
+  // ── Logout ──────────────────────────────────────────────────────────────────
   logoutButton: {
-    height: 52,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, height: 50,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.error,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.error,  // solid merah, bukan outline
   },
   logoutText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: typography.labelMd.fontSize,
-    fontWeight: typography.labelMd.fontWeight,
-    color: colors.error,
+    fontSize: 14, fontWeight: '700',
+    color: '#fff',                   // teks putih
   },
 });

@@ -30,8 +30,7 @@ import type { VendorOrdersStackParamList } from '../../../../navigation/types';
 // FR-10: daftar pesanan masuk, tombol accept/reject.
 // Catatan: status 'completed' belum ada di backend (enum BookingStatus cuma
 // pending/confirmed/cancelled). Status "Selesai" di layar ini murni penanda LOKAL
-// (disimpan di state completedMap), BELUM tersimpan ke server. Begitu backend
-// nambahin field ini, ganti completedMap jadi baca dari data booking asli.
+// (disimpan di state completedMap), BELUM tersimpan ke server.
 
 type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 type DisplayStatus = BookingStatus | 'completed';
@@ -48,40 +47,39 @@ type Booking = {
 };
 
 const FILTERS: { key: 'all' | DisplayStatus; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'pending', label: 'Menunggu' },
-  { key: 'confirmed', label: 'Diproses' },
-  { key: 'completed', label: 'Selesai' },
-  { key: 'cancelled', label: 'Dibatalkan' },
+  { key: 'all',       label: 'Semua'     },
+  { key: 'pending',   label: 'Menunggu'  },
+  { key: 'confirmed', label: 'Diproses'  },
+  { key: 'completed', label: 'Selesai'   },
+  { key: 'cancelled', label: 'Dibatalkan'},
 ];
 
 const STATUS_CONFIG: Record<DisplayStatus, { label: string; icon: any; color: string; bg: string }> = {
-  pending:   { label: 'Menunggu',       icon: Bell,         color: '#D97706', bg: '#FEF3C7' },
+  pending:   { label: 'Menunggu',        icon: Bell,         color: '#D97706', bg: '#FEF3C7' },
   confirmed: { label: 'Sedang Diproses', icon: Hourglass,    color: '#2563EB', bg: '#DBEAFE' },
-  cancelled: { label: 'Dibatalkan',     icon: XCircle,      color: '#DC2626', bg: '#FEE2E2' },
-  completed: { label: 'Selesai',        icon: CheckCircle2, color: '#16A34A', bg: '#DCFCE7' },
+  cancelled: { label: 'Dibatalkan',      icon: XCircle,      color: '#DC2626', bg: '#FEE2E2' },
+  completed: { label: 'Selesai',         icon: CheckCircle2, color: '#16A34A', bg: '#DCFCE7' },
 };
 
-// ⚠️ Defensif: beberapa data booking dari backend ternyata punya field `price`
-// yang undefined/null. Fallback ke 0 supaya app tidak crash.
 function formatRupiah(value: number | undefined | null) {
   return `Rp ${Number(value ?? 0).toLocaleString('id-ID')}`;
 }
 
 export default function IncomingOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<VendorOrdersStackParamList>>();
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings]       = useState<Booking[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | DisplayStatus>('all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading]     = useState(false);
+  const [updatingId, setUpdatingId]   = useState<string | null>(null);
   const [completedMap, setCompletedMap] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await bookingApi.listIncomingBookings();
-      setBookings(res.data.data ?? res.data);
-    } catch (err) {
+      const res  = await bookingApi.listIncomingBookings();
+      const data = res.data?.data ?? res.data;
+      setBookings(Array.isArray(data) ? data : []);
+    } catch {
       Toast.show({
         type: 'error',
         text1: 'Gagal memuat pesanan',
@@ -94,39 +92,38 @@ export default function IncomingOrdersScreen() {
   }, []);
 
   useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+    useCallback(() => { load(); }, [load])
   );
 
-  // Optimistic update: UI langsung pindah status duluan supaya terasa instan.
-  // Kalau ternyata API gagal, di-rollback balik ke status semula + toast error,
-  // jadi kegagalan network/server tetap kelihatan, tidak diam-diam gagal.
+  // Optimistic update: UI langsung berubah SEBELUM API dipanggil.
+  // Kalau API gagal → rollback + toast error.
   const handleUpdateStatus = async (booking: Booking, newStatus: 'confirmed' | 'cancelled') => {
     const previousStatus = booking.status;
-    setUpdatingId(booking.id);
 
+    // 1. Optimistic: update UI dulu
     setBookings((prev) =>
       prev.map((b) => (b.id === booking.id ? { ...b, status: newStatus } : b))
     );
+    setUpdatingId(booking.id);
 
     try {
       await bookingApi.updateBookingStatus(booking.id, newStatus);
       Toast.show({
         type: 'success',
-        text1: newStatus === 'confirmed' ? 'Pesanan diterima' : 'Pesanan ditolak',
+        text1: newStatus === 'confirmed' ? '✅ Pesanan diterima' : '❌ Pesanan ditolak',
         text2: `${booking.service_name} berhasil diperbarui.`,
         position: 'top',
       });
-    } catch (err) {
-      // rollback
+    } catch (err: any) {
+      // Rollback ke status semula
       setBookings((prev) =>
         prev.map((b) => (b.id === booking.id ? { ...b, status: previousStatus } : b))
       );
+      console.error('[handleUpdateStatus] Gagal:', err?.response?.data ?? err?.message ?? err);
       Toast.show({
         type: 'error',
         text1: 'Gagal memperbarui status',
-        text2: 'Perubahan dibatalkan, coba lagi.',
+        text2: err?.response?.data?.message ?? 'Perubahan dibatalkan, coba lagi.',
         position: 'top',
       });
     } finally {
@@ -163,9 +160,10 @@ export default function IncomingOrdersScreen() {
       ? bookings
       : bookings.filter((b) => getDisplayStatus(b) === activeFilter);
 
-  // Hitung jumlah pesanan per status, dipakai buat angka di samping label filter chip.
   const countFor = (key: 'all' | DisplayStatus) =>
-    key === 'all' ? bookings.length : bookings.filter((b) => getDisplayStatus(b) === key).length;
+    key === 'all'
+      ? bookings.length
+      : bookings.filter((b) => getDisplayStatus(b) === key).length;
 
   // ─── CARD ────────────────────────────────────────────────────────────────────
   const renderCard = ({ item }: { item: Booking }) => {
@@ -176,9 +174,11 @@ export default function IncomingOrdersScreen() {
 
     return (
       <View style={styles.card}>
+        {/* Stripe warna status di atas */}
         <View style={[styles.cardStripe, { backgroundColor: config.color }]} />
 
         <View style={styles.cardInner}>
+          {/* Badge + order code */}
           <View style={styles.cardTopRow}>
             <View style={[styles.statusBadge, { backgroundColor: config.bg }]}>
               <StatusIcon size={12} color={config.color} />
@@ -187,8 +187,10 @@ export default function IncomingOrdersScreen() {
             <Text style={styles.orderCode}>#{item.order_code}</Text>
           </View>
 
+          {/* Nama layanan */}
           <Text style={styles.serviceName} numberOfLines={2}>{item.service_name}</Text>
 
+          {/* Info customer */}
           <View style={styles.customerRow}>
             {item.photo_url ? (
               <Image source={{ uri: item.photo_url }} style={styles.thumbnail} />
@@ -212,15 +214,14 @@ export default function IncomingOrdersScreen() {
 
           <View style={styles.divider} />
 
+          {/* Footer: harga + tombol aksi */}
           <View style={styles.footer}>
             <View>
               <Text style={styles.priceLabel}>Total Harga</Text>
-              <Text
-                style={[
-                  styles.price,
-                  { color: displayStatus === 'cancelled' ? colors.secondary : colors.primary },
-                ]}
-              >
+              <Text style={[
+                styles.price,
+                { color: displayStatus === 'cancelled' ? colors.secondary : colors.primary },
+              ]}>
                 {formatRupiah(item.price)}
               </Text>
             </View>
@@ -283,6 +284,8 @@ export default function IncomingOrdersScreen() {
   // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <View style={styles.screen}>
+
+      {/* ── Header ── */}
       <View style={styles.header}>
         <View style={styles.headerDecorCircleLarge} />
         <View style={styles.headerDecorCircleSmall} />
@@ -298,6 +301,7 @@ export default function IncomingOrdersScreen() {
         </View>
       </View>
 
+      {/* ── Filter chips ── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -306,7 +310,7 @@ export default function IncomingOrdersScreen() {
       >
         {FILTERS.map((f) => {
           const isActive = activeFilter === f.key;
-          const count = countFor(f.key);
+          const count    = countFor(f.key);
           return (
             <TouchableOpacity
               key={f.key}
@@ -326,13 +330,16 @@ export default function IncomingOrdersScreen() {
         })}
       </ScrollView>
 
+      {/* ── List ── */}
       <FlatList
         data={filteredBookings}
         keyExtractor={(item) => item.id}
         renderItem={renderCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={load} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={load} tintColor={colors.primary} />
+        }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyState}>
@@ -353,40 +360,38 @@ export default function IncomingOrdersScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F8FAFC' },
 
+  // ── Header ──
   header: {
     paddingHorizontal: spacing.containerMargin,
-    paddingTop: 60,
+    paddingTop: 52,
     paddingBottom: spacing.stackLg,
     backgroundColor: colors.primaryContainer,
-    borderBottomLeftRadius: radius.xl * 1.5,
-    borderBottomRightRadius: radius.xl * 1.5,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     overflow: 'hidden',
     position: 'relative',
   },
   headerDecorCircleLarge: {
     position: 'absolute',
-    top: -40,
-    right: -30,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    top: -40, right: -30,
+    width: 140, height: 140, borderRadius: 70,
     backgroundColor: colors.primaryFixed,
     opacity: 0.35,
   },
   headerDecorCircleSmall: {
     position: 'absolute',
-    bottom: -20,
-    right: 40,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: -20, right: 40,
+    width: 60, height: 60, borderRadius: 30,
     backgroundColor: colors.onPrimaryContainer,
     opacity: 0.12,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.stackSm,
+  },
   titleIconWrap: {
-    width: 40,
-    height: 40,
+    width: 40, height: 40,
     borderRadius: radius.md,
     backgroundColor: '#fff',
     alignItems: 'center',
@@ -394,8 +399,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: typography.headlineLg.fontFamily,
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 20, fontWeight: '700',
     color: colors.onPrimaryContainer,
   },
   subtitle: {
@@ -403,8 +407,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onPrimaryContainer,
     marginTop: 1,
+    opacity: 0.8,
   },
 
+  // ── Filter chips ──
   filterScroll: {
     backgroundColor: '#fff',
     flexGrow: 0,
@@ -434,42 +440,33 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontFamily: typography.button.fontFamily,
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 13, fontWeight: '500',
     color: colors.secondary,
   },
-  filterChipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
+  filterChipTextActive: { color: '#fff', fontWeight: '600' },
   filterChipCount: {
-    minWidth: 18,
-    height: 18,
+    minWidth: 18, height: 18,
     paddingHorizontal: 4,
     borderRadius: 9,
     backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  filterChipCountActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
+  filterChipCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
   filterChipCountText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 11, fontWeight: '700',
     color: colors.secondary,
   },
-  filterChipCountTextActive: {
-    color: '#fff',
-  },
+  filterChipCountTextActive: { color: '#fff' },
 
+  // ── List ──
   listContent: {
     padding: spacing.containerMargin,
     gap: 12,
     paddingBottom: 40,
   },
 
+  // ── Card ──
   card: {
     backgroundColor: '#fff',
     borderRadius: radius.lg,
@@ -480,13 +477,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  cardStripe: {
-    height: 4,
-    width: '100%',
-  },
-  cardInner: {
-    padding: 16,
-  },
+  cardStripe: { height: 4, width: '100%' },
+  cardInner: { padding: 16 },
   cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -497,76 +489,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 9, paddingVertical: 4,
     borderRadius: radius.full,
   },
   statusText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 11, fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   serviceName: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 15, fontWeight: '700',
     color: colors.onSurface,
-    marginBottom: 12,
-    lineHeight: 21,
+    marginBottom: 12, lineHeight: 21,
   },
   orderCode: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
+    fontSize: 12, fontWeight: '500',
     color: colors.secondary,
-    fontWeight: '500',
   },
   customerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 10, marginBottom: 12,
   },
-  thumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-  },
+  thumbnail: { width: 44, height: 44, borderRadius: radius.md },
   thumbnailPlaceholder: {
     backgroundColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  thumbnailInitial: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.secondary,
-  },
+  thumbnailInitial: { fontSize: 16, fontWeight: '700', color: colors.secondary },
   customerName: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.onSurface,
-    marginBottom: 2,
+    fontSize: 14, fontWeight: '600',
+    color: colors.onSurface, marginBottom: 2,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   customerLocation: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12,
-    color: colors.secondary,
-    flex: 1,
+    fontSize: 12, color: colors.secondary, flex: 1,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 12,
-  },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 12 },
 
+  // ── Footer ──
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -574,109 +540,71 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11,
-    color: colors.secondary,
-    marginBottom: 2,
+    fontSize: 11, color: colors.secondary, marginBottom: 2,
   },
   price: {
     fontFamily: typography.headlineLg.fontFamily,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 17, fontWeight: '700',
   },
-
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 14, paddingVertical: 9,
     borderRadius: radius.md,
   },
-  actionBtnPrimary: {
-    backgroundColor: colors.primary,
-  },
+  actionBtnPrimary:      { backgroundColor: colors.primary },
   actionBtnPrimaryText: {
     fontFamily: typography.button.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 13, fontWeight: '700', color: '#fff',
   },
-  actionBtnReject: {
-    backgroundColor: '#FEE2E2',
-  },
+  actionBtnReject:       { backgroundColor: '#FEE2E2' },
   actionBtnRejectText: {
     fontFamily: typography.button.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626',
+    fontSize: 13, fontWeight: '700', color: '#DC2626',
   },
-  actionBtnSuccess: {
-    backgroundColor: '#16A34A',
-  },
+  actionBtnSuccess:      { backgroundColor: '#16A34A' },
   actionBtnSuccessText: {
     fontFamily: typography.button.fontFamily,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 13, fontWeight: '700', color: '#fff',
   },
   actionBtnOutline: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: 'transparent',
+    borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: 'transparent',
   },
   actionBtnOutlineText: {
     fontFamily: typography.button.fontFamily,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.secondary,
+    fontSize: 12, fontWeight: '600', color: colors.secondary,
   },
-  actionGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  actionGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
-    padding: 8,
-    borderRadius: radius.full,
+    padding: 8, borderRadius: radius.full,
     backgroundColor: '#EFF6FF',
   },
   cancelledTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    backgroundColor: '#FEE2E2',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: radius.full, backgroundColor: '#FEE2E2',
   },
   cancelledText: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#DC2626',
+    fontSize: 12, fontWeight: '600', color: '#DC2626',
   },
 
+  // ── Empty state ──
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
     paddingHorizontal: spacing.containerMargin,
   },
-  emptyEmoji: {
-    fontSize: 52,
-    marginBottom: 12,
-  },
+  emptyEmoji: { fontSize: 52, marginBottom: 12 },
   emptyTitle: {
     fontFamily: typography.titleMd.fontFamily,
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.onSurface,
-    marginBottom: 6,
+    fontSize: 16, fontWeight: '700',
+    color: colors.onSurface, marginBottom: 6,
   },
   emptyText: {
     fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 13,
-    color: colors.secondary,
-    textAlign: 'center',
-    lineHeight: 20,
+    fontSize: 13, color: colors.secondary,
+    textAlign: 'center', lineHeight: 20,
   },
 });
