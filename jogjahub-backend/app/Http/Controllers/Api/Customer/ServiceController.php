@@ -35,7 +35,7 @@ class ServiceController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new TimeSlotResource($slots),
+            'data' => TimeSlotResource::collection($slots),
         ]);
     }
 

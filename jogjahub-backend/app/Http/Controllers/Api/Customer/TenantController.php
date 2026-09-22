@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\TenantProfile;
-use Illuminate\Http\Request;
+use App\Http\Resources\TenantProfileResource;
+
 
 class TenantController extends Controller
 {
@@ -16,7 +17,7 @@ class TenantController extends Controller
             ->get();
 
         return response()->json([
-            'status' => true,
+            'status' => "success",
             'data' => $tenant
         ]);
     }
@@ -25,7 +26,7 @@ class TenantController extends Controller
     {
         if ($tenant->status !== 'approved') {
             return response()->json([
-                'status' => false,
+                'status' => "success",
                 'message' => 'Tenant tidak ditemukan atau belum disetujui'
             ], 404);
         }
@@ -33,8 +34,8 @@ class TenantController extends Controller
         $tenant->load(['categories', 'services' => fn($q) => $q->with('subcategory')]);
 
         return response()->json([
-            'status' => true,
-            'data' => $tenant
+            'status' => "success",
+            'data' => new TenantProfileResource($tenant)
         ]);
     }
 
