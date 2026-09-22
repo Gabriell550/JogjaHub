@@ -9,17 +9,19 @@ import {
   RefreshControl,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { ChevronLeft, ChevronRight, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown, Trash2, Store } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { Card } from '../../../../components/Card/Card';
 import { Button } from '../../../../components/Button/Button';
 import { EmptyState } from '../../../../components/EmptyState/EmptyState';
 import { vendorApi } from '../../../../api/vendorApi';
 import { timeSlotApi } from '../../../../api/timeSlotApi';
+import AddSlotModal from '../components/AddSlotModal';
 
-// ============ TYPES ============\ntype ServiceItem = { id: number; name: string };
 // ============ TYPES ============
 type ServiceItem = { id: number; name: string };
 type SlotItem = {
@@ -28,13 +30,9 @@ type SlotItem = {
 type WorkingHour = {
   id: number; day_of_week: number; label: string; start_time: string; end_time: string;
 };
-type BlockedDate = {
-  id: number; start_date: string; end_date: string; reason: string;
-};
 type CalendarDay = {
   date: string; dayOfMonth: number; isCurrentMonth: boolean; isSelected: boolean;
-  status: 'available' | 'full' | 'blocked' | 'none'; isToday: boolean;
-  workingHours: WorkingHour[]; storeOpen: boolean; slotsCount: number; blockedDates: BlockedDate[];
+  status: 'available' | 'full' | 'none'; isToday: boolean;
 };
 
 // ============ MOCK DATA (ganti dengan API nanti) ============
@@ -52,25 +50,18 @@ const MOCK_WORKING_HOURS: WorkingHour[] = [
   { id: 11, day_of_week: 6, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
   { id: 12, day_of_week: 6, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
 ];
-const MOCK_BLOCKED_DATES: BlockedDate[] = [
-  { id: 1, start_date: '2026-09-28', end_date: '2026-10-01', reason: 'Libur Lebaran' },
-  { id: 2, start_date: '2026-12-25', end_date: '2026-12-26', reason: 'Libur Natal' },
-];
 const MOCK_BOOKING_LIMIT_H1 = 24;
-const MOCK_STORE_STATUS: Record<string, boolean> = {};
 
 // ============ HELPERS ===========
 const DAY_NAMES_SHORT = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
 const STATUS_COLORS = {
   available: colors.primary,
   full: colors.outline,
-  blocked: colors.error,
   none: colors.outlineVariant,
 };
 const STATUS_LABELS = {
   available: 'Tersedia',
   full: 'Penuh',
-  blocked: 'Libur/Bloc',
   none: '',
 };
 const MONTH_NAMES_ID = [
@@ -79,17 +70,7 @@ const MONTH_NAMES_ID = [
 ];
 const YEAR_RANGE = [2020, 2035];
 
-function isDateInBlockedRange(dateStr: string, blockedDates: BlockedDate[]): boolean {
-  const date = new Date(dateStr + 'T00:00:00');
-  return blockedDates.some((block) => {
-    const start = new Date(block.start_date + 'T00:00:00');
-    const end = new Date(block.end_date + 'T00:00:00');
-    return date >= start && date <= end;
-  });
-}
-
-function calculateDayStatus(dateStr: string, slots: SlotItem[], blockedDates: BlockedDate[]): 'available' | 'full' | 'blocked' | 'none' {
-  if (isDateInBlockedRange(dateStr, blockedDates)) return 'blocked';
+function calculateDayStatus(dateStr: string, slots: SlotItem[]): 'available' | 'full' | 'none' {
   const daySlots = slots.filter((s) => s.slot_date === dateStr);
   if (daySlots.length === 0) return 'none';
   const availableCount = daySlots.filter((s) => s.booked_count < s.quota).length;
@@ -120,48 +101,52 @@ export default function ManageCalendarScreen() {
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>(MOCK_WORKING_HOURS);
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>(MOCK_BLOCKED_DATES);
   const [bookingLimitH1, setBookingLimitH1] = useState<number>(MOCK_BOOKING_LIMIT_H1);
 
   // --- State calendar (dipilih user: bulan + tahun) ---
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth()); // 0-11
   const [selectedDate, setSelectedDate] = useState<string>(getTodayISO());
+  const [lastTapInfo, setLastTapInfo] = useState<{ date: string; time: number } | null>(null);
 
   // --- State form edit ---
   const [storeOpen, setStoreOpen] = useState(true);
-  const [slotsPerDay, setSlotsPerDay] = useState(12);
   const [loadingServices, setLoadingServices] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [savingWorkingHours, setSavingWorkingHours] = useState(false);
-  const [editingWorkingHourId, setEditingWorkingHourId] = useState<number | null>(null);
+  const [showAddSlotModal, setShowAddSlotModal] = useState(false);
 
   // --- Picker modals ---
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
-  // Load layanan vendor
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await vendorApi.listMyServices();
-        const rawData = res.data?.data;
-        const list = Array.isArray(rawData)
-          ? rawData
-          : Array.isArray(rawData?.data)
-          ? rawData.data
-          : [];
-        setServices(list);
-        if (list.length > 0 && !selectedServiceId) {
-          setSelectedServiceId(list[0].id);
-        }
-      } catch (err) {
-        console.log('Gagal ambil layanan:', err);
-      } finally {
-        setLoadingServices(false);
-      }
-    })();
+  const loadServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const res = await vendorApi.listMyServices();
+      const rawData = res.data?.data;
+      const list: ServiceItem[] = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.data)
+        ? rawData.data
+        : [];
+      setServices(list);
+      setSelectedServiceId((previousId) => {
+        if (previousId && list.some((service) => service.id === previousId)) return previousId;
+        return list.length > 0 ? list[0].id : null;
+      });
+    } catch (err) {
+      console.log('Gagal ambil layanan:', err);
+    } finally {
+      setLoadingServices(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadServices();
+    }, [loadServices]),
+  );
 
   // Load slot dari API tiap service berubah
   useEffect(() => {
@@ -214,21 +199,13 @@ export default function ManageCalendarScreen() {
     }
 
     return days;
-  }, [selectedYear, selectedMonth, selectedDate, slots, blockedDates, workingHours, storeOpen]);
+  }, [selectedYear, selectedMonth, selectedDate, slots]);
 
   function createCalendarDay(dateStr: string, d: Date, isCurrentMonth: boolean): CalendarDay {
     const dayOfMonth = d.getDate();
     const isToday = isTodayDate(dateStr);
     const isSelected = dateStr === selectedDate;
-    const status = calculateDayStatus(dateStr, slots, blockedDates);
-    const dayOfWeek = d.getDay();
-    const dayWorkingHours = workingHours.filter((wh) => wh.day_of_week === dayOfWeek);
-    const blockedDatesForDay = blockedDates.filter((bd) => {
-      const bdStart = new Date(bd.start_date + 'T00:00:00');
-      const bdEnd = new Date(bd.end_date + 'T00:00:00');
-      const dayStart = new Date(dateStr + 'T00:00:00');
-      return dayStart >= bdStart && dayStart <= bdEnd;
-    });
+    const status = calculateDayStatus(dateStr, slots);
 
     return {
       date: dateStr,
@@ -237,10 +214,6 @@ export default function ManageCalendarScreen() {
       isSelected,
       status,
       isToday,
-      workingHours: dayWorkingHours,
-      storeOpen: MOCK_STORE_STATUS[dateStr] ?? true,
-      slotsCount: slotsPerDay,
-      blockedDates: blockedDatesForDay,
     };
   }
 
@@ -258,12 +231,6 @@ export default function ManageCalendarScreen() {
     setWorkingHours(MOCK_WORKING_HOURS);
   }, []);
 
-  // Load blocked dates dari API (mock sekarang)
-  const loadBlockedDates = useCallback(async () => {
-    // TODO: panggil API endpoint untuk blocked dates
-    setBlockedDates(MOCK_BLOCKED_DATES);
-  }, []);
-
   // Load booking limit H-1 dari API (mock sekarang)
   const loadBookingLimit = useCallback(async () => {
     // TODO: panggil API endpoint untuk booking limit H-1
@@ -273,13 +240,29 @@ export default function ManageCalendarScreen() {
   // Load semua data saat mount
   useEffect(() => {
     loadWorkingHours();
-    loadBlockedDates();
     loadBookingLimit();
-  }, [loadWorkingHours, loadBlockedDates, loadBookingLimit]);
+  }, [loadWorkingHours, loadBookingLimit]);
 
   // Handle pilih tanggal
   const handleSelectDate = (dateStr: string) => {
+    const now = Date.now();
+    const isDoubleTap = lastTapInfo?.date === dateStr && now - lastTapInfo.time < 300;
+
     setSelectedDate(dateStr);
+    setLastTapInfo(isDoubleTap ? null : { date: dateStr, time: now });
+
+    if (isDoubleTap) {
+      if (!selectedServiceId) {
+        Toast.show({
+          type: 'info',
+          text1: 'Pilih layanan dulu',
+          text2: 'Pilih salah satu layanan di atas sebelum menambah slot.',
+          position: 'top',
+        });
+        return;
+      }
+      setShowAddSlotModal(true);
+    }
   };
 
   // Handle previous/next month
@@ -301,28 +284,6 @@ export default function ManageCalendarScreen() {
     }
   };
 
-  // Handle toggle store open
-  const handleToggleStoreOpen = async () => {
-    const newVal = !storeOpen;
-    if (newVal === storeOpen) return;
-    setStoreOpen(newVal);
-    Toast.show({
-      type: newVal ? 'success' : 'info',
-      text1: newVal ? 'Toko dibuka' : 'Toko ditutup',
-      text2: newVal
-        ? 'Layanan Anda aktif hari ini. Pelanggan bisa memesan.'
-        : 'Toko ditutup. Tidak ada pemesanan hari ini.',
-    });
-  };
-
-  // Handle tambah/mengurangi slot per hari
-  const handleDecreaseSlots = () => {
-    if (slotsPerDay > 1) setSlotsPerDay(slotsPerDay - 1);
-  };
-  const handleIncreaseSlots = () => {
-    if (slotsPerDay < 100) setSlotsPerDay(slotsPerDay + 1);
-  };
-
   // Handle save working hours
   const handleSaveWorkingHours = async () => {
     setSavingWorkingHours(true);
@@ -340,66 +301,69 @@ export default function ManageCalendarScreen() {
     }
   };
 
-  // Handle edit working hour
-  const handleEditWorkingHour = (workingHourId: number) => {
-    setEditingWorkingHourId(workingHourId);
-    Toast.show({ type: 'info', text1: 'Edit jam kerja', text2: 'Fitur edit jam kerja akan segera tersedia.' });
+  const handleDeleteSlot = async (slot: SlotItem) => {
+    try {
+      await timeSlotApi.deleteSlot(slot.id);
+      Toast.show({ type: 'success', text1: 'Slot dihapus', position: 'top' });
+      if (selectedServiceId) await loadSlots(selectedServiceId);
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+      Toast.show({
+        type: 'error',
+        text1: message ?? 'Gagal menghapus slot',
+        text2: message ? undefined : 'Coba lagi dalam beberapa saat.',
+        position: 'top',
+      });
+    }
   };
 
-  // Handle add session
-  const handleAddSession = () => {
-    Toast.show({ type: 'info', text1: 'Tambah sesi', text2: 'Fitur tambah sesi akan segera tersedia.' });
-  };
-
-  // Handle blokir tanggal
-  const handleBlockDatePress = () => {
-    Toast.show({ type: 'info', text1: 'Blokir tanggal', text2: 'Fitur blokir tanggal massal akan segera tersedia.' });
-  };
-
-  // Handle booking limit H-1
-  const handleBookingLimitPress = () => {
-    Toast.show({ type: 'info', text1: 'Batas booking H-1', text2: 'Fitur batas booking akan segera tersedia.' });
-  };
+  const selectedServiceName = services.find((service) => service.id === selectedServiceId)?.name;
+  const slotsForSelectedDate = slots.filter((slot) => slot.slot_date === selectedDate);
 
   // Get status hari ini
   const todayStatus = calendarDays.find((d) => d.isToday);
 
   return (
     <View style={styles.screen}>
-      {/* ===== HEADER STICKY ===== */}
       <View style={styles.header}>
-        {/* Logo & Nama Aplikasi (kiri) */}
-        <View style={styles.brandRow}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoText}>JH</Text>
+        <View style={styles.headerDecorCircleLarge} />
+        <View style={styles.headerDecorCircleSmall} />
+        <View style={styles.titleRow}>
+          <View style={styles.titleIconWrap}>
+            <CalendarDays size={20} color={colors.primary} />
           </View>
-          <Text style={styles.brandTitle}>JogjaHub</Text>
-        </View>
-
-        {/* Tombol Open (kanan) */}
-        <Pressable style={styles.openBtn}>
-          <Text style={styles.openBtnText}>Open</Text>
-        </Pressable>
-      </View>
-
-      {/* ===== JUDUL BULAN + SUBJUDUL ===== */}
-      <View style={styles.titleSection}>
-        <View style={styles.titleLeft}>
-          <Text style={styles.monthYear}>{monthYearLabel}</Text>
-          <Text style={styles.subtitle}>Kelola ketersediaan layanan Anda</Text>
-        </View>
-
-        {/* Arrow navigasi bulan (kanan) */}
-        <View style={styles.navArrowRow}>
-          <Pressable onPress={goToPreviousMonth} style={styles.navArrowBtn}>
-            <ChevronLeft size={24} color={colors.onSurface} />
-          </Pressable>
-          <Pressable onPress={goToNextMonth} style={styles.navArrowBtn}>
-            <ChevronRight size={24} color={colors.onSurface} />
-          </Pressable>
+          <View>
+            <Text style={styles.title}>Kelola Slot Booking</Text>
+            <Text style={styles.titleSubtitle}>{selectedServiceName ?? 'Pilih layanan'} · {monthYearLabel}</Text>
+          </View>
         </View>
       </View>
 
+      <View style={styles.servicePickerSection}>
+        <Text style={styles.sectionHeading}>Pilih layanan</Text>
+        {loadingServices ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : services.length === 0 ? (
+          <EmptyState message="Belum ada layanan. Tambahkan layanan dulu di menu Listing sebelum atur slot booking." />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servicePicker}>
+            {services.map((service) => {
+              const isActive = service.id === selectedServiceId;
+              return (
+                <Pressable
+                  key={service.id}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
+                  onPress={() => setSelectedServiceId(service.id)}
+                >
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{service.name}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      {services.length > 0 && !loadingServices && <>
       {/* ===== PICKER BULAN & TAHUN ===== */}
       <View style={styles.pickerRow}>
         <Pressable style={styles.pickerBtn} onPress={() => setShowMonthPicker(true)}>
@@ -414,7 +378,6 @@ export default function ManageCalendarScreen() {
         </Pressable>
       </View>
 
-      {/* Legend */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
@@ -424,11 +387,8 @@ export default function ManageCalendarScreen() {
           <View style={[styles.legendDot, { backgroundColor: colors.outline }]} />
           <Text style={styles.legendLabel}>Penuh</Text>
         </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
-          <Text style={styles.legendLabel}>Libur/Bloc</Text>
-        </View>
       </View>
+      <Text style={styles.calendarHint}>Tips: ketuk 2x tanggal untuk langsung tambah slot</Text>
 
       {/* ===== SCROLL VIEW UTAMA ===== */}
       <ScrollView
@@ -458,7 +418,6 @@ export default function ManageCalendarScreen() {
                   styles.dayCell,
                   day.isCurrentMonth ? {} : styles.dayCellOtherMonth,
                   day.isSelected && styles.dayCellSelected,
-                  day.status === 'blocked' && styles.dayCellBlocked,
                   day.status === 'full' && styles.dayCellFull,
                   day.status === 'available' && styles.dayCellAvailable,
                   day.isToday && styles.dayCellToday,
@@ -510,35 +469,14 @@ export default function ManageCalendarScreen() {
 
           {/* Form pengaturan tanggal */}
           <Card style={styles.settingCard}>
-            {/* Toggle Buka Toko */}
             <View style={styles.settingRow}>
               <View style={styles.settingLabel}>
                 <SlidersHorizontal size={20} color={colors.onSurfaceVariant} />
                 <Text style={styles.settingLabelText}>Buka Toko</Text>
               </View>
-              <Pressable
-                onPress={handleToggleStoreOpen}
-                style={[styles.toggle, storeOpen && styles.toggleActive]}
-              >
-                <View style={[styles.toggleKnob, storeOpen && styles.toggleKnobActive]} />
-              </Pressable>
+              <View style={styles.comingSoonBadge}><Text style={styles.comingSoonText}>Segera Hadir</Text></View>
             </View>
 
-            {/* Slot Per Hari */}
-            <View style={styles.slotsSection}>
-              <Text style={styles.sectionText}>Slot Per Hari</Text>
-              <View style={styles.slotsCounter}>
-                <Pressable onPress={handleDecreaseSlots} style={styles.slotsButton}>
-                  <Text style={styles.slotsButtonText}>−</Text>
-                </Pressable>
-                <Text style={styles.slotsCount}>{slotsPerDay}</Text>
-                <Pressable onPress={handleIncreaseSlots} style={styles.slotsButton}>
-                  <Text style={styles.slotsButtonText}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Info status hari */}
             <View style={styles.dayInfoCard}>
               <View style={styles.dayInfoRow}>
                 <CalendarDays size={16} color={colors.onSurfaceVariant} />
@@ -547,12 +485,37 @@ export default function ManageCalendarScreen() {
                     ? 'Tersedia — Pelanggan bisa memesan'
                     : todayStatus?.status === 'full'
                     ? 'Penuh — Semua slot sudah terbooking'
-                    : todayStatus?.status === 'blocked'
-                    ? 'Libur/Blok — Layanan ditutup hari ini'
                     : 'Belum ada pengaturan'}
                 </Text>
               </View>
             </View>
+          </Card>
+
+          <Card style={styles.slotsCard}>
+            <View style={styles.cardHeader}>
+              <Clock size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>Slot untuk {formatSelectedDate(selectedDate)}</Text>
+            </View>
+            {loadingSlots ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : slotsForSelectedDate.length === 0 ? (
+              <Text style={styles.emptySlotText}>Belum ada slot untuk tanggal ini.</Text>
+            ) : (
+              slotsForSelectedDate.map((slot) => (
+                <View key={slot.id} style={styles.slotRow}>
+                  <View style={styles.slotInfo}>
+                    <Text style={styles.slotTime}>{slot.start_time} - {slot.end_time}</Text>
+                    <Text style={styles.slotCapacity}>{slot.booked_count}/{slot.quota} terisi ({slot.quota - slot.booked_count} tersisa)</Text>
+                  </View>
+                  <Pressable onPress={() => handleDeleteSlot(slot)} style={styles.deleteSlotButton}>
+                    <Trash2 size={19} color={colors.error} />
+                  </Pressable>
+                </View>
+              ))
+            )}
+            <Pressable style={styles.addSlotButton} onPress={() => setShowAddSlotModal(true)}>
+              <Text style={styles.addSlotText}>+ Tambah Slot</Text>
+            </Pressable>
           </Card>
 
           {/* Jam Kerja */}
@@ -560,6 +523,7 @@ export default function ManageCalendarScreen() {
             <View style={styles.cardHeader}>
               <Clock size={20} color={colors.onSurfaceVariant} />
               <Text style={styles.cardTitle}>Jam Kerja</Text>
+              <View style={styles.comingSoonBadge}><Text style={styles.comingSoonText}>Segera Hadir</Text></View>
             </View>
 
             {/* List sesi per hari */}
@@ -572,7 +536,7 @@ export default function ManageCalendarScreen() {
                       {wh.start_time} - {wh.end_time}
                     </Text>
                   </View>
-                  <Pressable onPress={() => handleEditWorkingHour(wh.id)} style={styles.editButton}>
+                  <Pressable disabled style={[styles.editButton, styles.disabledOverlay]}>
                     <Text style={styles.editText}>✎</Text>
                   </Pressable>
                 </View>
@@ -581,9 +545,8 @@ export default function ManageCalendarScreen() {
 
             {/* Tambah Sesi */}
             <Pressable
-              style={styles.addSessionButton}
-              onPress={handleAddSession}
-              disabled={savingWorkingHours}
+              disabled
+              style={[styles.addSessionButton, styles.disabledOverlay]}
             >
               <Text style={styles.addSessionText}>+ Tambah Sesi</Text>
             </Pressable>
@@ -592,21 +555,22 @@ export default function ManageCalendarScreen() {
             <Button
               label={savingWorkingHours ? 'Menyimpan...' : 'Simpan Jam Kerja'}
               onPress={handleSaveWorkingHours}
-              disabled={savingWorkingHours}
-              style={styles.saveButton}
+              disabled
+              style={[styles.saveButton, styles.disabledOverlay]}
             />
           </Card>
 
           {/* Blokir Tanggal Massal */}
           <Pressable
-            style={styles.blockDateCard}
-            onPress={handleBlockDatePress}
+            style={[styles.blockDateCard, styles.disabledOverlay]}
+            disabled
           >
             <View style={styles.blockDateIcon}>
               <Lock size={20} color={colors.primary} />
             </View>
             <View style={styles.blockDateInfo}>
               <Text style={styles.blockDateTitle}>Blokir Tanggal Massal</Text>
+              <Text style={styles.comingSoonText}>Segera Hadir</Text>
               <Text style={styles.blockDateDesc}>Tutup semua layanan untuk periode libur panjang.</Text>
             </View>
             <View style={styles.blockDateArrow}>
@@ -616,14 +580,15 @@ export default function ManageCalendarScreen() {
 
           {/* Batas Booking H-1 */}
           <Pressable
-            style={styles.bookingLimitCard}
-            onPress={handleBookingLimitPress}
+            style={[styles.bookingLimitCard, styles.disabledOverlay]}
+            disabled
           >
             <View style={styles.bookingLimitIcon}>
               <CalendarDays size={20} color="#3B82F6" />
             </View>
             <View style={styles.bookingLimitInfo}>
               <Text style={styles.bookingLimitTitle}>Batas Booking H-1</Text>
+              <Text style={styles.comingSoonText}>Segera Hadir</Text>
               <Text style={styles.bookingLimitDesc}>
                 Cegah pelanggan memesan di hari yang sama (minimum {bookingLimitH1} jam pertama).
               </Text>
@@ -637,6 +602,15 @@ export default function ManageCalendarScreen() {
         {/* Spacer bawah untuk padding */}
         <View style={{ height: spacing.sectionGap }} />
       </ScrollView>
+      </>}
+
+      <AddSlotModal
+        visible={showAddSlotModal}
+        onClose={() => setShowAddSlotModal(false)}
+        serviceId={selectedServiceId}
+        defaultDate={selectedDate}
+        onCreated={() => selectedServiceId && loadSlots(selectedServiceId)}
+      />
 
       {/* Month Picker Modal */}
       <Modal visible={showMonthPicker} transparent animationType="fade" onRequestClose={() => setShowMonthPicker(false)}>
@@ -724,10 +698,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.containerMargin,
     paddingTop: 60,
     paddingBottom: spacing.stackMd,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
+    backgroundColor: colors.primaryContainer,
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
+    overflow: 'hidden',
+    minHeight: 130,
   },
+  headerDecorCircleLarge: {
+    position: 'absolute', width: 180, height: 180, borderRadius: 90,
+    backgroundColor: colors.primary, opacity: 0.08, right: -70, top: -90,
+  },
+  headerDecorCircleSmall: {
+    position: 'absolute', width: 90, height: 90, borderRadius: 45,
+    backgroundColor: colors.secondary, opacity: 0.08, right: 50, bottom: -45,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackMd },
+  titleIconWrap: {
+    width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title: {
+    fontFamily: typography.headlineLg.fontFamily, fontSize: 22,
+    fontWeight: typography.headlineLg.fontWeight, color: colors.onSurface,
+  },
+  titleSubtitle: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginTop: 4 },
+  servicePickerSection: { paddingHorizontal: spacing.containerMargin, paddingTop: spacing.stackMd },
+  sectionHeading: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginBottom: spacing.stackSm },
+  servicePicker: { gap: spacing.stackSm, paddingBottom: spacing.stackSm },
+  filterChip: { paddingHorizontal: spacing.stackMd, paddingVertical: spacing.stackSm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChipText: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant },
+  filterChipTextActive: { color: colors.onPrimary, fontWeight: '700' },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -851,6 +852,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.onSurfaceVariant,
   },
+  calendarHint: {
+    paddingHorizontal: spacing.containerMargin,
+    paddingBottom: spacing.stackSm,
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
   // ---- Calendar Container ----
   calendarContainer: {
     marginHorizontal: spacing.containerMargin,
@@ -892,10 +901,6 @@ const styles = StyleSheet.create({
   },
   dayCellSelected: {
     backgroundColor: colors.primaryContainer,
-    borderRadius: radius.sm,
-  },
-  dayCellBlocked: {
-    backgroundColor: colors.errorContainer,
     borderRadius: radius.sm,
   },
   dayCellFull: {
@@ -982,6 +987,23 @@ const styles = StyleSheet.create({
     padding: spacing.stackMd,
     marginBottom: spacing.stackMd,
   },
+  slotsCard: {
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: radius.lg,
+    padding: spacing.stackMd,
+    marginBottom: spacing.stackMd,
+  },
+  emptySlotText: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginBottom: spacing.stackMd },
+  slotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceContainer, borderRadius: radius.sm, padding: spacing.stackMd, marginBottom: spacing.stackSm },
+  slotInfo: { flex: 1 },
+  slotTime: { fontFamily: typography.titleMd.fontFamily, fontSize: 14, fontWeight: '600', color: colors.onSurface },
+  slotCapacity: { fontFamily: typography.bodyMd.fontFamily, fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 },
+  deleteSlotButton: { padding: spacing.stackSm },
+  addSlotButton: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.full, padding: spacing.stackMd, alignItems: 'center', marginTop: spacing.stackSm },
+  addSlotText: { fontFamily: typography.button.fontFamily, fontSize: typography.button.fontSize, color: colors.primary, fontWeight: typography.button.fontWeight },
+  comingSoonBadge: { marginLeft: 'auto', backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, paddingHorizontal: spacing.stackSm, paddingVertical: 4 },
+  comingSoonText: { fontFamily: typography.labelMd.fontFamily, fontSize: 10, color: colors.onSurfaceVariant },
+  disabledOverlay: { opacity: 0.5 },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
