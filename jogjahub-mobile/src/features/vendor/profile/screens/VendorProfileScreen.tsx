@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ExternalLink,
   MapPin,
-  MessageSquare,
   Star,
   Plus,
   LayoutGrid,
@@ -28,11 +27,13 @@ import {
   LogOut,
   ShoppingBag,
 } from 'lucide-react-native';
+import { FontAwesome } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, setTenantProfile } from '../../../../features/auth/store/authSlice';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
+import { API_BASE_URL } from '../../../../constants/config';
 import type { RootState } from '../../../../store';
 
 type ServiceItem = {
@@ -403,9 +404,11 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               {services.slice(0, 4).map((service) => {
                 const photo    = service.photos?.[0];
+                const BASE_URL = API_BASE_URL.replace('/api/v1', '');
                 const imageUri = photo?.url
-                  ? `http://192.168.100.30:8000/storage/${photo.url}`
+                  ? (photo.url.startsWith('http') ? photo.url : `${BASE_URL}/storage/${photo.url}`)
                   : 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=400';
+                
                 return (
                   <TouchableOpacity
                     key={service.id}
@@ -477,8 +480,8 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
             )}
           </View>
           <TouchableOpacity style={[styles.card, styles.contactCard]} onPress={handleWhatsApp}>
-            <View style={styles.contactIconBox}>
-              <MessageSquare size={20} color={colors.accentGreen} />
+            <View style={[styles.contactIconBox, { backgroundColor: '#25D366' }]}>
+              <FontAwesome name="whatsapp" size={24} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.contactLabel}>WhatsApp Resmi</Text>
@@ -557,7 +560,7 @@ const styles = StyleSheet.create({
 
   // ── Header Banner ─────────────────────────────────────────────────────────
   headerBanner: {
-    backgroundColor: colors.primary,   // oranye solid — bukan primaryContainer
+    backgroundColor: colors.primary,
     paddingTop: 52,
     paddingHorizontal: spacing.containerMargin,
     paddingBottom: 22,
@@ -641,16 +644,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.outlineVariant,
   },
 
-  // Teks info bisnis — semua putih
   businessName: {
     fontFamily: typography.headlineLgMobile.fontFamily,
     fontSize: 16, fontWeight: '700',
-    color: '#fff',                   // ← putih
+    color: '#fff',
   },
   businessCategory: {
     fontFamily: typography.bodyMd.fontFamily,
     fontSize: 12,
-    color: 'rgba(255,255,255,0.85)', // ← putih transparan
+    color: 'rgba(255,255,255,0.85)',
   },
   businessCity: {
     fontFamily: typography.bodyMd.fontFamily,
@@ -658,7 +660,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
   },
 
-  // Badge status di dalam header
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -911,7 +912,6 @@ const styles = StyleSheet.create({
   contactCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   contactIconBox: {
     width: 42, height: 42, borderRadius: radius.md,
-    backgroundColor: colors.accentGreenContainer,
     alignItems: 'center', justifyContent: 'center',
   },
   contactLabel: {
@@ -935,11 +935,10 @@ const styles = StyleSheet.create({
     position: 'relative', justifyContent: 'center', alignItems: 'center',
   },
   mapBackground: {
-  ...StyleSheet.absoluteFill,
-  backgroundColor: '#CBD5E1',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#CBD5E1',
+    justifyContent: 'center', alignItems: 'center',
+  },
   mapRoadHorizontal: {
     position: 'absolute', height: 12, width: '100%', backgroundColor: '#fff',
   },
@@ -996,11 +995,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, height: 50,
     borderRadius: radius.md,
-    backgroundColor: colors.error,  // solid merah, bukan outline
+    backgroundColor: colors.error,
   },
   logoutText: {
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 14, fontWeight: '700',
-    color: '#fff',                   // teks putih
+    color: '#fff',
   },
 });

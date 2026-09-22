@@ -37,6 +37,7 @@ type DisplayStatus = BookingStatus | 'completed';
 
 type Booking = {
   id: string;
+  uuid: string; // <-- Ditambahkan untuk mengatasi error SQL UUID
   order_code: string;
   service_name: string;
   customer_name: string;
@@ -100,14 +101,16 @@ export default function IncomingOrdersScreen() {
   const handleUpdateStatus = async (booking: Booking, newStatus: 'confirmed' | 'cancelled') => {
     const previousStatus = booking.status;
 
-    // 1. Optimistic: update UI dulu
+    // 1. Optimistic: update UI dulu berdasarkan .id lokal array
     setBookings((prev) =>
       prev.map((b) => (b.id === booking.id ? { ...b, status: newStatus } : b))
     );
     setUpdatingId(booking.id);
 
     try {
-      await bookingApi.updateBookingStatus(booking.id, newStatus);
+      // 2. Tembak API menggunakan UUID agar database tidak error
+      await bookingApi.updateBookingStatus(booking.uuid, newStatus);
+      
       Toast.show({
         type: 'success',
         text1: newStatus === 'confirmed' ? '✅ Pesanan diterima' : '❌ Pesanan ditolak',
@@ -115,7 +118,7 @@ export default function IncomingOrdersScreen() {
         position: 'top',
       });
     } catch (err: any) {
-      // Rollback ke status semula
+      // 3. Rollback ke status semula jika API gagal
       setBookings((prev) =>
         prev.map((b) => (b.id === booking.id ? { ...b, status: previousStatus } : b))
       );
