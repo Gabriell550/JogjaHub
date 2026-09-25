@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
-import { Bell } from 'lucide-react-native';
+import { Bell, Home, CalendarCheck, User } from 'lucide-react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../features/customer/home/screens/HomeScreen';
 import MyBookingsScreen from '../features/customer/my-bookings/screens/MyBookingsScreen';
@@ -12,7 +12,7 @@ const Tab = createBottomTabNavigator<CustomerTabParamList>();
 export function CustomerTabNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ navigation }) => ({
+      screenOptions={({ navigation, route }) => ({
         headerRight: () => (
           <TouchableOpacity
             onPress={() => navigation.getParent()?.navigate('Notifications')}
@@ -21,11 +21,44 @@ export function CustomerTabNavigator() {
             <Bell size={22} color="#1E293B" />
           </TouchableOpacity>
         ),
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === 'Home') {
+            return <Home size={size} color={color} />;
+          } else if (route.name === 'MyBookings') {
+            return <CalendarCheck size={size} color={color} />;
+          } else if (route.name === 'Profile') {
+            return <User size={size} color={color} />;
+          }
+          return null;
+        },
+        tabBarActiveTintColor: '#2563EB',
+        tabBarInactiveTintColor: '#64748B',
+        tabBarStyle: {
+          paddingBottom: 6,
+          paddingTop: 6,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="MyBookings" component={MyBookingsScreen} />
-      <Tab.Screen name="Profile" component={CustomerProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="MyBookings"
+        component={MyBookingsScreen}
+        options={{ tabBarLabel: 'My Bookings' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={CustomerProfileScreen}
+        options={{ tabBarLabel: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 }
