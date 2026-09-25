@@ -8,26 +8,23 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Linking,
+  Platform,
+  ImageBackground,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import type { CompositeNavigationProp } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { CustomerTabParamList, CustomerStackParamList } from '../../../../navigation/types';
 
 import PromoBanner from '../components/PromoBanner';
 import CategoryGrid from '../components/CategoryGrid';
 import VendorCard from '../components/VendorCard';
 import { verifiedVendors } from '../data/mockData';
 
-type HomeScreenNavProp = CompositeNavigationProp<
-  BottomTabNavigationProp<CustomerTabParamList, 'Home'>,
-  NativeStackNavigationProp<CustomerStackParamList>
->;
+// Asset gambar peta Yogyakarta lokal
+const jogjaMapImage = require('../../../../assets/images/yogyakarta-map.png');
 
 export default function HomeScreen() {
-  const navigation = useNavigation<HomeScreenNavProp>();
+  const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState('');
   const [vendors, setVendors] = useState(verifiedVendors);
 
@@ -35,6 +32,26 @@ export default function HomeScreen() {
     setVendors((prev) =>
       prev.map((v) => (v.id === id ? { ...v, isFavorite: !v.isFavorite } : v))
     );
+  };
+
+  // Fungsi untuk membuka peta Yogyakarta di Google Maps / Apple Maps
+  const handleOpenMap = (latitude = -7.7956, longitude = 110.3695, query = 'Vendor Wisuda Yogyakarta') => {
+    const url = Platform.select({
+      ios: `maps:0,0?q=${encodeURIComponent(query)}@${latitude},${longitude}`,
+      android: `geo:${latitude},${longitude}?q=${encodeURIComponent(query)}`,
+    }) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+        }
+      })
+      .catch(() => {
+        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+      });
   };
 
   return (
@@ -52,8 +69,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Search bar */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchBar}>
             <Ionicons name="search" size={16} color="#9CA3AF" />
@@ -73,7 +90,7 @@ export default function HomeScreen() {
           subtitle="Tenang, temukan vendor yang masih tersedia untuk hari spesialmu."
           ctaLabel="Available Now"
           onPress={() => {
-            // TODO: arahkan ke halaman vendor yang tersedia hari ini
+            // Arahkan ke kategori atau vendor tersedia
           }}
         />
 
@@ -115,13 +132,60 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Vendor di Sekitarmu</Text>
         </View>
 
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map-outline" size={32} color="#9CA3AF" />
-          <TouchableOpacity style={styles.mapButton} activeOpacity={0.85}>
-            <Ionicons name="map" size={14} color="#FFFFFF" />
-            <Text style={styles.mapButtonText}>Buka Peta</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Kartu Peta Interaktif dengan Gambar Peta Yogyakarta */}
+        <TouchableOpacity
+          style={styles.mapCard}
+          activeOpacity={0.9}
+          onPress={() => handleOpenMap()}
+        >
+          <ImageBackground
+            source={jogjaMapImage}
+            style={styles.mapBackground}
+            imageStyle={styles.mapBackgroundImage}
+          >
+            {/* Overlay halus agar pin marker & teks lebih kontras */}
+            <View style={styles.mapOverlay} />
+
+            {/* Tag Lokasi */}
+            <View style={styles.mapLocationTag}>
+              <Ionicons name="location" size={13} color="#2563EB" />
+              <Text style={styles.mapLocationText}>Yogyakarta & Sekitarnya</Text>
+            </View>
+
+            {/* Pin Marker 1: GlowUp MUA Jogja */}
+            <View style={[styles.markerContainer, { top: '22%', left: '20%' }]}>
+              <View style={styles.markerBadge}>
+                <Ionicons name="sparkles" size={11} color="#EA580C" />
+                <Text style={styles.markerText}>GlowUp MUA</Text>
+              </View>
+              <View style={styles.markerDot} />
+            </View>
+
+            {/* Pin Marker 2: Grand Aston Hotel */}
+            <View style={[styles.markerContainer, { top: '35%', right: '22%' }]}>
+              <View style={styles.markerBadge}>
+                <Ionicons name="bed" size={11} color="#0284C7" />
+                <Text style={styles.markerText}>Grand Aston</Text>
+              </View>
+              <View style={styles.markerDot} />
+            </View>
+
+            {/* Pin Marker 3: Kado Wisuda Studio */}
+            <View style={[styles.markerContainer, { bottom: '26%', left: '40%' }]}>
+              <View style={styles.markerBadge}>
+                <Ionicons name="gift" size={11} color="#16A34A" />
+                <Text style={styles.markerText}>Kado Wisuda</Text>
+              </View>
+              <View style={styles.markerDot} />
+            </View>
+
+            {/* Tombol Buka Peta */}
+            <View style={styles.mapButton}>
+              <Ionicons name="map" size={14} color="#FFFFFF" />
+              <Text style={styles.mapButtonText}>Buka Peta</Text>
+            </View>
+          </ImageBackground>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -190,13 +254,83 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
     paddingRight: 6,
   },
-  mapPlaceholder: {
+  mapCard: {
     marginHorizontal: 20,
-    height: 160,
+    height: 175,
     borderRadius: 16,
+    overflow: 'hidden',
     backgroundColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  mapBackground: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  mapBackgroundImage: {
+    borderRadius: 16,
+  },
+  mapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  mapLocationTag: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mapLocationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 4,
+  },
+  markerContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  markerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    gap: 4,
+  },
+  markerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  markerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginTop: 2,
   },
   mapButton: {
     position: 'absolute',
@@ -208,6 +342,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   mapButtonText: {
     color: '#FFFFFF',
