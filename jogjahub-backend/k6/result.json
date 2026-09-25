@@ -1,0 +1,407 @@
+{
+  "root_group": {
+    "checks": [],
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [
+        {
+          "checks": [
+            {
+              "name": "categories: status 200",
+              "path": "::Public — Services & Categories::categories: status 200",
+              "id": "b342ce8e60d17a63607067d33786d6a8",
+              "passes": 797,
+              "fails": 339
+            },
+            {
+              "passes": 797,
+              "fails": 339,
+              "name": "categories: ada data",
+              "path": "::Public — Services & Categories::categories: ada data",
+              "id": "0e83b2acb2b938756b6dbb3027627b25"
+            },
+            {
+              "id": "b577a1d00659fc6a71928e37424ba087",
+              "passes": 723,
+              "fails": 413,
+              "name": "services: status 200",
+              "path": "::Public — Services & Categories::services: status 200"
+            },
+            {
+              "name": "services: ada pagination",
+              "path": "::Public — Services & Categories::services: ada pagination",
+              "id": "e2dc2a82bdf3654db43cbb1652939265",
+              "passes": 1136,
+              "fails": 0
+            },
+            {
+              "id": "22358d9252d27e24ff38f2f46e6698da",
+              "passes": 695,
+              "fails": 441,
+              "name": "services: response < 2s",
+              "path": "::Public — Services & Categories::services: response < 2s"
+            }
+          ],
+          "name": "Public — Services & Categories",
+          "path": "::Public — Services & Categories",
+          "id": "860de424d06c0791e936cd071a04e1c0",
+          "groups": []
+        },
+        {
+          "id": "d1086afed5668884a295cd068c4a6fc6",
+          "groups": [],
+          "checks": [
+              {
+                "name": "customer login: status 200",
+                "path": "::Customer — Login & Lihat Bookings::customer login: status 200",
+                "id": "7d6c76c9554cfe30ade08378ab6dc945",
+                "passes": 767,
+                "fails": 369
+              },
+              {
+                "name": "customer login: ada token",
+                "path": "::Customer — Login & Lihat Bookings::customer login: ada token",
+                "id": "ee20e8f32edf1eae5ad61494ffb509c8",
+                "passes": 1136,
+                "fails": 0
+              },
+              {
+                "name": "customer bookings: status 200",
+                "path": "::Customer — Login & Lihat Bookings::customer bookings: status 200",
+                "id": "37380d030efcb1749daf14f7ea058262",
+                "passes": 571,
+                "fails": 196
+              }
+            ],
+          "name": "Customer — Login & Lihat Bookings",
+          "path": "::Customer — Login & Lihat Bookings"
+        },
+        {
+          "checks": [
+            {
+              "id": "3d395cb2c16bd0cca0783690f749ba24",
+              "passes": 753,
+              "fails": 383,
+              "name": "tenant login: status 200",
+              "path": "::Tenant — Login & Lihat Incoming Orders::tenant login: status 200"
+            },
+            {
+              "name": "tenant login: ada token",
+              "path": "::Tenant — Login & Lihat Incoming Orders::tenant login: ada token",
+              "id": "c9bd14131b0101dfe58a1598846be58a",
+              "passes": 1136,
+              "fails": 0
+            },
+            {
+              "passes": 536,
+              "fails": 217,
+              "name": "tenant bookings: status 200",
+              "path": "::Tenant — Login & Lihat Incoming Orders::tenant bookings: status 200",
+              "id": "422ef796abf50cda21fd5d16ec6609bf"
+            },
+            {
+              "name": "tenant profile: status 200",
+              "path": "::Tenant — Login & Lihat Incoming Orders::tenant profile: status 200",
+              "id": "7b1a43c294025e5b44f9b6a0f4f89c2b",
+              "passes": 530,
+              "fails": 223
+            }
+          ],
+          "name": "Tenant — Login & Lihat Incoming Orders",
+          "path": "::Tenant — Login & Lihat Incoming Orders",
+          "id": "b4411b69f7af0bd9b33d841b162d84d8",
+          "groups": []
+        }
+      ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": true,
+    "isStdErrTTY": true,
+    "testRunDurationMs": 405428.1655
+  },
+  "metrics": {
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 77.8025,
+        "p(90)": 1.063360000000001,
+        "p(95)": 2.817819999999997,
+        "avg": 0.49054529851840983,
+        "min": 0,
+        "med": 0
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 5079.78468,
+        "avg": 2301.1781376118506,
+        "min": 235.2145,
+        "med": 1788.252,
+        "max": 28339.9392,
+        "p(90)": 4135.622840000001
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 2302.2973841992703,
+        "min": 624.7281,
+        "med": 1750.2585,
+        "max": 28342.4451,
+        "p(90)": 4187.398860000001,
+        "p(95)": 5216.977999999999
+      }
+    },
+    "services_list_duration": {
+      "values": {
+        "max": 22612.4287,
+        "p(90)": 3757.2825000000003,
+        "p(95)": 4420.4698,
+        "avg": 2045.463569102114,
+        "min": 258.1796,
+        "med": 1495.3434
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 9.810320000000006,
+        "p(95)": 13.10835999999999,
+        "avg": 4.702238433328451,
+        "min": 0,
+        "med": 3.375,
+        "max": 92.7311
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 1369895,
+        "rate": 3378.884637456201
+      }
+    },
+    "iteration_duration": {
+      "contains": "time",
+      "values": {
+        "p(95)": 30953.417675,
+        "avg": 18697.320835123228,
+        "min": 6534.3157,
+        "med": 16931.83845,
+        "max": 58476.5839,
+        "p(90)": 27082.45445
+      },
+      "type": "trend"
+    },
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 1792.2822,
+        "max": 28342.4451,
+        "p(90)": 4140.741900000001,
+        "p(95)": 5083.1954,
+        "avg": 2305.9310009094947,
+        "min": 238.7275
+      },
+      "thresholds": {
+        "p(95)<10000": {
+          "ok": true
+        }
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 100,
+        "min": 100,
+        "max": 100
+      }
+    },
+    "http_reqs": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 6817,
+        "rate": 16.814322684248737
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "rate": 131462.44522570053,
+        "count": 53298578
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.31392107965380667,
+        "passes": 2140,
+        "fails": 4677
+      },
+      "thresholds": {
+        "rate<0.05": {
+          "ok": false
+        }
+      }
+    },
+    "group_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 5898.248411179584,
+        "min": 250.9577,
+        "med": 5461.85975,
+        "max": 32527.3852,
+        "p(90)": 10001.70859,
+        "p(95)": 11736.58880999999
+      }
+    },
+    "login_duration": {
+      "values": {
+        "med": 2353.53885,
+        "max": 28342.4451,
+        "p(90)": 5011.10659,
+        "p(95)": 5852.742804999999,
+        "avg": 2948.8953635563407,
+        "min": 250.9577
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "errors": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.3161279683377309,
+        "passes": 1917,
+        "fails": 4147
+      },
+      "thresholds": {
+        "rate<0.05": {
+          "ok": false
+        }
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 1136,
+        "rate": 2.801976026009471
+      }
+    },
+    "http_req_duration{type:services}": {
+      "contains": "time",
+      "values": {
+        "avg": 2045.463569102114,
+        "min": 258.1796,
+        "med": 1495.3434,
+        "max": 22612.4287,
+        "p(90)": 3757.2825000000003,
+        "p(95)": 4420.4698
+      },
+      "thresholds": {
+        "p(95)<10000": {
+          "ok": true
+        }
+      },
+      "type": "trend"
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 100
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "passes": 9577,
+        "fails": 2920,
+        "rate": 0.7663439225414099
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.4572640604371424,
+        "min": 0,
+        "med": 0,
+        "max": 76.8029,
+        "p(90)": 1.0133600000000005,
+        "p(95)": 2.635679999999994
+      }
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 0,
+        "avg": 0.05062486430981371,
+        "min": 0,
+        "med": 0,
+        "max": 133.6315
+      }
+    },
+    "http_req_duration{type:login}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 2353.53885,
+        "max": 28342.4451,
+        "p(90)": 5011.10659,
+        "p(95)": 5852.742804999999,
+        "avg": 2948.8953635563407,
+        "min": 250.9577
+      },
+      "thresholds": {
+        "p(95)<10000": {
+          "ok": true
+        }
+      }
+    }
+  }
+}

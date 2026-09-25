@@ -16,7 +16,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/register/tenant', [\App\Http\Controllers\Api\Tenant\AuthController::class, 'register']);
     });
 
-    Route::middleware('throttle:5,1')->group(function () {
+    Route::middleware('throttle:1000,1')->group(function () {
         Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
     });
 
