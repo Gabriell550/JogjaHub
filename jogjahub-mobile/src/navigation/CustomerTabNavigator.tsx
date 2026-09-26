@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { Bell, Home, CalendarCheck, User } from 'lucide-react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../features/customer/home/screens/HomeScreen';
 import MyBookingsScreen from '../features/customer/my-bookings/screens/MyBookingsScreen';
 import CustomerProfileScreen from '../features/customer/profile/screens/CustomerProfileScreen';
@@ -10,6 +11,8 @@ import { CustomerTabParamList } from './types';
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 
 export function CustomerTabNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ navigation, route }) => ({
@@ -34,9 +37,9 @@ export function CustomerTabNavigator() {
         tabBarActiveTintColor: '#2563EB',
         tabBarInactiveTintColor: '#64748B',
         tabBarStyle: {
-          paddingBottom: 6,
+          paddingBottom: Math.max(insets.bottom, 6),
           paddingTop: 6,
-          height: 60,
+          height: 60 + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: 11,
