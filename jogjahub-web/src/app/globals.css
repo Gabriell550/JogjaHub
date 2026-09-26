@@ -2,18 +2,35 @@
 
 :root {
   color-scheme: light;
+  --jh-primary: #A04100;
+  --jh-cta: #FF6B00;
+  --jh-navy: #1E293B;
+  --jh-navy-deep: #0F172A;
+  --jh-accent: #FBBF24;
+  --jh-surface: #F8F9FF;
+  --jh-surface-variant: #E6EEFF;
+  --jh-text: #121C2A;
+  --jh-muted: #5A4136;
+  --jh-error: #BA1A1A;
 }
 
 html {
+  overflow-x: clip;
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: clip;
+  background: var(--jh-surface);
+  color: var(--jh-text);
+  font-family: var(--font-inter), sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-lexend), sans-serif;
 }
 
 * {
@@ -34,4 +51,18 @@ img {
 
 a {
   text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
