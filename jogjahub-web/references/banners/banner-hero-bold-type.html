@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JogjaHub Hero Banner — Variant 02 Bold Typography</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary-container: #FF6B00;
+    --navy: #1E293B;
+    --navy-deep: #0F172A;
+    --navy-accent: #FBBF24;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Lexend', 'Inter', sans-serif; background: #0F172A; }
+  .banner {
+    position: relative;
+    width: 1500px;
+    height: 500px;
+    overflow: hidden;
+    background: linear-gradient(115deg, #0F172A 0%, #1E293B 74%, #263449 100%);
+    color: var(--white);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  /* giant outlined headline fills canvas */
+  .giant-word {
+    position: absolute;
+    left: 0; right: 0; top: 108px;
+    text-align: center;
+    font-size: 208px;
+    font-weight: 800;
+    letter-spacing: -4px;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 2.5px rgba(255,107,0,.85);
+    user-select: none;
+    white-space: nowrap;
+  }
+  /* soft glow behind type */
+  .type-glow {
+    position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+    width: 1000px; height: 300px;
+    background: radial-gradient(closest-side, rgba(255,107,0,.28), transparent 70%);
+  }
+  .top-row {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 30px 64px;
+  }
+  .logo {
+    font-size: 26px; font-weight: 700;
+    color: var(--white);
+  }
+  .logo span { color: var(--primary-container); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--navy-accent);
+    color: #12202a;
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+  }
+  .bottom-row {
+    position: relative; z-index: 2;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 64px 44px;
+  }
+  .left { max-width: 52%; }
+  .subhead {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px; line-height: 1.6;
+    color: rgba(255,255,255,.85);
+    margin-bottom: 20px;
+  }
+  .cta-row { display: flex; align-items: center; gap: 16px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 54px; padding: 0 34px; border-radius: 14px;
+    font-family: 'Lexend', sans-serif; font-size: 17px; font-weight: 600;
+    text-decoration: none; transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .btn-cta { background: var(--primary-container); color: var(--white); box-shadow: 0 14px 30px rgba(255,107,0,.35); }
+  .btn-cta:hover { transform: translateY(-2px); }
+  .btn-outline { border: 1.5px solid rgba(255,255,255,.45); color: var(--white); }
+  .btn-outline:hover { background: rgba(255,255,255,.10); }
+  .right { text-align: right; font-family: 'Inter', sans-serif; }
+  .right .stat { font-size: 44px; font-weight: 600; color: var(--navy-accent); font-family: 'Lexend', sans-serif; }
+  .right .label { font-size: 14px; color: rgba(255,255,255,.72); }
+</style>
+</head>
+<body>
+  <div class="banner" role="img" aria-label="JogjaHub: booking wisuda tanpa antre">
+    <div class="type-glow"></div>
+    <div class="giant-word">JOGJAHUB</div>
+
+    <div class="top-row">
+      <div class="logo">Jogja<span>Hub</span></div>
+      <span class="badge">★ Wisuda tanpa antre dini hari</span>
+    </div>
+
+    <div class="bottom-row">
+      <div class="left">
+        <p class="subhead">Beauty &amp; Style, penginapan, dan gifting dalam satu aplikasi. Booking online, bayar manual/COD, langsung konfirmasi vendor.</p>
+        <div class="cta-row">
+          <a class="btn btn-cta" href="#login">Mulai Sekarang</a>
+          <a class="btn btn-outline" href="#tenant">Buka Toko</a>
+        </div>
+      </div>
+      <div class="right">
+        <div class="stat">500+</div>
+        <div class="label">Vendor terverifikasi di DIY</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

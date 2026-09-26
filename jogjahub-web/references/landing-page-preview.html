@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JogjaHub — Landing Page Preview</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: { DEFAULT: "#FF6B00", dark: "#A04100" },
+          navy: { DEFAULT: "#1E293B", deep: "#0F172A" },
+          navyaccent: { DEFAULT: "#FBBF24" },
+          surface2: { DEFAULT: "#F8F9FF", dim: "#E6EEFF", container: "#EFF4FF" },
+          success: { DEFAULT: "#2E7D32" },
+        },
+        fontFamily: {
+          lexend: ["Lexend", "sans-serif"],
+          inter: ["Inter", "sans-serif"],
+        },
+      },
+    },
+  };
+  function openLogin(role) {
+    document.getElementById("loginModal").classList.remove("hidden");
+    document.getElementById("loginModal").classList.add("flex");
+    setRole(role || "customer");
+  }
+  function closeLogin() {
+    const m = document.getElementById("loginModal");
+    m.classList.add("hidden");
+    m.classList.remove("flex");
+  }
+  function setRole(role) {
+    document.getElementById("tabCustomer").dataset.active = role === "customer" ? "1" : "0";
+    document.getElementById("tabTenant").dataset.active = role === "tenant" ? "1" : "0";
+    document.getElementById("loginTitle").textContent =
+      role === "customer" ? "Masuk sebagai Customer" : "Masuk sebagai Tenant";
+    document.getElementById("loginSub").textContent =
+      role === "customer"
+        ? "Masuk untuk booking layanan wisuda favoritmu."
+        : "Masuk ke dashboard vendor/tenant Anda.";
+    document.getElementById("registerHint").innerHTML =
+      role === "customer"
+        ? 'Belum punya akun? <a href="#" class="font-medium text-brand-dark">Daftar sebagai Customer</a>'
+        : 'Belum punya akun? <a href="#" class="font-medium text-brand-dark">Daftar sebagai Tenant</a>';
+  }
+  window.setRole = setRole;
+  window.openLogin = openLogin;
+  window.closeLogin = closeLogin;
+</script>
+<style>
+  body { font-family: "Inter", sans-serif; }
+  h1,h2,h3,h4 { font-family: "Lexend", sans-serif; }
+  .seg-tab[data-active="1"] { background: #FF6B00; color: #fff; box-shadow: 0 4px 14px rgba(255,107,0,.4); }
+  .seg-tab { color: #64748b; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body class="bg-surface2 text-slate-800 antialiased">
+<!-- ======= NAVBAR ======= -->
+<header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+    <div class="flex items-center gap-2">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white text-lg font-bold">J</span>
+      <a href="#" class="font-lexend text-xl font-bold tracking-tight text-slate-900">Jogja<span class="text-brand">Hub</span></a>
+    </div>
+    <nav class="hidden items-center gap-6 md:flex">
+      <a href="#" class="text-sm font-medium text-slate-600 hover:text-slate-900">Beranda</a>
+      <a href="#layanan" class="text-sm font-medium text-slate-600 hover:text-slate-900">Layanan</a>
+      <a href="#kategori" class="text-sm font-medium text-slate-600 hover:text-slate-900">Kategori</a>
+      <a href="#carakerja" class="text-sm font-medium text-slate-600 hover:text-slate-900">Cara Kerja</a>
+      <a href="#tenant" class="text-sm font-medium text-slate-600 hover:text-slate-900">Untuk Tenant</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <button onclick="openLogin('customer')" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">Masuk</button>
+      <button onclick="openLogin('customer')" class="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark hover:shadow-md">Daftar</button>
+    </div>
+  </div>
+</header>
+<!-- ======= HERO ======= -->
+<section class="relative overflow-hidden bg-navy-deep text-white">
+  <div class="pointer-events-none absolute -right-28 -top-28 h-96 w-96 rounded-full bg-brand/30 blur-3xl"></div>
+  <div class="pointer-events-none absolute -bottom-32 left-1/3 h-80 w-80 rounded-full bg-navyaccent/20 blur-3xl"></div>
+  <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
+    <div class="space-y-6">
+      <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+        <span class="h-2 w-2 rounded-full bg-navyaccent"></span> Platform Wisuda #1 di Yogyakarta
+      </span>
+      <h1 class="font-lexend text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+        Semua Kebutuhan <span class="text-brand">Wisudamu</span>, Satu Platform
+      </h1>
+      <p class="max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
+        Salon, MUA, butik, penginapan, dan gifting dalam satu aplikasi. Booking online
+        tanpa antre dini hari — bayar manual atau COD.
+      </p>
+      <div class="flex flex-wrap gap-3 pt-2">
+        <button onclick="openLogin('customer')" class="rounded-xl bg-brand px-6 py-3.5 font-lexend text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl">
+          Cari Layanan →
+        </button>
+        <button onclick="openLogin('tenant')" class="rounded-xl border border-white/40 px-6 py-3.5 font-lexend text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10">
+          Daftar sebagai Tenant
+        </button>
+      </div>
+      <p class="text-xs text-slate-400">Gratis untuk customer · Verifikasi tenant 1×24 jam</p>
+    </div>
+    <div class="relative hidden justify-center lg:flex">
+      <div class="w-72 rounded-[2rem] border border-white/15 bg-white/5 p-3 shadow-2xl backdrop-blur">
+        <div class="rounded-[1.5rem] bg-gradient-to-br from-brand to-brand-dark p-5">
+          <div class="flex h-40 items-center justify-center">
+            <svg width="110" height="110" viewBox="0 0 24 24" fill="none" role="img" aria-label="Topi wisuda">
+              <path d="M12 3L1 8l11 5 9-4.09V16h2V8L12 3z" fill="#FFFFFF" opacity="0.95"/>
+              <path d="M5 11.5v4.6c0 1.05 3.13 2.4 7 2.4s7-1.35 7-2.4v-4.6L12 15l-7-3.5z" fill="#FBBF24"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 p-3 text-sm">
+          <div class="flex items-center justify-between text-slate-200">
+            <span>MUA &amp; Salon</span><span class="rounded-full bg-success px-2 py-0.5 text-[10px] font-semibold text-white">Tersedia</span>
+          </div>
+          <div class="h-2 rounded-full bg-white/15"><div class="h-2 w-4/5 rounded-full bg-brand"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======= TRUST STRIP ======= -->
+<section class="border-y border-slate-200 bg-white">
+  <div class="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 text-center sm:px-6 md:grid-cols-4 lg:px-8">
+    <div><p class="font-lexend text-3xl font-bold text-navyaccent">500+</p><p class="mt-1 text-sm text-slate-500">Vendor terverifikasi</p></div>
+    <div><p class="font-lexend text-3xl font-bold text-navyaccent">3</p><p class="mt-1 text-sm text-slate-500">Kategori layanan</p></div>
+    <div><p class="font-lexend text-3xl font-bold text-navyaccent">10rb+</p><p class="mt-1 text-sm text-slate-500">Booking sukses</p></div>
+    <div><p class="font-lexend text-3xl font-bold text-navyaccent">4.8</p><p class="mt-1 text-sm text-slate-500">Rating pengguna</p></div>
+  </div>
+</section>
+<!-- ======= KATEGORI ======= -->
+<section id="kategori" class="bg-surface2">
+  <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mb-12 text-center">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-dark">Kategori</p>
+      <h2 class="mt-2 font-lexend text-3xl font-bold text-slate-900 sm:text-4xl">Pilih Kebutuhan Wisudamu</h2>
+    </div>
+    <div class="grid gap-6 md:grid-cols-3">
+      <div class="group rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/><path d="M9 14h6"/>
+<div class="group rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 21V8l9-5 9 5v13"/><path d="M3 21h18"/><path d="M9 11h6M9 15h6M10 21v-4h4v4"/>
+          </svg>
+        </div>
+        <h3 class="font-lexend text-xl font-semibold text-slate-900">Hotel &amp; Penginapan</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Penginapan terdekat dari kampus untuk keluarga yang hadir wisuda.</p>
+        <button onclick="openLogin('customer')" class="mt-5 text-sm font-medium text-brand-dark hover:text-brand">Jelajahi →</button>
+      </div>
+      <div class="group rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/>
+            <path d="M2 6h2l2 9h12l3-7H5"/><path d="M9 12h6"/>
+          </svg>
+<!-- ======= CARA KERJA ======= -->
+<section id="carakerja" class="bg-white">
+  <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mb-12 text-center">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-dark">Cara Kerja</p>
+      <h2 class="mt-2 font-lexend text-3xl font-bold text-slate-900 sm:text-4xl">3 Langkah Mudah</h2>
+    </div>
+    <div class="grid gap-8 md:grid-cols-3">
+      <div class="text-center">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 font-lexend text-2xl font-bold text-brand">1</div>
+        <h3 class="font-lexend text-lg font-semibold text-slate-900">Pilih Vendor &amp; Layanan</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Jelajahi katalog vendor dari salon hingga florist.</p>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 font-lexend text-2xl font-bold text-brand">2</div>
+        <h3 class="font-lexend text-lg font-semibold text-slate-900">Atur Slot Waktu</h3>
+<!-- ======= CTA TENANT ======= -->
+<section id="tenant" class="bg-navy-deep">
+  <div class="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+    <div class="space-y-4">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-navyaccent">Untuk Tenant</p>
+      <h2 class="font-lexend text-3xl font-bold text-white sm:text-4xl">Buka Toko Gratis di JogjaHub</h2>
+      <ul class="space-y-3 text-slate-300">
+        <li class="flex items-start gap-3"><span class="mt-1.5 h-2 w-2 rounded-full bg-brand"></span>Kelola katalog layanan &amp; jadwal booking.</li>
+        <li class="flex items-start gap-3"><span class="mt-1.5 h-2 w-2 rounded-full bg-brand"></span>Jangkau ribuan wisudawan di DIY.</li>
+        <li class="flex items-start gap-3"><span class="mt-1.5 h-2 w-2 rounded-full bg-brand"></span>Verifikasi cepat 1×24 jam oleh admin.</li>
+      </ul>
+    </div>
+    <div class="flex flex-col items-start gap-4">
+      <button onclick="openLogin('tenant')" class="rounded-xl bg-brand px-8 py-4 font-lexend text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-xl">
+        Daftar sebagai Tenant
+      </button>
+      <p class="text-sm text-slate-400">Sudah punya akun? <button onclick="openLogin('tenant')" class="font-medium text-navyaccent hover:underline">Masuk di sini</button></p>
+    </div>
+  </div>
+</section>
+
+<!-- ======= TESTIMONI ======= -->
+<section class="bg-surface2">
+  <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mb-12 text-center">
+      <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-dark">Kata Mereka</p>
+      <h2 class="mt-2 font-lexend text-3xl font-bold text-slate-900 sm:text-4xl">Dipercaya Wisudawan Jogja</h2>
+    </div>
+    <div class="grid gap-6 md:grid-cols-3">
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p class="text-2xl text-brand">“</p>
+        <p class="text-sm leading-6 text-slate-600">Bisa booking MUA jam 3 pagi tanpa antre. Ini penyelamat waktu wisuda!</p>
+        <p class="mt-4 text-sm font-semibold text-slate-900">— Sari, UGM</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p class="text-2xl text-brand">“</p>
+        <p class="text-sm leading-6 text-slate-600">Dari butik, hotel, sampai buket semua ready — keluarga dari luar kota terbantu.</p>
+        <p class="mt-4 text-sm font-semibold text-slate-900">— Pak Budi, Orang Tua Wisudawan</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p class="text-2xl text-brand">“</p>
+        <p class="text-sm leading-6 text-slate-600">Pesanan masuk rapi dan slot kalender mudah diatur. Omzet naik 2× lipat.</p>
+        <p class="mt-4 text-sm font-semibold text-slate-900">— Rina, MUA Salon</p>
+      </div>
+    </div>
+  </div>
+</section>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Booking slot dini hari sebelum wisuda tanpa antre.</p>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 font-lexend text-2xl font-bold text-brand">3</div>
+        <h3 class="font-lexend text-lg font-semibold text-slate-900">Booking &amp; Konfirmasi</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Bayar manual/COD, vendor mengonfirmasi pesanan.</p>
+      </div>
+    </div>
+  </div>
+<!-- ======= FOOTER ======= -->
+<footer class="bg-navy-deep text-slate-400">
+  <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
+    <div class="space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white text-lg font-bold">J</span>
+        <span class="font-lexend text-xl font-bold text-white">Jogja<span class="text-brand">Hub</span></span>
+      </div>
+      <p class="text-sm leading-6">Platform agregator wisuda untuk Yogyakarta: Beauty &amp; Style, Penginapan, dan Gifting.</p>
+    </div>
+    <div>
+      <h4 class="mb-3 font-lexend text-sm font-semibold text-white">Layanan</h4>
+      <ul class="space-y-2 text-sm">
+        <li><a href="#" class="hover:text-white">Beauty &amp; Style</a></li>
+        <li><a href="#" class="hover:text-white">Hotel &amp; Penginapan</a></li>
+        <li><a href="#" class="hover:text-white">Gifting</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="mb-3 font-lexend text-sm font-semibold text-white">Perusahaan</h4>
+      <ul class="space-y-2 text-sm">
+        <li><a href="#" class="hover:text-white">Tentang</a></li>
+        <li><a href="#tenant" class="hover:text-white">Daftar sebagai Tenant</a></li>
+        <li><a href="#" class="hover:text-white">Kebijakan Privasi</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="mb-3 font-lexend text-sm font-semibold text-white">Kontak</h4>
+      <ul class="space-y-2 text-sm">
+        <li>Yogyakarta, DIY</li>
+        <li>halo@jogjahub.id</li>
+      </ul>
+    </div>
+  </div>
+<!-- ======= LOGIN MODAL (Customer | Tenant) ======= -->
+<div id="loginModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-navy-deep/70 p-4 backdrop-blur-sm">
+  <div class="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+    <div class="mb-4 flex items-center justify-between">
+      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white">J</span>
+      <button onclick="closeLogin()" aria-label="Tutup" class="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">✕</button>
+    </div>
+
+    <p class="text-sm font-semibold uppercase tracking-[0.2em] text-brand-dark">JogjaHub</p>
+    <h2 id="loginTitle" class="mt-2 font-lexend text-2xl font-bold text-slate-900">Masuk sebagai Customer</h2>
+    <p id="loginSub" class="mt-1 text-sm text-slate-500">Masuk untuk booking layanan wisuda favoritmu.</p>
+
+    <!-- Segmented control role -->
+    <div class="mt-6 grid grid-cols-2 gap-1 rounded-full bg-surface2-container p-1" role="tablist" aria-label="Pilih role">
+      <button id="tabCustomer" data-active="1" onclick="setRole('customer')" role="tab" class="seg-tab rounded-full px-4 py-2.5 text-sm font-semibold transition">Customer</button>
+      <button id="tabTenant" data-active="0" onclick="setRole('tenant')" role="tab" class="seg-tab rounded-full px-4 py-2.5 text-sm font-semibold transition">Tenant</button>
+    </div>
+
+    <form class="mt-6 space-y-4">
+      <label class="block text-sm font-medium text-slate-700">
+        <span class="mb-2 block">Email</span>
+        <input type="email" placeholder="nama@email.com" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20" />
+      </label>
+      <label class="block text-sm font-medium text-slate-700">
+        <span class="mb-2 block">Password</span>
+        <input type="password" placeholder="••••••••" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20" />
+      </label>
+      <button type="button" onclick="closeLogin()" class="w-full rounded-xl bg-brand px-4 py-3 font-lexend text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-lg">
+        Masuk
+      </button>
+    </form>
+
+    <p class="mt-5 text-center text-sm text-slate-600" id="registerHint">
+      Belum punya akun? <a href="#" class="font-medium text-brand-dark">Daftar sebagai Customer</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>
+  <div class="border-t border-white/10 py-5 text-center text-xs">© 2026 JogjaHub. Dibuat dengan ❤️ di Yogyakarta.</div>
+</footer>
+</section>
+        </div>
+        <h3 class="font-lexend text-xl font-semibold text-slate-900">Gifting</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Buket bunga, selempang, plakat, dan akrilik standing ucapan.</p>
+        <button onclick="openLogin('customer')" class="mt-5 text-sm font-medium text-brand-dark hover:text-brand">Jelajahi →</button>
+      </div>
+    </div>
+  </div>
+</section>
+          </svg>
+        </div>
+        <h3 class="font-lexend text-xl font-semibold text-slate-900">Beauty &amp; Style</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Salon, MUA, nail art, dan butik wisuda — slot dini hari tersedia.</p>
+        <button onclick="openLogin('customer')" class="mt-5 text-sm font-medium text-brand-dark hover:text-brand">Jelajahi →</button>
+      </div>
