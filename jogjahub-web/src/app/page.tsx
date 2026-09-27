@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ROUTES } from "@/src/constants/routes";
 import { RevealOnScroll } from "@/src/components/shared/RevealOnScroll";
+import { QuickSearchWidget } from "@/src/components/shared/QuickSearchWidget";
 import { apiGet } from "@/src/lib/api";
 import type { Service, PaginatedServices } from "@/src/types/service";
 
@@ -12,7 +13,7 @@ const categories = [
     icon: "beauty",
   },
   {
-    title: "Hotel & Penginapan",
+    title: "Penginapan",
     description: "Temukan tempat menginap nyaman dan dekat dengan kampus.",
     detail: "Lebih dekat ke kampus",
     icon: "stay",
@@ -32,10 +33,24 @@ const steps = [
 ];
 
 const proofPoints = [
-  { value: "500+", label: "Vendor lokal" },
-  { value: "3", label: "Kategori pilihan" },
-  { value: "10rb+", label: "Booking terbantu" },
-  { value: "4.8", label: "Rating pengguna" },
+  { value: "3", label: "Kategori layanan" },
+  { value: "Rp0", label: "Biaya untuk customer" },
+  { value: "1", label: "Platform persiapan" },
+  { value: "Jogja", label: "Vendor lokal" },
+];
+
+const valueProps = [
+  { title: "Vendor Terverifikasi", description: "Setiap tenant melalui proses approval sebelum tampil ke customer.", icon: "verified" },
+  { title: "Booking Real-time", description: "Lihat slot yang benar-benar tersedia, tanpa bentrok jadwal.", icon: "schedule" },
+  { title: "Harga Transparan", description: "Harga layanan ditampilkan jelas sebelum kamu booking.", icon: "price" },
+  { title: "Dukungan Lokal Jogja", description: "Semua vendor adalah usaha lokal Yogyakarta.", icon: "local" },
+] as const;
+
+const whyChooseUs = [
+  { title: "Vendor Lokal Terpercaya", description: "Temukan pilihan layanan dari tenant lokal yang telah melalui proses persetujuan." },
+  { title: "Booking Tanpa Antre Dini Hari", description: "Atur layanan dan pilih slot waktu lebih awal untuk hari wisudamu." },
+  { title: "Semua Kebutuhan dalam 1 Platform", description: "Jelajahi Beauty & Style, penginapan, dan gifting di satu tempat." },
+  { title: "Dukungan Responsif", description: "Informasi layanan dan jadwal membantu persiapanmu berjalan lebih terarah." },
 ];
 
 function CategoryIcon({ type }: { type: (typeof categories)[number]["icon"] }) {
@@ -64,6 +79,21 @@ function CategoryIcon({ type }: { type: (typeof categories)[number]["icon"] }) {
   );
 }
 
+function ValuePropIcon({ type }: { type: (typeof valueProps)[number]["icon"] }) {
+  const iconPaths = {
+    verified: <><path d="M12 3 4.5 6v5c0 5 3.2 8.2 7.5 10 4.3-1.8 7.5-5 7.5-10V6L12 3Z" /><path d="m8.5 12 2.2 2.2 4.8-4.8" /></>,
+    schedule: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    price: <><circle cx="12" cy="12" r="9" /><path d="M15 8.5c-.7-.7-1.7-1-3-1-1.6 0-2.7.8-2.7 2s1.1 1.8 2.7 2 2.7.8 2.7 2-1.1 2-2.7 2c-1.3 0-2.3-.4-3-1.1M12 6v12" /></>,
+    local: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {iconPaths[type]}
+    </svg>
+  );
+}
+
 export default async function HomePage() {
   let featuredServices: Service[] = [];
   try {
@@ -82,7 +112,7 @@ export default async function HomePage() {
           <div className="relative z-10 max-w-2xl">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white sm:text-sm">
               <span className="h-2 w-2 rounded-full bg-[#FBBF24]" aria-hidden="true" />
-              Platform wisuda #1 di Yogyakarta
+              Persiapan wisuda di Yogyakarta
             </p>
             <h1 className="font-display text-4xl font-bold leading-[1.12] sm:text-5xl lg:text-[3.5rem]">
               Semua kebutuhan wisudamu, <span className="text-[#FBBF24]">satu platform.</span>
@@ -91,10 +121,10 @@ export default async function HomePage() {
               Dari MUA dan butik, penginapan dekat kampus, hingga buket dan hadiah. Atur semuanya secara online tanpa antre dini hari.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="#kategori" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
+              <Link href="#layanan" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
                 Cari Layanan <span aria-hidden="true">-&gt;</span>
               </Link>
-              <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-lg border border-white/40 px-6 py-3 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
+              <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 px-6 py-3 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
                 Daftar sebagai Tenant
               </Link>
             </div>
@@ -140,11 +170,31 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
-            <div className="absolute right-3 top-4 rounded-lg bg-[#FBBF24] px-4 py-3 text-[#121C2A] shadow-lg sm:right-5 sm:top-6">
-              <p className="text-xs font-semibold">Pilihan lokal</p>
-              <p className="font-display text-lg font-bold">Jogja</p>
+            <div aria-hidden="true" className="absolute -right-3 -top-3 grid h-24 w-24 place-items-center rounded-full bg-[#FBBF24] text-center text-[#121C2A] shadow-lg sm:-right-5 sm:-top-5 sm:h-28 sm:w-28">
+              <div>
+                <p className="font-display text-lg font-bold leading-none sm:text-xl">100%</p>
+                <p className="text-[10px] font-semibold uppercase leading-tight sm:text-xs">Gratis Customer</p>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <QuickSearchWidget />
+
+      <section aria-label="Keunggulan JogjaHub" className="relative left-1/2 w-screen -translate-x-1/2 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-2 sm:px-8 sm:py-16 lg:grid-cols-4 lg:px-12">
+          {valueProps.map((item, index) => (
+            <RevealOnScroll key={item.title} delayMs={index * 100}>
+              <div className="flex h-full flex-col items-start border-t-2 border-[#FF6B00] pt-5">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FFF0E5] text-[#A04100]">
+                  <ValuePropIcon type={item.icon} />
+                </span>
+                <h2 className="font-display mt-4 text-lg font-semibold text-[#121C2A]">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-[#5A4136]">{item.description}</p>
+              </div>
+            </RevealOnScroll>
+          ))}
         </div>
       </section>
 
@@ -203,7 +253,7 @@ export default async function HomePage() {
             <div className="grid gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
               {featuredServices.map((service, index) => (
                 <RevealOnScroll key={service.id} delayMs={index * 100}>
-                  <article className="group flex h-full flex-col overflow-hidden border border-[#D3E2ED] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-lg motion-reduce:transform-none">
+                  <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#D3E2ED] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-md motion-reduce:transform-none">
                     <div className="relative h-40 w-full overflow-hidden bg-[#EFF4FF]">
                       {service.photos?.[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -252,6 +302,35 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section aria-label="Kenapa pilih JogjaHub" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#F8F9FF]">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-2 lg:px-12">
+          <RevealOnScroll className="relative min-h-[320px] overflow-hidden rounded-2xl bg-[#1E293B]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1627556704353-016baeb12c79?q=80&w=1200&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              alt="Tiga wisudawan berfoto bersama di depan gedung kampus"
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/85 via-[#0F172A]/10 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+              <p className="font-display text-2xl font-semibold">Wisuda tanpa ribet</p>
+              <p className="mt-1 text-sm text-white/85">Semua persiapan, satu platform.</p>
+              <a href="https://unsplash.com/@rutmiit" target="_blank" rel="noreferrer" className="mt-3 inline-block text-xs text-white/75 underline underline-offset-4 hover:text-white">Foto oleh RUT MIIT di Unsplash</a>
+            </div>
+          </RevealOnScroll>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {whyChooseUs.map((item, index) => (
+              <RevealOnScroll key={item.title} delayMs={index * 100} className="rounded-2xl border border-[#D3E2ED] bg-white p-5">
+                <h2 className="font-display text-base font-semibold text-[#121C2A]">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-[#5A4136]">{item.description}</p>
+              </RevealOnScroll>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section id="untuk-tenant" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#1E293B] text-white">
         <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-[#FBBF24]/15 blur-3xl" />
         <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-center lg:justify-between lg:px-12">
@@ -265,7 +344,7 @@ export default async function HomePage() {
             </ul>
           </RevealOnScroll>
           <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-            <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
+            <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
               Daftar sebagai Tenant
             </Link>
             <p className="text-sm text-slate-300">Verifikasi maksimal 1x24 jam</p>
@@ -280,7 +359,7 @@ export default async function HomePage() {
             <p className="text-sm font-semibold uppercase text-[#A04100]">Satu langkah lebih dekat</p>
             <h2 className="font-display mt-2 text-2xl font-semibold text-[#121C2A] sm:text-3xl">Rencanakan hari wisuda yang berkesan.</h2>
           </RevealOnScroll>
-          <Link href={ROUTES.login} className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100] motion-reduce:transform-none">
+          <Link href={ROUTES.login} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100] motion-reduce:transform-none">
             Mulai cari layanan
           </Link>
         </div>
