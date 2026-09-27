@@ -68,8 +68,8 @@ function RegisterForm() {
         <div id="register-panel" role="tabpanel" aria-labelledby={`register-tab-${role}`}>
           <h2 className="font-display mb-5 text-lg font-semibold text-[#121C2A]">Daftar sebagai {role === "customer" ? "Customer" : "Tenant"}</h2>
           <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-            <label className="block text-sm font-medium text-[#121C2A]" htmlFor="name">Nama lengkap
-              <input id="name" name="name" type="text" autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama kamu" className="mt-2 min-h-12 w-full rounded-md border border-[#8E7164]/50 bg-white px-3 text-base text-[#121C2A] placeholder:text-[#5A4136]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]" />
+            <label className="block text-sm font-medium text-[#121C2A]" htmlFor="name">{role === "tenant" ? "Nama Bisnis / Toko" : "Nama lengkap"}
+              <input id="name" name="name" type="text" autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} placeholder={role === "tenant" ? "Nama bisnis/toko kamu" : "Nama kamu"} className="mt-2 min-h-12 w-full rounded-md border border-[#8E7164]/50 bg-white px-3 text-base text-[#121C2A] placeholder:text-[#5A4136]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]" />
             </label>
             <label className="block text-sm font-medium text-[#121C2A]" htmlFor="email">Email
               <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@email.com" className="mt-2 min-h-12 w-full rounded-md border border-[#8E7164]/50 bg-white px-3 text-base text-[#121C2A] placeholder:text-[#5A4136]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]" />
