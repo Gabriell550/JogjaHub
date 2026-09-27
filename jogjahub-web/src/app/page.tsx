@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { ROUTES } from "@/src/constants/routes";
+import { RevealOnScroll } from "@/src/components/shared/RevealOnScroll";
+import { apiGet } from "@/src/lib/api";
+import type { Service, PaginatedServices } from "@/src/types/service";
 
 const categories = [
   {
@@ -61,10 +64,20 @@ function CategoryIcon({ type }: { type: (typeof categories)[number]["icon"] }) {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  let featuredServices: Service[] = [];
+  try {
+    const res = await apiGet<{ success: boolean; data: PaginatedServices }>("/services");
+    featuredServices = res.data.data.slice(0, 6);
+  } catch {
+    featuredServices = []; // gagal fetch (mis. backend belum jalan) -> seksi disembunyikan, landing page tetap jalan
+  }
+
   return (
     <div className="-mt-8">
       <section id="beranda" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#0F172A] text-white">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-[#FF6B00]/20 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-[#FBBF24]/10 blur-3xl" />
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1fr_0.92fr] lg:gap-16 lg:px-12 lg:py-24">
           <div className="relative z-10 max-w-2xl">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white sm:text-sm">
@@ -135,18 +148,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section aria-label="JogjaHub dalam angka" className="relative left-1/2 w-screen -translate-x-1/2 border-b border-[#E6EEFF] bg-white">
+      <section aria-label="JogjaHub dalam angka" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden border-b border-[#E6EEFF] bg-white">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: "radial-gradient(circle, #A0410022 1px, transparent 1px)", backgroundSize: "22px 22px" }} />
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-y-7 px-5 py-8 sm:grid-cols-4 sm:px-8 lg:px-12">
-          {proofPoints.map((point) => (
-            <div key={point.label} className="text-center sm:border-r sm:border-[#E6EEFF] sm:last:border-r-0">
-              <p className="font-display text-2xl font-bold text-[#A04100] sm:text-3xl">{point.value}</p>
-              <p className="mt-1 text-sm text-[#5A4136]">{point.label}</p>
-            </div>
+          {proofPoints.map((point, index) => (
+            <RevealOnScroll key={point.label} delayMs={index * 100} className="text-center sm:border-r sm:border-[#E6EEFF] sm:last:border-r-0">
+              <div>
+                <p className="font-display text-2xl font-bold text-[#A04100] sm:text-3xl">{point.value}</p>
+                <p className="mt-1 text-sm text-[#5A4136]">{point.label}</p>
+              </div>
+            </RevealOnScroll>
           ))}
         </div>
       </section>
 
-      <section id="layanan" className="relative left-1/2 w-screen -translate-x-1/2 bg-[#F8F9FF]">
+      <section id="layanan" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#F8F9FF]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#FF6B00]/10 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-[#1E293B]/5 blur-3xl" />
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
           <span id="kategori" className="scroll-mt-24" />
           <div className="mb-10 max-w-2xl">
@@ -155,22 +173,64 @@ export default function HomePage() {
             <p className="mt-4 leading-7 text-[#5A4136]">Temukan vendor lokal tepercaya untuk setiap bagian dari hari istimewamu.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3 md:gap-5">
-            {categories.map((category) => (
-              <article key={category.title} className="group flex min-h-[260px] flex-col border border-[#D3E2ED] bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-lg motion-reduce:transform-none sm:p-7">
-                <div className="mb-6 grid h-14 w-14 place-items-center rounded-lg bg-[#FFF0E5] text-[#A04100] transition duration-200 group-hover:scale-105 motion-reduce:transform-none">
-                  <CategoryIcon type={category.icon} />
-                </div>
-                <p className="text-xs font-semibold uppercase text-[#A04100]">{category.detail}</p>
-                <h3 className="font-display mt-2 text-xl font-semibold text-[#121C2A]">{category.title}</h3>
-                <p className="mt-2 flex-1 text-sm leading-6 text-[#5A4136]">{category.description}</p>
-                <Link href={`${ROUTES.login}?role=customer`} className="mt-6 inline-flex min-h-11 items-center gap-2 self-start font-semibold text-[#A04100] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100]">
-                  Jelajahi <span aria-hidden="true">-&gt;</span>
-                </Link>
-              </article>
+            {categories.map((category, index) => (
+              <RevealOnScroll key={category.title} delayMs={index * 120}>
+                <article className="group flex min-h-[260px] flex-col border border-[#D3E2ED] bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-lg motion-reduce:transform-none sm:p-7">
+                  <div className="mb-6 grid h-14 w-14 place-items-center rounded-lg bg-[#FFF0E5] text-[#A04100] transition duration-200 group-hover:scale-105 motion-reduce:transform-none">
+                    <CategoryIcon type={category.icon} />
+                  </div>
+                  <p className="text-xs font-semibold uppercase text-[#A04100]">{category.detail}</p>
+                  <h3 className="font-display mt-2 text-xl font-semibold text-[#121C2A]">{category.title}</h3>
+                  <p className="mt-2 flex-1 text-sm leading-6 text-[#5A4136]">{category.description}</p>
+                  <Link href={`${ROUTES.login}?role=customer`} className="mt-6 inline-flex min-h-11 items-center gap-2 self-start font-semibold text-[#A04100] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100]">
+                    Jelajahi <span aria-hidden="true">-&gt;</span>
+                  </Link>
+                </article>
+              </RevealOnScroll>
             ))}
           </div>
         </div>
       </section>
+
+      {featuredServices.length > 0 ? (
+        <section aria-label="Layanan pilihan" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-white">
+          <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
+            <div className="mb-10 max-w-2xl">
+              <p className="text-sm font-semibold uppercase text-[#A04100]">Baru saja bergabung</p>
+              <h2 className="font-display mt-3 text-3xl font-semibold text-[#121C2A] sm:text-4xl">Layanan pilihan dari vendor lokal</h2>
+              <p className="mt-4 leading-7 text-[#5A4136]">Beberapa layanan yang sudah tersedia di JogjaHub saat ini.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
+              {featuredServices.map((service, index) => (
+                <RevealOnScroll key={service.id} delayMs={index * 100}>
+                  <article className="group flex h-full flex-col overflow-hidden border border-[#D3E2ED] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-lg motion-reduce:transform-none">
+                    <div className="relative h-40 w-full overflow-hidden bg-[#EFF4FF]">
+                      {service.photos?.[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={service.photos[0]} alt={service.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#FFF0E5_0%,#EFF4FF_100%)] text-sm font-semibold text-[#A04100]">{service.subcategory?.name ?? "JogjaHub"}</div>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      {service.subcategory ? <p className="text-xs font-semibold uppercase text-[#A04100]">{service.subcategory.name}</p> : null}
+                      <h3 className="font-display mt-1 text-lg font-semibold text-[#121C2A]">{service.name}</h3>
+                      {service.tenant ? <p className="mt-1 text-sm text-[#5A4136]">{service.tenant.business_name}</p> : null}
+                      <p className="mt-3 flex-1 text-sm leading-6 text-[#5A4136]">{service.description}</p>
+                      <p className="font-display mt-4 text-lg font-bold text-[#121C2A]">Rp{service.price.toLocaleString("id-ID")}</p>
+                    </div>
+                  </article>
+                </RevealOnScroll>
+              ))}
+            </div>
+            <div className="mt-10 text-center">
+              <Link href={`${ROUTES.login}?role=customer`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#FF6B00] px-6 py-3 font-semibold text-[#A04100] transition duration-200 hover:-translate-y-0.5 hover:bg-[#FFF0E5] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100] motion-reduce:transform-none">
+                Lihat semua layanan <span aria-hidden="true">-&gt;</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section id="cara-kerja" className="relative left-1/2 w-screen -translate-x-1/2 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
@@ -179,20 +239,23 @@ export default function HomePage() {
             <h2 className="font-display mt-3 text-3xl font-semibold text-[#121C2A] sm:text-4xl">Persiapan wisuda dalam 3 langkah</h2>
           </div>
           <ol className="grid gap-8 md:grid-cols-3 md:gap-10">
-            {steps.map((step) => (
-              <li key={step.number} className="border-t-2 border-[#FF6B00] pt-5">
-                <span className="font-display text-sm font-bold text-[#A04100]">{step.number}</span>
-                <h3 className="font-display mt-3 text-xl font-semibold text-[#121C2A]">{step.title}</h3>
-                <p className="mt-2 leading-7 text-[#5A4136]">{step.description}</p>
-              </li>
+            {steps.map((step, index) => (
+              <RevealOnScroll key={step.number} delayMs={index * 150}>
+                <li className="border-t-2 border-[#FF6B00] pt-5">
+                  <span className="font-display text-sm font-bold text-[#A04100]">{step.number}</span>
+                  <h3 className="font-display mt-3 text-xl font-semibold text-[#121C2A]">{step.title}</h3>
+                  <p className="mt-2 leading-7 text-[#5A4136]">{step.description}</p>
+                </li>
+              </RevealOnScroll>
             ))}
           </ol>
         </div>
       </section>
 
-      <section id="untuk-tenant" className="relative left-1/2 w-screen -translate-x-1/2 bg-[#1E293B] text-white">
+      <section id="untuk-tenant" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#1E293B] text-white">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-[#FBBF24]/15 blur-3xl" />
         <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-14 sm:px-8 sm:py-16 lg:flex-row lg:items-center lg:justify-between lg:px-12">
-          <div className="max-w-2xl">
+          <RevealOnScroll className="max-w-2xl">
             <p className="text-sm font-semibold uppercase text-[#FBBF24]">Untuk pemilik usaha lokal</p>
             <h2 className="font-display mt-3 text-3xl font-semibold sm:text-4xl">Buka toko gratis di JogjaHub</h2>
             <p className="mt-4 leading-7 text-slate-200">Jangkau calon pelanggan yang sedang mempersiapkan wisuda dan kelola pesanan dari satu tempat.</p>
@@ -200,7 +263,7 @@ export default function HomePage() {
               <li><span className="mr-2 text-[#FBBF24]" aria-hidden="true">+</span>Profil bisnis mudah ditemukan</li>
               <li><span className="mr-2 text-[#FBBF24]" aria-hidden="true">+</span>Kelola layanan dan jadwal</li>
             </ul>
-          </div>
+          </RevealOnScroll>
           <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
             <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
               Daftar sebagai Tenant
@@ -210,12 +273,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-[#FFF8F2]">
+      <section className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#FFF8F2]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-10 -bottom-10 h-64 w-64 rounded-full bg-[#FF6B00]/10 blur-3xl" />
         <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-5 py-12 sm:px-8 sm:py-14 lg:flex-row lg:items-center lg:justify-between lg:px-12">
-          <div>
+          <RevealOnScroll>
             <p className="text-sm font-semibold uppercase text-[#A04100]">Satu langkah lebih dekat</p>
             <h2 className="font-display mt-2 text-2xl font-semibold text-[#121C2A] sm:text-3xl">Rencanakan hari wisuda yang berkesan.</h2>
-          </div>
+          </RevealOnScroll>
           <Link href={ROUTES.login} className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100] motion-reduce:transform-none">
             Mulai cari layanan
           </Link>
