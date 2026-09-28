@@ -4,7 +4,7 @@ import { ROUTES } from "@/src/constants/routes";
 export function Footer() {
   return (
     <footer className="bg-[#0F172A] text-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:grid-cols-2 sm:px-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-12 lg:py-14">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:grid-cols-2 sm:px-8 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:px-12 lg:py-14">
         <div className="max-w-xs">
           <Link href={ROUTES.home} className="font-display text-xl font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24]">
             <span className="text-[#FF6B00]">Jogja</span>Hub
@@ -24,6 +24,14 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm text-slate-300">
             <li><Link href={`${ROUTES.register}?role=tenant`} className="hover:text-white">Untuk tenant</Link></li>
             <li><Link href={ROUTES.register} className="hover:text-white">Buat akun</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h2 className="font-display text-sm font-semibold text-white">Kategori Populer</h2>
+          <ul className="mt-4 space-y-3 text-sm text-slate-300">
+            <li><Link href={`${ROUTES.home}#layanan`} className="hover:text-white">Beauty &amp; Style</Link></li>
+            <li><Link href={`${ROUTES.home}#layanan`} className="hover:text-white">Penginapan</Link></li>
+            <li><Link href={`${ROUTES.home}#layanan`} className="hover:text-white">Gifting</Link></li>
           </ul>
         </div>
         <div>
