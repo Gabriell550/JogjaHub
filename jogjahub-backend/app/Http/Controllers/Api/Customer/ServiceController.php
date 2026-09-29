@@ -19,6 +19,14 @@ class ServiceController extends Controller
             ->when($request->category_id, function ($q) use ($request) {
                 $q->whereHas('subcategory', fn($sq) => $sq->where('category_id', $request->category_id));
             })
+            ->when($request->q, function ($q) use ($request) {
+                $keyword = $request->q;
+                $q->where(function ($sub) use ($keyword) {
+                    $sub->where('name', 'like', "%{$keyword}%")
+                        ->orWhere('description', 'like', "%{$keyword}%")
+                        ->orWhereHas('tenant', fn($t) => $t->where('business_name', 'like', "%{$keyword}%"));
+                });
+            })
             ->paginate(15);
 
         return response()->json(['success' => true, 'data' => ServiceResource::collection($services)]);
