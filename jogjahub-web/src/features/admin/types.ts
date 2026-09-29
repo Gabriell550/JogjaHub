@@ -1,11 +1,38 @@
-export interface AdminOverviewCard {
-  label: string;
-  value: string;
+export interface DashboardSummary {
+  tenants_pending: number;
+  tenants_approved: number;
+  bookings_today: number;
+  bookings_pending: number;
+  bookings_confirmed: number;
+  bookings_cancelled: number;
 }
 
-export interface UserSummary {
-  id: string;
-  name: string;
-  email: string;
-  role: "customer" | "vendor" | "admin";
+export interface PendingTenant {
+  id: number;
+  business_name: string;
+  address: string | null;
+  ktp_url: string | null;
+  nib_url: string | null;
+  portfolio_url: string | null;
+  categories: { id: number; name: string }[];
+  user: { name: string; email: string; phone: string | null };
+}
+
+export interface AdminBooking {
+  id: number;
+  status: "pending" | "confirmed" | "cancelled" | string;
+  created_at: string;
+  service?: { name: string; tenant?: { business_name: string } };
+  customer?: { name: string; email: string };
+}
+
+/**
+ * Envelope umum untuk response endpoint admin yang mengembalikan daftar.
+ * Backend memakai JSON Resource Collection (bisa berupa array datar maupun
+ * bungkus paginator `{ data: [...] }` tergantung bentuk render resource),
+ * jadi frontend mendukung keduanya lewat bantuan `unwrapList`.
+ */
+export interface AdminListResponse<T> {
+  success: boolean;
+  data: T[] | { data: T[] };
 }
