@@ -1,4 +1,6 @@
 export interface DashboardSummary {
+  customers_total: number;
+  tenants_total: number;
   tenants_pending: number;
   tenants_approved: number;
   bookings_today: number;
