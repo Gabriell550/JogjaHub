@@ -5,7 +5,15 @@
 import { apiClient } from './client';
 
 export const vendorApi = {
-  listTenantsOnMap: () => apiClient.get('/tenants/map'),
+  // ─── CUSTOMER (public) ────────────────────────────────────────────────────
+listTenantsOnMap: () => apiClient.get('/tenants/map'),
+  getTenantProfile: (uuid: string) => apiClient.get(`/tenants/${uuid}`),
+  listServices: (params?: { category_id?: number; subcategory_id?: number }) =>
+    apiClient.get('/services', { params }),
+  getServiceReviews: (serviceId: string | number) =>
+    apiClient.get(`/services/${serviceId}/reviews`),
+
+  // ─── TENANT (butuh login + approved) ─────────────────────────────────────
 
   updateMyProfile: (payload: {
     business_name: string;

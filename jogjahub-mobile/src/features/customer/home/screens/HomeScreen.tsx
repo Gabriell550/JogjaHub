@@ -95,7 +95,17 @@ export default function HomeScreen() {
         />
 
         {/* Kategori */}
-        <CategoryGrid onSelectCategory={(id) => console.log('category:', id)} />
+        <CategoryGrid
+        onSelectCategory={(id) => {
+        const titleMap: Record<string, string> = {
+          hotel: 'Hotel & Akomodasi',
+          beauty: 'Beauty & Style',
+          gifting: 'Hadiah & Gifting',
+          photo: 'Fotografi',
+          };
+        navigation.navigate('Catalog', { categoryId: id, title: titleMap[id] ?? 'Katalog' });
+        }}
+        />
 
         {/* Rekomendasi Terverifikasi */}
         <View style={styles.sectionHeader}>
@@ -111,19 +121,26 @@ export default function HomeScreen() {
           contentContainerStyle={styles.vendorList}
         >
           {vendors.map((vendor) => (
-            <VendorCard
-              key={vendor.id}
-              vendor={vendor}
-              onPressBook={() => {
-                navigation.navigate('Booking', {
-                  serviceId: vendor.id,
-                  serviceName: vendor.name,
-                  vendorName: vendor.name,
-                  price: vendor.priceFrom,
-                });
-              }}
-              onToggleFavorite={() => toggleFavorite(vendor.id)}
-            />
+           <VendorCard
+            key={vendor.id}
+            vendor={vendor}
+            onPressCard={() => {
+              navigation.navigate('VendorDetail', {
+                tenantUuid: vendor.uuid,
+                businessName: vendor.name,
+                imageUrl: vendor.imageUrl,
+              });
+            }}
+            onPressBook={() => {
+              navigation.navigate('Booking', {
+                serviceId: vendor.id,
+                serviceName: vendor.name,
+                vendorName: vendor.name,
+                price: vendor.priceFrom,
+              });
+            }}
+            onToggleFavorite={() => toggleFavorite(vendor.id)}
+          />
           ))}
         </ScrollView>
 
@@ -275,7 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   mapOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.03)',
   },
   mapLocationTag: {
