@@ -31,20 +31,20 @@ export default function AdminVendorsPage() {
     };
   }, []);
 
-  async function handleApprove(id: number) {
+  async function handleApprove(uuid: string) {
     try {
-      await adminApi.approveTenant(id);
-      setTenants((prev) => prev.filter((t) => t.id !== id));
+      await adminApi.approveTenant(uuid);
+      setTenants((prev) => prev.filter((t) => t.uuid !== uuid));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menyetujui vendor.");
     }
   }
 
-  async function handleConfirmReject(id: number) {
+  async function handleConfirmReject(uuid: string) {
     if (!rejectionReason.trim()) return;
     try {
-      await adminApi.rejectTenant(id, rejectionReason.trim());
-      setTenants((prev) => prev.filter((t) => t.id !== id));
+      await adminApi.rejectTenant(uuid, rejectionReason.trim());
+      setTenants((prev) => prev.filter((t) => t.uuid !== uuid));
       setRejectingId(null);
       setRejectionReason("");
     } catch (err) {
@@ -83,13 +83,13 @@ export default function AdminVendorsPage() {
                     <div className="flex flex-col gap-2">
                       <textarea value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Alasan penolakan (wajib diisi)" className="min-h-16 rounded-md border border-[#D3E2ED] p-2 text-xs" />
                       <div className="flex gap-2">
-                        <button onClick={() => handleConfirmReject(tenant.id)} disabled={!rejectionReason.trim()} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Kirim Penolakan</button>
+                        <button onClick={() => handleConfirmReject(tenant.uuid)} disabled={!rejectionReason.trim()} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Kirim Penolakan</button>
                         <button onClick={() => { setRejectingId(null); setRejectionReason(""); }} className="rounded-full border border-[#D3E2ED] px-3 py-1.5 text-xs font-semibold text-[#121C2A]">Batal</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <button onClick={() => handleApprove(tenant.id)} className="rounded-full bg-[#FF6B00] px-3 py-1.5 text-xs font-semibold text-[#121C2A] hover:bg-[#E85F00]">Setujui</button>
+                      <button onClick={() => handleApprove(tenant.uuid)} className="rounded-full bg-[#FF6B00] px-3 py-1.5 text-xs font-semibold text-[#121C2A] hover:bg-[#E85F00]">Setujui</button>
                       <button onClick={() => setRejectingId(tenant.id)} className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Tolak</button>
                     </div>
                   )}
