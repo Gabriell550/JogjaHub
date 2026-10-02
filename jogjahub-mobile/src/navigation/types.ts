@@ -44,6 +44,12 @@ export type AdminStackParamList = {
 export type CustomerStackParamList = {
   CustomerTabs: undefined;
   Notifications: undefined;
+  Catalog: { categoryId: string; title?: string };
+  VendorDetail: {
+    tenantUuid: string;
+    businessName?: string;
+    imageUrl?: string;
+  };
   Booking: {
     serviceId?: number | string;
     serviceName?: string;

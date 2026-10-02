@@ -1,5 +1,6 @@
 export interface Vendor {
   id: string;
+  uuid: string; 
   name: string;
   category: string;
   location: string;
@@ -12,6 +13,7 @@ export interface Vendor {
 export const verifiedVendors: Vendor[] = [
   {
     id: '1',
+    uuid: 'uuid-glow-up-mua-jogja',
     name: 'GlowUp MUA Jogja',
     category: 'BEAUTY & STYLE',
     location: 'Sleman, DIY',
@@ -21,6 +23,7 @@ export const verifiedVendors: Vendor[] = [
   },
   {
     id: '2',
+    uuid: 'uuid-grand-aston-hotel',
     name: 'Grand Aston Hotel',
     category: 'ACCOMMODATION',
     location: 'Depok, Sleman',
@@ -30,6 +33,7 @@ export const verifiedVendors: Vendor[] = [
   },
   {
     id: '3',
+    uuid: 'uuid-kado-wisuda-studio',
     name: 'Kado Wisuda Studio',
     category: 'GIFTING',
     location: 'Kotabaru, Jogja',
