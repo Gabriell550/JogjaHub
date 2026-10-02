@@ -58,6 +58,8 @@ Route::prefix('v1')->group(function () {
     // ===== Admin =====
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('tenants/pending', [\App\Http\Controllers\Api\Admin\TenantController::class, 'pending']);
+        // Binding default {tenant} memakai getRouteKeyName() = 'uuid' (identitas publik tenant,
+        // konsisten dengan kontrak API publik /tenants/{uuid}). Frontend WAJIB mengirim uuid.
         Route::patch('tenants/{tenant}/approve', [\App\Http\Controllers\Api\Admin\TenantController::class, 'approve']);
         Route::patch('tenants/{tenant}/reject', [\App\Http\Controllers\Api\Admin\TenantController::class, 'reject']);
         Route::get('bookings', [\App\Http\Controllers\Api\Admin\BookingController::class, 'index']);

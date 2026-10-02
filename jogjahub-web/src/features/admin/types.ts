@@ -11,6 +11,8 @@ export interface DashboardSummary {
 
 export interface PendingTenant {
   id: number;
+  /** Route key publik tenant — semua aksi admin (approve/reject) memakai uuid ini. */
+  uuid: string;
   business_name: string;
   address: string | null;
   ktp_url: string | null;
