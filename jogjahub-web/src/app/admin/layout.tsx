@@ -6,16 +6,22 @@ import { AdminSidebar } from "@/src/features/admin/components/AdminSidebar";
 import { useAuth } from "@/src/hooks/useAuth";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth();
+  const { session, isHydrated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && session?.user.role !== "admin") {
+    if (isHydrated && session?.user.role !== "admin") {
       router.replace("/admin-login");
     }
-  }, [isLoading, session, router]);
+  }, [isHydrated, session, router]);
 
-  if (isLoading || session?.user.role !== "admin") return null;
+  if (!isHydrated || session?.user.role !== "admin") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F9FF]">
+        <p role="status" className="text-sm text-[#5A4136]">Memuat...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FF]">
