@@ -26,13 +26,12 @@ function BadgeCheckIcon({ className }: IconProps) {
   );
 }
 
-function ReceiptIcon({ className }: IconProps) {
+function DisputeIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-      <path d="M14 8H8" />
-      <path d="M16 12H8" />
-      <path d="M13 16H8" />
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
     </svg>
   );
 }
@@ -61,7 +60,7 @@ function LogOutIcon({ className }: IconProps) {
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: DashboardIcon },
   { href: "/admin/vendors", label: "Verifikasi Vendor", icon: BadgeCheckIcon },
-  { href: "/admin/bookings", label: "Transaksi", icon: ReceiptIcon },
+  { href: "/admin/disputes", label: "Sengketa", icon: DisputeIcon },
   { href: "/admin/users", label: "Users", icon: UsersIcon, disabled: true },
 ];
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

@@ -40,3 +40,24 @@ export interface AdminListResponse<T> {
   success: boolean;
   data: T[] | { data: T[] };
 }
+
+export type DisputeStatus = "open" | "resolved";
+
+export interface DisputeMessage {
+  id: number;
+  dispute_id: number;
+  sender_name: string;
+  sender_role: "customer" | "tenant" | "admin";
+  message: string;
+  created_at: string;
+}
+
+export interface Dispute {
+  uuid: string;
+  subject: string;
+  opener_name: string;
+  opener_role: "customer" | "tenant";
+  status: DisputeStatus;
+  created_at: string;
+  messages: DisputeMessage[];
+}
