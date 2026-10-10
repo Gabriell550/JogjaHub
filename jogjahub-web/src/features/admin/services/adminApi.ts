@@ -20,9 +20,11 @@ export function unwrapList<T>(payload: T[] | { data: T[] }): T[] {
 export const adminApi = {
   getSummary: () => apiGet<{ success: boolean; data: DashboardSummary }>("/admin/dashboard/summary"),
   getPendingTenants: () => apiGet<AdminListResponse<PendingTenant>>("/admin/tenants/pending"),
-  approveTenant: (id: number) => apiPatch<{ success: boolean; message: string }>(`/admin/tenants/${id}/approve`),
-  rejectTenant: (id: number, rejection_reason: string) =>
-    apiPatch<{ success: boolean; message: string }>(`/admin/tenants/${id}/reject`, { rejection_reason }),
+  // Route backend di-bind via getRouteKeyName() = 'uuid', jadi wajib mengirim uuid
+  // (bukan id numerik) agar tidak kena 404.
+  approveTenant: (uuid: string) => apiPatch<{ success: boolean; message: string }>(`/admin/tenants/${uuid}/approve`),
+  rejectTenant: (uuid: string, rejection_reason: string) =>
+    apiPatch<{ success: boolean; message: string }>(`/admin/tenants/${uuid}/reject`, { rejection_reason }),
   getBookings: (params?: { status?: string }) =>
     apiGet<AdminListResponse<AdminBooking>>(
       `/admin/bookings${params?.status ? `?status=${encodeURIComponent(params.status)}` : ""}`,

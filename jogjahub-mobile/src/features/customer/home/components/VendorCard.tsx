@@ -5,6 +5,7 @@ import { Vendor } from '../data/mockData';
 
 interface VendorCardProps {
   vendor: Vendor;
+  onPressCard?: () => void;
   onPressBook?: () => void;
   onToggleFavorite?: () => void;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, createElement, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { authApi } from "@/src/features/auth/services/authApi";
 import { clearSession, getSession, setSession } from "@/src/lib/auth";
 import type {
@@ -14,6 +14,7 @@ interface AuthContextValue {
   session: AuthSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isHydrated: boolean;
   login: (payload: LoginPayload) => Promise<AuthSession>;
   registerCustomer: (payload: RegisterCustomerPayload) => Promise<AuthSession>;
   registerTenant: (payload: RegisterTenantPayload) => Promise<{ message: string }>;
@@ -23,8 +24,18 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<AuthSession | null>(() => getSession());
+  const [session, setSessionState] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSessionState(getSession());
+      setIsHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
     setIsLoading(true);
@@ -74,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     AuthContext.Provider,
-    { value: { session, isAuthenticated: session !== null, isLoading, login, registerCustomer, registerTenant, logout } },
+    { value: { session, isAuthenticated: session !== null, isLoading, isHydrated, login, registerCustomer, registerTenant, logout } },
     children,
   );
 }

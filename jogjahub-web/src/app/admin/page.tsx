@@ -33,6 +33,8 @@ export default function AdminDashboardPage() {
 
   const cards = summary
     ? [
+        { label: "Total Customer", value: summary.customers_total, color: "bg-[#EFF4FF] text-[#1E3A8A]" },
+        { label: "Total Tenant", value: summary.tenants_total, color: "bg-[#F3E8FF] text-[#6B21A8]" },
         { label: "Tenant Pending", value: summary.tenants_pending, color: "bg-[#FFF0E5] text-[#A04100]" },
         { label: "Tenant Approved", value: summary.tenants_approved, color: "bg-[#E6F4EA] text-[#1E7B34]" },
         { label: "Booking Pending", value: summary.bookings_pending, color: "bg-[#FFF8E1] text-[#8A6D00]" },
@@ -49,7 +51,7 @@ export default function AdminDashboardPage() {
         <p className="font-display mt-1 text-4xl font-bold text-[#121C2A]">{summary?.bookings_today ?? "-"}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => (
           <div key={card.label} className={`rounded-2xl p-5 ${card.color}`}>
             <p className="text-sm font-medium">{card.label}</p>
