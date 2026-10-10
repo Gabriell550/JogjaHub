@@ -28,14 +28,19 @@ class BookingService
             $data['slot_id'] = null;
         }
 
-        return DB::transaction(function () use ($customerId, $data, $requiresSlot) {
+        return DB::transaction(function () use ($customerId, $data, $requiresSlot, $service) {
             if ($requiresSlot) {
-                // Lock row slot supaya aman dari race condition
-                $slot = TimeSlot::where('id', $data['slot_id'])->lockForUpdate()->first();
+                // Lock row slot supaya aman dari race condition.
+                // Slot WAJIB milik service yang dibooking — kalau tidak, customer bisa
+                // memakai slot service lain dan menghabiskan kuota tenant lain.
+                $slot = TimeSlot::where('id', $data['slot_id'])
+                    ->where('service_id', $service->id)
+                    ->lockForUpdate()
+                    ->first();
 
                 if (!$slot) {
                     throw ValidationException::withMessages([
-                        'slot_id' => ['Slot tidak ditemukan.'],
+                        'slot_id' => ['Slot tidak ditemukan untuk layanan ini.'],
                     ]);
                 }
 

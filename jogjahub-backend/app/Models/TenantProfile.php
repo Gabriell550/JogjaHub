@@ -31,6 +31,14 @@ class TenantProfile extends Model
         'address' => 'array'
     ];
 
+    // Lapisan pengaman tambahan: kalau model ini pernah di-return mentah (tanpa Resource),
+    // path dokumen pribadi tetap tidak ikut ter-serialize ke JSON.
+    protected $hidden = [
+        'ktp_url',
+        'nib_url',
+        'portfolio_url',
+    ];
+
     protected static function booted(): void
     {
         static::creating(function ($model) {

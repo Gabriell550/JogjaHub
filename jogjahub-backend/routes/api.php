@@ -16,7 +16,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/register/tenant', [\App\Http\Controllers\Api\Tenant\AuthController::class, 'register']);
     });
 
-    Route::middleware('throttle:5,1')->group(function () {
+    Route::middleware('throttle:1000,1')->group(function () {
         Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
     });
 
@@ -60,6 +60,8 @@ Route::prefix('v1')->group(function () {
         Route::get('tenants/pending', [\App\Http\Controllers\Api\Admin\TenantController::class, 'pending']);
         Route::patch('tenants/{tenant}/approve', [\App\Http\Controllers\Api\Admin\TenantController::class, 'approve']);
         Route::patch('tenants/{tenant}/reject', [\App\Http\Controllers\Api\Admin\TenantController::class, 'reject']);
+        Route::get('tenants/{tenant}/documents/{type}', [\App\Http\Controllers\Api\Admin\TenantController::class, 'document'])
+            ->whereIn('type', ['ktp', 'nib', 'portfolio']);
         Route::get('bookings', [\App\Http\Controllers\Api\Admin\BookingController::class, 'index']);
         Route::get('dashboard/summary', [\App\Http\Controllers\Api\Admin\DashboardController::class, 'summary']);
     });
