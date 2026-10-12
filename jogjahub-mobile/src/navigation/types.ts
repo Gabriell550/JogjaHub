@@ -58,14 +58,9 @@ export type CustomerStackParamList = {
   } | undefined;
   BookingConfirmation: {
     bookingId?: string | number;
-    serviceId?: number | string;
-    serviceName?: string;
-    vendorName?: string;
-    date: string;
-    timeSlot: string;
-    price: number;
-    paymentMethod?: 'transfer' | 'cod';
   };
+  // Tambahkan baris ini:
+  EditCustomerProfile: undefined;
 };
 
 export type VendorDashboardStackParamList = {

@@ -6,6 +6,8 @@ import BookingScreen from '../features/customer/booking/screens/BookingScreen';
 import BookingConfirmationScreen from '../features/customer/booking/screens/BookingConfirmationScreen';
 import CatalogScreen from '../features/customer/catalog/screens/CatalogScreen';
 import VendorDetailScreen from '../features/customer/vendor-detail/screens/VendorDetailScreen';
+// Tambahkan import ini:
+import EditCustomerProfileScreen from '../features/customer/profile/screens/EditCustomerProfileScreen';
 import { CustomerStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -23,6 +25,8 @@ export function CustomerStackNavigator() {
       <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
       <Stack.Screen name="Booking" component={BookingScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+      {/* Tambahkan screen ini: */}
+      <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
     </Stack.Navigator>
   );
 }
