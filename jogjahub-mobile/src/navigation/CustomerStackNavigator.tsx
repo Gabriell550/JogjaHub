@@ -9,6 +9,7 @@ import VendorDetailScreen from '../features/customer/vendor-detail/screens/Vendo
 // Tambahkan import ini:
 import EditCustomerProfileScreen from '../features/customer/profile/screens/EditCustomerProfileScreen';
 import { CustomerStackParamList } from './types';
+import HotelBookingScreen from '../features/customer/hotel/screens/HotelBookingScreen';
 
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
 
@@ -25,8 +26,12 @@ export function CustomerStackNavigator() {
       <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
       <Stack.Screen name="Booking" component={BookingScreen} />
       <Stack.Screen name="BookingConfirmation" component={BookingConfirmationScreen} />
+<<<<<<< Updated upstream
       {/* Tambahkan screen ini: */}
       <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
+=======
+      <Stack.Screen name="HotelBooking" component={HotelBookingScreen} />
+>>>>>>> Stashed changes
     </Stack.Navigator>
   );
 }

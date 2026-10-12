@@ -1,2 +1,6 @@
+<<<<<<< Updated upstream
 export const API_BASE_URL = 'http://10.31.239.67:8000/api/v1';
+=======
+export const API_BASE_URL = 'http://10.218.140.82:8000/api/v1';
+>>>>>>> Stashed changes
 export const MAPS_API_KEY = 'your_google_or_leaflet_maps_key';

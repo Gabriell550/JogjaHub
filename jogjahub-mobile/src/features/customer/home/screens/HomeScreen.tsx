@@ -96,16 +96,19 @@ export default function HomeScreen() {
 
         {/* Kategori */}
         <CategoryGrid
-        onSelectCategory={(id) => {
+      onSelectCategory={(id) => {
+        if (id === 'hotel') {
+          navigation.navigate('HotelBooking');
+          return;
+        }
         const titleMap: Record<string, string> = {
-          hotel: 'Hotel & Akomodasi',
           beauty: 'Beauty & Style',
           gifting: 'Hadiah & Gifting',
           photo: 'Fotografi',
-          };
+        };
         navigation.navigate('Catalog', { categoryId: id, title: titleMap[id] ?? 'Katalog' });
-        }}
-        />
+      }}
+    />
 
         {/* Rekomendasi Terverifikasi */}
         <View style={styles.sectionHeader}>
