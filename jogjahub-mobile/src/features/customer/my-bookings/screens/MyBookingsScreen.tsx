@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { bookingApi } from '../../../../api/bookingApi';
+import OrderDetailsModal from '../components/OrderDetailsModal';
 
 type CustomerBookingStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled';
 
@@ -75,7 +76,7 @@ const MOCK_CUSTOMER_BOOKINGS: CustomerBookingItem[] = [
   },
   {
     id: '3',
-    order_code: 'JH-20260907-005',
+    order_code: 'JH-2026-8891',
     time_ago: '3 jam lalu',
     vendor_name: 'Atelier Toga Jogja',
     vendor_category: 'Perlengkapan & Toga Wisuda',
@@ -85,7 +86,7 @@ const MOCK_CUSTOMER_BOOKINGS: CustomerBookingItem[] = [
     schedule_date: 'Senin, 7 Sep 2026',
     schedule_time: '08:00 WIB',
     location_detail: 'Pengambilan di Galeri (Ukuran L)',
-    payment_status: 'Lunas (BCA)',
+    payment_status: 'Lunas',
     package_type: '1 Paket Lengkap',
     status: 'confirmed',
   },
@@ -104,6 +105,7 @@ export default function MyBookingsScreen() {
   const [bookings, setBookings] = useState<CustomerBookingItem[]>(MOCK_CUSTOMER_BOOKINGS);
   const [activeFilter, setActiveFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<CustomerBookingItem | null>(null);
 
   const loadBookings = useCallback(async () => {
     setIsLoading(true);
@@ -269,7 +271,11 @@ export default function MyBookingsScreen() {
         </View>
 
         {/* Gray/Blue Details Container Box */}
-        <View style={styles.detailsContainer}>
+        <TouchableOpacity
+          style={styles.detailsContainer}
+          activeOpacity={0.88}
+          onPress={() => setSelectedBookingForDetail(item)}
+        >
           <View style={styles.detailsTitleRow}>
             <Text style={styles.serviceNameText} numberOfLines={2}>
               {item.service_name}
@@ -306,7 +312,7 @@ export default function MyBookingsScreen() {
             </View>
             <Text style={styles.packageTypeText}>{item.package_type}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Customer Actions Row */}
         {item.status === 'pending' && (
@@ -360,16 +366,11 @@ export default function MyBookingsScreen() {
           </View>
         )}
 
-        {item.status === 'confirmed' && (
+        {(item.status === 'confirmed' || item.status === 'completed') && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.fullDetailButton}
-              onPress={() =>
-                Alert.alert(
-                  'Rincian Pesanan',
-                  `Pesanan: ${item.service_name}\nVendor: ${item.vendor_name}\nJadwal: ${item.schedule_date}, ${item.schedule_time}\nTotal: Rp${item.price.toLocaleString('id-ID')}`
-                )
-              }
+              onPress={() => setSelectedBookingForDetail(item)}
               activeOpacity={0.85}
             >
               <Text style={styles.fullDetailButtonText}>Rincian Pesanan</Text>
@@ -523,6 +524,13 @@ export default function MyBookingsScreen() {
           }
         />
       </ScrollView>
+
+      {/* Rincian Pesanan Modal */}
+      <OrderDetailsModal
+        visible={!!selectedBookingForDetail}
+        booking={selectedBookingForDetail}
+        onClose={() => setSelectedBookingForDetail(null)}
+      />
     </SafeAreaView>
   );
 }
