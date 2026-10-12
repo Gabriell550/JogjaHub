@@ -37,6 +37,15 @@ import { setSession } from '../../../auth/store/authSlice';
 import { typography } from '../../../../constants/theme';
 import type { RootState } from '../../../../store';
 
+const MONTHS = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
+
 export default function EditCustomerProfileScreen() {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
@@ -57,9 +66,15 @@ export default function EditCustomerProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>((user as any)?.avatar || null);
   const [saving, setSaving] = useState(false);
 
-  // Modal State untuk Ubah Email / Telepon / Tanggal
-  const [editModalType, setEditModalType] = useState<'email' | 'phone' | 'date' | null>(null);
+  // Modal State untuk Ubah Email & Telepon
+  const [editModalType, setEditModalType] = useState<'email' | 'phone' | null>(null);
   const [tempInputValue, setTempInputValue] = useState('');
+
+  // Date Picker Modal State
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(15);
+  const [selectedMonth, setSelectedMonth] = useState('Agustus');
+  const [selectedYear, setSelectedYear] = useState(1998);
 
   // ── Ambil Foto dari Galeri ──
   const handlePickAvatar = async () => {
@@ -86,6 +101,24 @@ export default function EditCustomerProfileScreen() {
     }
   };
 
+  // ── Buka Date Picker Modal ──
+  const openDatePicker = () => {
+    const parts = birthDate.split(' ');
+    if (parts.length === 3) {
+      const dayNum = parseInt(parts[0], 10);
+      if (!isNaN(dayNum)) setSelectedDay(dayNum);
+      if (MONTHS.includes(parts[1])) setSelectedMonth(parts[1]);
+      const yearNum = parseInt(parts[2], 10);
+      if (!isNaN(yearNum)) setSelectedYear(yearNum);
+    }
+    setIsDatePickerVisible(true);
+  };
+
+  const handleConfirmDate = () => {
+    setBirthDate(`${selectedDay} ${selectedMonth} ${selectedYear}`);
+    setIsDatePickerVisible(false);
+  };
+
   // ── Simpan Perubahan ──
   const handleSaveProfile = async () => {
     if (!fullName.trim()) {
@@ -108,7 +141,7 @@ export default function EditCustomerProfileScreen() {
         avatar: avatarUri,
       };
 
-      // Simpan ke Redux & tersinkron otomatis ke AsyncStorage (Bebas error type null)
+      // Simpan ke Redux & tersinkron otomatis ke AsyncStorage
       dispatch(
         setSession({
           user: updatedUser as any,
@@ -139,12 +172,10 @@ export default function EditCustomerProfileScreen() {
     }
   };
 
-  // ── Modal Helper ──
-  const openEditModal = (type: 'email' | 'phone' | 'date') => {
+  const openEditModal = (type: 'email' | 'phone') => {
     setEditModalType(type);
     if (type === 'email') setTempInputValue(email);
     else if (type === 'phone') setTempInputValue(phoneNumber);
-    else if (type === 'date') setTempInputValue(birthDate);
   };
 
   const handleModalSave = () => {
@@ -152,8 +183,6 @@ export default function EditCustomerProfileScreen() {
       if (tempInputValue.trim()) setEmail(tempInputValue.trim());
     } else if (editModalType === 'phone') {
       if (tempInputValue.trim()) setPhoneNumber(tempInputValue.trim());
-    } else if (editModalType === 'date') {
-      if (tempInputValue.trim()) setBirthDate(tempInputValue.trim());
     }
     setEditModalType(null);
   };
@@ -291,12 +320,12 @@ export default function EditCustomerProfileScreen() {
             />
           </View>
 
-          {/* Tanggal Lahir */}
+          {/* Tanggal Lahir (Pilihan Date Picker) */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Tanggal Lahir</Text>
             <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => openEditModal('date')}
+              onPress={openDatePicker}
               activeOpacity={0.7}
             >
               <Calendar size={19} color="#8E7164" style={styles.inputLeadingIcon} />
@@ -305,7 +334,7 @@ export default function EditCustomerProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Jenis Kelamin Chips */}
+          {/* Jenis Kelamin Chips (Lebih Compact & Ramping) */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Jenis Kelamin</Text>
             <View style={styles.genderChipsRow}>
@@ -317,7 +346,7 @@ export default function EditCustomerProfileScreen() {
               >
                 <Ionicons
                   name="male"
-                  size={16}
+                  size={14}
                   color={gender === 'Laki-laki' ? '#FFFFFF' : '#5A4136'}
                 />
                 <Text
@@ -338,7 +367,7 @@ export default function EditCustomerProfileScreen() {
               >
                 <Ionicons
                   name="female"
-                  size={16}
+                  size={14}
                   color={gender === 'Perempuan' ? '#FFFFFF' : '#5A4136'}
                 />
                 <Text
@@ -359,7 +388,7 @@ export default function EditCustomerProfileScreen() {
               >
                 <Ionicons
                   name="transgender"
-                  size={16}
+                  size={14}
                   color={gender === 'Lainnya' ? '#FFFFFF' : '#5A4136'}
                 />
                 <Text
@@ -382,17 +411,13 @@ export default function EditCustomerProfileScreen() {
               <ShieldCheck size={20} color="#FF6B00" />
               <Text style={styles.cardTitle}>Kontak &amp; Keamanan</Text>
             </View>
-            <Text style={styles.securityScore}>Tingkat Aman: 100%</Text>
           </View>
 
           {/* Email Terdaftar */}
           <View style={styles.contactItemBox}>
             <View style={styles.contactItemHeader}>
               <Text style={styles.contactItemLabel}>Email Terdaftar</Text>
-              <View style={styles.verifiedTag}>
-                <MaterialIcons name="verified" size={13} color="#FF6B00" />
-                <Text style={styles.verifiedText}>Terverifikasi</Text>
-              </View>
+              <MaterialIcons name="verified" size={17} color="#FF6B00" />
             </View>
             <View style={styles.contactItemBody}>
               <View style={styles.contactItemLeft}>
@@ -416,10 +441,7 @@ export default function EditCustomerProfileScreen() {
           <View style={styles.contactItemBox}>
             <View style={styles.contactItemHeader}>
               <Text style={styles.contactItemLabel}>No. Handphone / WhatsApp</Text>
-              <View style={styles.verifiedTag}>
-                <MaterialIcons name="verified" size={13} color="#FF6B00" />
-                <Text style={styles.verifiedText}>Terverifikasi</Text>
-              </View>
+              <MaterialIcons name="verified" size={17} color="#FF6B00" />
             </View>
             <View style={styles.contactItemBody}>
               <View style={styles.contactItemLeft}>
@@ -464,7 +486,121 @@ export default function EditCustomerProfileScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* ── MODAL UBAH NILAI CEPAT ── */}
+      {/* ── DATE PICKER MODAL (HARI, BULAN, TAHUN) ── */}
+      <Modal
+        visible={isDatePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsDatePickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerModalContent}>
+            <View style={styles.datePickerHeader}>
+              <Calendar size={20} color="#FF6B00" />
+              <Text style={styles.datePickerTitle}>Pilih Tanggal Lahir</Text>
+            </View>
+
+            <View style={styles.datePickerColumnsRow}>
+              {/* Kolom Hari */}
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerColumnHeader}>Hari</Text>
+                <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {DAYS.map((day) => (
+                    <TouchableOpacity
+                      key={day}
+                      style={[
+                        styles.pickerItem,
+                        selectedDay === day && styles.pickerItemActive,
+                      ]}
+                      onPress={() => setSelectedDay(day)}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerItemText,
+                          selectedDay === day && styles.pickerItemTextActive,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Kolom Bulan */}
+              <View style={[styles.pickerColumn, { flex: 1.5 }]}>
+                <Text style={styles.pickerColumnHeader}>Bulan</Text>
+                <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {MONTHS.map((month) => (
+                    <TouchableOpacity
+                      key={month}
+                      style={[
+                        styles.pickerItem,
+                        selectedMonth === month && styles.pickerItemActive,
+                      ]}
+                      onPress={() => setSelectedMonth(month)}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerItemText,
+                          selectedMonth === month && styles.pickerItemTextActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {month}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Kolom Tahun */}
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerColumnHeader}>Tahun</Text>
+                <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {YEARS.map((year) => (
+                    <TouchableOpacity
+                      key={year}
+                      style={[
+                        styles.pickerItem,
+                        selectedYear === year && styles.pickerItemActive,
+                      ]}
+                      onPress={() => setSelectedYear(year)}
+                    >
+                      <Text
+                        style={[
+                          styles.pickerItemText,
+                          selectedYear === year && styles.pickerItemTextActive,
+                        ]}
+                      >
+                        {year}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            {/* Tombol Aksi Tanggal */}
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setIsDatePickerVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={handleConfirmDate}
+              >
+                <Text style={styles.modalSaveText}>Pilih Tanggal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL UBAH EMAIL / HP ── */}
       <Modal
         visible={editModalType !== null}
         transparent
@@ -476,9 +612,7 @@ export default function EditCustomerProfileScreen() {
             <Text style={styles.modalTitle}>
               {editModalType === 'email'
                 ? 'Ubah Email Terdaftar'
-                : editModalType === 'phone'
-                ? 'Ubah Nomor Handphone'
-                : 'Ubah Tanggal Lahir'}
+                : 'Ubah Nomor Handphone'}
             </Text>
 
             <TextInput
@@ -488,16 +622,12 @@ export default function EditCustomerProfileScreen() {
               placeholder={
                 editModalType === 'email'
                   ? 'nama@domain.com'
-                  : editModalType === 'phone'
-                  ? '+62 812-xxxx-xxxx'
-                  : 'Contoh: 15 Agustus 1998'
+                  : '+62 812-xxxx-xxxx'
               }
               keyboardType={
                 editModalType === 'email'
                   ? 'email-address'
-                  : editModalType === 'phone'
-                  ? 'phone-pad'
-                  : 'default'
+                  : 'phone-pad'
               }
               autoCapitalize="none"
               autoFocus
@@ -725,12 +855,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF6B00',
   },
-  securityScore: {
-    fontFamily: typography.labelSm.fontFamily,
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FF6B00',
-  },
 
   // Inputs
   inputGroup: {
@@ -790,31 +914,32 @@ const styles = StyleSheet.create({
     color: '#121C2A',
   },
 
-  // Chips Jenis Kelamin
+  // Chips Jenis Kelamin (Lebih Compact & Ramping)
   genderChipsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   genderChip: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: '#EFF4FF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 4,
   },
   genderChipActive: {
     backgroundColor: '#FF6B00',
     ...Platform.select({
-      ios: { shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+      ios: { shadowColor: '#FF6B00', shadowOffset: { width: 0, height: 1.5 }, shadowOpacity: 0.2, shadowRadius: 3 },
       android: { elevation: 2 },
     }),
   },
   genderChipText: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#5A4136',
   },
@@ -841,21 +966,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5A4136',
     fontWeight: '500',
-  },
-  verifiedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF4ED',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  verifiedText: {
-    fontFamily: typography.labelSm.fontFamily,
-    fontSize: 11,
-    color: '#FF6B00',
-    fontWeight: '700',
   },
   contactItemBody: {
     flexDirection: 'row',
@@ -941,13 +1051,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Modal
+  // Modal Umum
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   modalContent: {
     width: '100%',
@@ -977,10 +1087,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
+    marginTop: 10,
   },
   modalCancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   modalCancelText: {
     fontFamily: typography.labelMd.fontFamily,
@@ -990,13 +1101,75 @@ const styles = StyleSheet.create({
   },
   modalSaveBtn: {
     backgroundColor: '#FF6B00',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
   },
   modalSaveText: {
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+
+  // Date Picker Modal Styles
+  datePickerModalContent: {
+    width: '100%',
+    maxHeight: 460,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  datePickerTitle: {
+    fontFamily: typography.titleMd.fontFamily,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#121C2A',
+  },
+  datePickerColumnsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    height: 260,
+  },
+  pickerColumn: {
+    flex: 1,
+    backgroundColor: '#F8F9FF',
+    borderRadius: 14,
+    padding: 8,
+  },
+  pickerColumnHeader: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5A4136',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  pickerList: {
+    flex: 1,
+  },
+  pickerItem: {
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  pickerItemActive: {
+    backgroundColor: '#FF6B00',
+  },
+  pickerItemText: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 13,
+    color: '#5A4136',
+    fontWeight: '500',
+  },
+  pickerItemTextActive: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
