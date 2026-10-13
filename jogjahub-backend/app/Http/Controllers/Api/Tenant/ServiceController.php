@@ -8,6 +8,8 @@ use App\Http\Requests\Tenant\UpdateServiceRequest;
 use App\Models\Service;
 use App\Http\Resources\ServiceResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
@@ -67,7 +69,42 @@ class ServiceController extends Controller
             ], 403);
         }
 
-        $service->update($request->validated());
+        $service->fill($request->safe()->except(['photos', 'remove_photos']));
+
+        $photos = $service->photos ?? [];
+        $requestedRemovals = $request->input('remove_photos', []);
+        $existingPhotoPaths = array_column($photos, 'url');
+        $removedPhotoPaths = array_values(array_intersect($requestedRemovals, $existingPhotoPaths));
+        $photos = array_values(array_filter(
+            $photos,
+            fn (array $photo) => !in_array($photo['url'], $removedPhotoPaths, true)
+        ));
+
+        $newPhotoFiles = $request->file('photos', []);
+        if (count($photos) + count($newPhotoFiles) > 10) {
+            throw ValidationException::withMessages([
+                'photos' => 'Maksimal 10 foto.',
+            ]);
+        }
+
+        if ($newPhotoFiles) {
+            foreach ($newPhotoFiles as $file) {
+                $photos[] = ['url' => $file->store('services', 'public')];
+            }
+        }
+
+        foreach ($photos as $index => &$photo) {
+            $photo['is_primary'] = $index === 0;
+            $photo['sort_order'] = $index;
+        }
+        unset($photo);
+
+        $service->photos = $photos;
+        $service->save();
+
+        if ($removedPhotoPaths) {
+            Storage::disk('public')->delete($removedPhotoPaths);
+        }
 
         return response()->json([
             'success' => true,

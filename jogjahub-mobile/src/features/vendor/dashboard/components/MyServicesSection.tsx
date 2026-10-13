@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { ImageOff, ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { getPrimaryPhotoUrl, type ServiceWithPhotos } from '../../../../utils/serviceImage';
 import Toast from 'react-native-toast-message';
+import { ServicePhoto } from '../../listing/components/ServicePhoto';
 
 type ServiceItem = ServiceWithPhotos & { id: number; name: string; price: number };
 
@@ -88,13 +89,13 @@ export function MyServicesSection({ onSeeAll, onAddService, onPressService }: Pr
                 style={({ pressed }) => [styles.card, { width: CARD_WIDTH }, pressed && styles.cardPressed]}
                 onPress={() => onPressService(service)}
               >
-                {photoUrl ? (
-                  <Image source={{ uri: photoUrl }} style={styles.cardImage} />
-                ) : (
-                  <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-                    <ImageOff size={20} color={colors.onSurfaceVariant} />
-                  </View>
-                )}
+                <ServicePhoto
+                  uri={photoUrl}
+                  style={styles.cardImage}
+                  placeholderStyle={[styles.cardImage, styles.cardImagePlaceholder]}
+                  iconSize={20}
+                  iconColor={colors.onSurfaceVariant}
+                />
                 <Text style={styles.cardName} numberOfLines={1}>{service.name}</Text>
                 <Text style={styles.cardPrice}>{formatRupiah(service.price)}</Text>
               </Pressable>
