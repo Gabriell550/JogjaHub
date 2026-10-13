@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  Image,
   Alert,
   TouchableOpacity,
   TextInput,
@@ -15,10 +14,11 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Pencil, Trash2, ImageOff, Search, ShoppingBag, PackagePlus, Store, Plus } from 'lucide-react-native';
+import { Pencil, Trash2, Search, ShoppingBag, PackagePlus, Store, Plus } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { getPrimaryPhotoUrl } from '../../../../utils/serviceImage';
+import { ServicePhoto } from '../components/ServicePhoto';
 import Toast from 'react-native-toast-message';
 import type { VendorServicesStackParamList } from '../../../../navigation/types';
 
@@ -226,13 +226,13 @@ export default function ListingScreen() {
             <View style={styles.card}>
               <View style={styles.cardInner}>
                 <View style={styles.photoWrap}>
-                  {photoUrl ? (
-                    <Image source={{ uri: photoUrl }} style={styles.photo} />
-                  ) : (
-                    <View style={[styles.photo, styles.photoPlaceholder]}>
-                      <ImageOff size={28} color={colors.secondary} />
-                    </View>
-                  )}
+                  <ServicePhoto
+                    uri={photoUrl}
+                    style={styles.photo}
+                    placeholderStyle={[styles.photo, styles.photoPlaceholder]}
+                    iconSize={28}
+                    iconColor={colors.secondary}
+                  />
                   <View style={styles.categoryBadge}>
                     <Text style={styles.categoryBadgeText}>{categoryLabel.toUpperCase()}</Text>
                   </View>

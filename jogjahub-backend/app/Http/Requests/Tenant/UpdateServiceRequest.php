@@ -18,7 +18,10 @@ class UpdateServiceRequest extends FormRequest
             'name'           => 'sometimes|string|max:255',
             'description'    => 'nullable|string',
             'price'          => 'sometimes|numeric|min:0',
+            'photos'         => 'nullable|array|max:10',
+            'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            'remove_photos'  => 'nullable|array',
+            'remove_photos.*' => 'string',
         ];
     }
 }
-
