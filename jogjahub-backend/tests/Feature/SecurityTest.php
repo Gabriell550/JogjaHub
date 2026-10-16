@@ -315,4 +315,61 @@ class SecurityTest extends TestCase
 
         $this->assertCount(5, $page2->json('data'));
     }
+    // ─── #6 Token expiration dikonfigurasi ────────────────────────────────────
+
+    public function test_sanctum_expiration_dikonfigurasi_bukan_null()
+    {
+        // null = token tidak pernah kadaluarsa = risiko keamanan jika token dicuri
+        $this->assertNotNull(
+            config('sanctum.expiration'),
+            'sanctum.expiration harus diset (bukan null) supaya token kadaluarsa otomatis'
+        );
+    }
+
+    // ─── #7 Route scope — PUT/DELETE booking tidak boleh ada untuk customer ───
+
+    public function test_customer_tidak_bisa_update_booking_via_put()
+    {
+        $customer = User::factory()->customer()->create();
+
+        // Route PUT /customer/bookings/{id} seharusnya 405 (method not allowed), bukan 500
+        $this->actingAs($customer)
+             ->putJson('/api/v1/customer/bookings/1', [])
+             ->assertStatus(405);
+    }
+
+    public function test_customer_tidak_bisa_delete_booking()
+    {
+        $customer = User::factory()->customer()->create();
+
+        // Route DELETE /customer/bookings/{id} seharusnya 405 (method not allowed), bukan 500
+        $this->actingAs($customer)
+             ->deleteJson('/api/v1/customer/bookings/1')
+             ->assertStatus(405);
+    }
+
+    // ─── #8 Tenant tidak bisa lihat service milik tenant lain ────────────────
+
+    public function test_tenant_tidak_bisa_lihat_service_milik_tenant_lain()
+    {
+        $tenantA = TenantProfile::factory()->approved()->create();
+        $tenantB = TenantProfile::factory()->approved()->create();
+        $service = Service::factory()->create(['tenant_id' => $tenantB->id]);
+
+        // Tenant A mencoba akses detail service milik Tenant B
+        $this->actingAs($tenantA->user)
+             ->getJson("/api/v1/tenant/services/{$service->id}")
+             ->assertStatus(403);
+    }
+
+    public function test_tenant_bisa_lihat_service_miliknya_sendiri()
+    {
+        $tenant  = TenantProfile::factory()->approved()->create();
+        $service = Service::factory()->create(['tenant_id' => $tenant->id]);
+
+        $this->actingAs($tenant->user)
+             ->getJson("/api/v1/tenant/services/{$service->id}")
+             ->assertStatus(200)
+             ->assertJsonPath('data.id', $service->id);
+    }
 }

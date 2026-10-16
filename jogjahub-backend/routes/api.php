@@ -36,7 +36,9 @@ Route::prefix('v1')->group(function () {
 
     // ===== Customer =====
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
-        Route::apiResource('bookings', \App\Http\Controllers\Api\Customer\BookingController::class);
+        // BookingController: index (daftar), store (buat), show (detail) — update & destroy tidak diimplementasikan
+        Route::apiResource('bookings', \App\Http\Controllers\Api\Customer\BookingController::class)
+            ->only(['index', 'store', 'show']);
         Route::post('bookings/{booking}/cancel', [\App\Http\Controllers\Api\Customer\BookingController::class, 'cancel']);
         Route::post('bookings/{booking}/review', [\App\Http\Controllers\Api\Customer\ReviewController::class, 'store']);
     });
@@ -49,14 +51,18 @@ Route::prefix('v1')->group(function () {
 
         // Operasional layanan, slot, dan booking WAJIB sudah approved
         Route::middleware('tenant.approved')->group(function () {
+            // ServiceController: index, store, show, update, destroy (semua diimplementasikan)
             Route::apiResource('services', \App\Http\Controllers\Api\Tenant\ServiceController::class);
-            Route::apiResource('time-slots', \App\Http\Controllers\Api\Tenant\TimeSlotController::class);
-            Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
-            Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
+
+            // TimeSlot tidak pakai apiResource karena index membutuhkan parameter {service}
+            // dan tidak ada method show/update — didaftarkan eksplisit agar tidak ada route hantu
             Route::get('services/{service}/time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'index']);
             Route::post('time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'store']);
-            Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
             Route::delete('time-slots/{timeSlot}', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'destroy']);
+
+            Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
+            Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
+            Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
         });
     });
 
