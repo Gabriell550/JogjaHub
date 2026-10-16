@@ -16,7 +16,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/register/tenant', [\App\Http\Controllers\Api\Tenant\AuthController::class, 'register']);
     });
 
-    Route::middleware('throttle:1000,1')->group(function () {
+    Route::middleware('throttle:5,1')->group(function () {
         Route::post('/auth/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
     });
 
@@ -41,18 +41,23 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{booking}/review', [\App\Http\Controllers\Api\Customer\ReviewController::class, 'store']);
     });
 
-    // ===== Tenant (butuh login + approved) =====
+    // ===== Tenant =====
     Route::middleware(['auth:sanctum', 'role:tenant'])->prefix('tenant')->group(function () {
-        Route::put('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'update']);
-        Route::apiResource('services', \App\Http\Controllers\Api\Tenant\ServiceController::class);
-        Route::apiResource('time-slots', \App\Http\Controllers\Api\Tenant\TimeSlotController::class);
-        Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
-        Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
-        Route::get('services/{service}/time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'index']);
+        // Profil tetap boleh diakses meskipun status masih pending/rejected (untuk melengkapi/revisi dokumen)
         Route::get('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'show']);
-        Route::post('time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'store']);
-        Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
-        Route::delete('time-slots/{timeSlot}', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'destroy']);
+        Route::put('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'update']);
+
+        // Operasional layanan, slot, dan booking WAJIB sudah approved
+        Route::middleware('tenant.approved')->group(function () {
+            Route::apiResource('services', \App\Http\Controllers\Api\Tenant\ServiceController::class);
+            Route::apiResource('time-slots', \App\Http\Controllers\Api\Tenant\TimeSlotController::class);
+            Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
+            Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
+            Route::get('services/{service}/time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'index']);
+            Route::post('time-slots', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'store']);
+            Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
+            Route::delete('time-slots/{timeSlot}', [\App\Http\Controllers\Api\Tenant\TimeSlotController::class, 'destroy']);
+        });
     });
 
     // ===== Admin =====
