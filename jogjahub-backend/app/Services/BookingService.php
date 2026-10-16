@@ -13,7 +13,15 @@ class BookingService
 {
     public function createBooking(int $customerId, array $data): Booking
     {
-        $service = Service::with('subcategory')->findOrFail($data['service_id']);
+        $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
+
+        // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
+        if (!$service->tenant || $service->tenant->status !== 'approved') {
+            throw ValidationException::withMessages([
+                'service_id' => ['Layanan ini belum tersedia karena tenant belum disetujui.'],
+            ]);
+        }
+
         $requiresSlot = $service->subcategory->requires_time_slot;
 
         // Validasi: kalau kategori ini butuh slot, slot_id wajib ada
@@ -41,6 +49,13 @@ class BookingService
                 if (!$slot) {
                     throw ValidationException::withMessages([
                         'slot_id' => ['Slot tidak ditemukan untuk layanan ini.'],
+                    ]);
+                }
+
+                // Validasi: tidak boleh booking slot yang tanggalnya sudah lewat
+                if ($slot->slot_date < now()->toDateString()) {
+                    throw ValidationException::withMessages([
+                        'slot_id' => ['Slot waktu sudah terlewat, silakan pilih jadwal lain.'],
                     ]);
                 }
 
