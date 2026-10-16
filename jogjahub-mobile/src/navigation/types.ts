@@ -44,6 +44,7 @@ export type AdminStackParamList = {
 export type CustomerStackParamList = {
   CustomerTabs: undefined;
   Notifications: undefined;
+  HotelBooking: undefined;
   Catalog: { categoryId: string; title?: string };
   VendorDetail: {
     tenantUuid: string;
@@ -58,14 +59,9 @@ export type CustomerStackParamList = {
   } | undefined;
   BookingConfirmation: {
     bookingId?: string | number;
-    serviceId?: number | string;
-    serviceName?: string;
-    vendorName?: string;
-    date: string;
-    timeSlot: string;
-    price: number;
-    paymentMethod?: 'transfer' | 'cod';
   };
+  // Tambahkan baris ini:
+  EditCustomerProfile: undefined;
 };
 
 export type VendorDashboardStackParamList = {
