@@ -29,7 +29,7 @@ class ServiceController extends Controller
             })
             ->paginate(15);
 
-        return response()->json(['success' => true, 'data' => ServiceResource::collection($services)]);
+        return ServiceResource::collection($services)->additional(['success' => true]);
     }
 
     public function slots(Service $service)

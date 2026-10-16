@@ -18,6 +18,6 @@ class BookingController extends Controller
             ->latest()
             ->paginate(20);
 
-        return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
+        return BookingResource::collection($bookings)->additional(['success' => true]);
     }
 }

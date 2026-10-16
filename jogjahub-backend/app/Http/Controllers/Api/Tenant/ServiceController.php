@@ -22,10 +22,7 @@ class ServiceController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(100);
 
-        return response()->json([
-            'success' => true,
-            'data'    => ServiceResource::collection($services),
-        ]);
+        return ServiceResource::collection($services)->additional(['success' => true]);
     }
 
     public function store(StoreServiceRequest $request)

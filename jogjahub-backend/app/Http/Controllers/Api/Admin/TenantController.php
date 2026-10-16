@@ -16,10 +16,7 @@ class TenantController extends Controller
             ->where('status', 'pending')
             ->paginate(15);
 
-        return response()->json([
-            'success' => true,
-            'data'    => TenantProfileResource::collection($pendingTenants),
-        ]);
+        return TenantProfileResource::collection($pendingTenants)->additional(['success' => true]);
     }
 
     public function approve(TenantProfile $tenant)

@@ -211,4 +211,108 @@ class SecurityTest extends TestCase
         $this->assertDatabaseHas('time_slots', ['id' => $slotB->id, 'booked_count' => 0]);
         $this->assertDatabaseCount('bookings', 0);
     }
+
+    // ─── #3 Booking ke tenant belum approved & slot di masa lalu ───────────────
+
+    public function test_booking_gagal_jika_tenant_masih_pending()
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant   = TenantProfile::factory()->pending()->create();
+        $service  = Service::factory()->create(['tenant_id' => $tenant->id]);
+
+        $response = $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id'     => $service->id,
+            'payment_method' => 'transfer',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('service_id');
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_booking_gagal_jika_tanggal_slot_sudah_lewat()
+    {
+        $customer    = User::factory()->customer()->create();
+        $tenant      = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+        $service     = Service::factory()->create([
+            'tenant_id'      => $tenant->id,
+            'subcategory_id' => $subcategory->id,
+        ]);
+        $pastSlot = TimeSlot::factory()->create([
+            'service_id'   => $service->id,
+            'slot_date'    => now()->subDay()->toDateString(),
+            'quota'        => 5,
+            'booked_count' => 0,
+        ]);
+
+        $response = $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id'     => $service->id,
+            'slot_id'        => $pastSlot->id,
+            'payment_method' => 'transfer',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('slot_id');
+        $this->assertDatabaseHas('time_slots', ['id' => $pastSlot->id, 'booked_count' => 0]);
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    // ─── #4 Tenant pending/rejected tidak boleh kelola service & slot ──────────
+
+    public function test_tenant_pending_tidak_bisa_buat_service_atau_slot()
+    {
+        $tenant      = TenantProfile::factory()->pending()->create();
+        $subcategory = Subcategory::factory()->create();
+
+        $this->actingAs($tenant->user)->postJson('/api/v1/tenant/services', [
+            'subcategory_id' => $subcategory->id,
+            'name'           => 'Layanan Baru',
+            'description'    => 'Deskripsi',
+            'price'          => 50000,
+        ])->assertStatus(403);
+
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/services')
+             ->assertStatus(403);
+    }
+
+    public function test_tenant_rejected_masih_bisa_akses_profile_tapi_tidak_bisa_kelola_service()
+    {
+        $tenant = TenantProfile::factory()->rejected()->create();
+
+        // Profile tetap boleh dibuka untuk revisi dokumen
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/profile')
+             ->assertStatus(200);
+
+        // Operasional service tetap ditolak
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/services')
+             ->assertStatus(403);
+    }
+
+    // ─── #5 Pagination meta & links tersedia (bisa pindah ke halaman 2) ────────
+
+    public function test_list_services_mengembalikan_meta_pagination_dan_bisa_halaman_2()
+    {
+        $tenant = TenantProfile::factory()->approved()->create();
+        Service::factory()->count(20)->create(['tenant_id' => $tenant->id]);
+
+        $page1 = $this->getJson('/api/v1/services');
+        $page1->assertStatus(200)
+              ->assertJsonPath('success', true)
+              ->assertJsonPath('meta.current_page', 1)
+              ->assertJsonPath('meta.per_page', 15)
+              ->assertJsonPath('meta.total', 20)
+              ->assertJsonPath('meta.last_page', 2)
+              ->assertJsonStructure(['data', 'links', 'meta', 'success']);
+
+        $this->assertCount(15, $page1->json('data'));
+
+        // Halaman ke-2 berisi 5 sisanya
+        $page2 = $this->getJson('/api/v1/services?page=2');
+        $page2->assertStatus(200)
+              ->assertJsonPath('meta.current_page', 2);
+
+        $this->assertCount(5, $page2->json('data'));
+    }
 }
