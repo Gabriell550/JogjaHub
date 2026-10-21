@@ -61,3 +61,4 @@ class GoogleMapsEmbed implements ValidationRule
         return filter_var($value, FILTER_VALIDATE_URL) ? $value : null;
     }
 }
+
