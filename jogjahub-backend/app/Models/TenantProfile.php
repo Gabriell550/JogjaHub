@@ -19,6 +19,7 @@ class TenantProfile extends Model
         'address',
         'latitude',
         'longitude',
+        'maps_embed_url',    // URL src dari embed Google Maps (opsional untuk tenant lama)
         'whatsapp_number',
         'status',
         'ktp_url',

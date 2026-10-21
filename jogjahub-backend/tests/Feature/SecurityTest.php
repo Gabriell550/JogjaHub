@@ -103,6 +103,7 @@ class SecurityTest extends TestCase
             'longitude'       => 110.36,
             'whatsapp_number' => '081234567890',
             'category_ids'    => [$category->id],
+            'maps_embed_url'  => 'https://www.google.com/maps/embed?pb=!1m18FAKE',
             'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
             'nib'             => UploadedFile::fake()->image('nib.jpg'),
         ], ['Accept' => 'application/json']);
@@ -121,7 +122,10 @@ class SecurityTest extends TestCase
         /** @var \Illuminate\Support\Testing\Fakes\StorageFake $localDisk */
         $localDisk = Storage::fake('local');
 
-        $tenant  = TenantProfile::factory()->approved()->create(['ktp_url' => 'tenant_documents/lama.jpg']);
+        $tenant  = TenantProfile::factory()->approved()->create([
+            'ktp_url'        => 'tenant_documents/lama.jpg',
+            'maps_embed_url' => 'https://www.google.com/maps/embed?pb=!1m18EXISTING',
+        ]);
         $localDisk->put('tenant_documents/lama.jpg', 'isi lama');
         $category = Category::factory()->create();
 
@@ -371,5 +375,123 @@ class SecurityTest extends TestCase
              ->getJson("/api/v1/tenant/services/{$service->id}")
              ->assertStatus(200)
              ->assertJsonPath('data.id', $service->id);
+    }
+
+    // ─── #9 maps_embed_url — validasi & penyimpanan ──────────────────────────
+
+    private function baseProfilePayload(array $override = []): array
+    {
+        $category = Category::factory()->create();
+
+        return array_merge([
+            'business_name'   => 'Salon Test',
+            'address'         => [
+                'street'   => 'Jl. Malioboro 1',
+                'city'     => 'Yogyakarta',
+                'province' => 'DI Yogyakarta',
+            ],
+            'latitude'        => -7.79,
+            'longitude'       => 110.36,
+            'whatsapp_number' => '081234567890',
+            'category_ids'    => [$category->id],
+            'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
+            'nib'             => UploadedFile::fake()->image('nib.jpg'),
+        ], $override);
+    }
+
+    public function test_profil_tenant_baru_wajib_isi_maps_embed_url()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        // Tidak kirim maps_embed_url sama sekali → harus 422
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload(), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_maps_link_biasa_bukan_embed_ditolak()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 // Link share biasa, bukan embed
+                 'maps_embed_url' => 'https://maps.app.goo.gl/ABC123',
+             ]), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_maps_dari_domain_bukan_google_ditolak()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => 'https://openstreetmap.org/export/embed.html',
+             ]), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_tenant_baru_bisa_simpan_profil_dengan_url_embed_valid()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';
+
+        $response = $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => $embedUrl,
+             ]), ['Accept' => 'application/json']);
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.maps_embed_url', $embedUrl);
+    }
+
+    public function test_tenant_baru_bisa_simpan_profil_dengan_paste_html_iframe()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';
+        // User paste HTML mentah dari tombol "Sematkan peta"
+        $iframeHtml = '<iframe src="' . $embedUrl . '" width="600" height="450" allowfullscreen loading="lazy"></iframe>';
+
+        $response = $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => $iframeHtml,
+             ]), ['Accept' => 'application/json']);
+
+        // Disimpan sebagai URL saja, bukan HTML mentah
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.maps_embed_url', $embedUrl);
+    }
+
+    public function test_tenant_lama_tanpa_maps_tetap_bisa_update_profil()
+    {
+        Storage::fake('local');
+
+        // Tenant sudah ada tapi belum punya maps_embed_url (data lama)
+        $tenant = TenantProfile::factory()->approved()->create([
+            'maps_embed_url' => null,
+        ]);
+
+        // Update profil tanpa kirim maps_embed_url → harus tetap 200
+        $this->actingAs($tenant->user)
+             ->put('/api/v1/tenant/profile', [
+                 'business_name'   => $tenant->business_name,
+                 'address'         => ['street' => 'Jl. A', 'city' => 'Yogyakarta', 'province' => 'DI Yogyakarta'],
+                 'latitude'        => -7.79,
+                 'longitude'       => 110.36,
+                 'whatsapp_number' => '081234567890',
+                 'category_ids'    => [Category::factory()->create()->id],
+             ], ['Accept' => 'application/json'])
+             ->assertStatus(200);
     }
 }

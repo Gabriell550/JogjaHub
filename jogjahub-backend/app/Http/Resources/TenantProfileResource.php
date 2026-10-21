@@ -21,6 +21,7 @@ class TenantProfileResource extends JsonResource
             'business_name'    => $this->business_name,
             'description'      => $this->description,
             'address'          => $this->address,
+            'maps_embed_url'   => $this->maps_embed_url,   // URL src embed Google Maps
             'location'         => $this->location, // computed: {latitude, longitude}
             'whatsapp_number'  => $this->whatsapp_number,
             'status'           => $this->status,
