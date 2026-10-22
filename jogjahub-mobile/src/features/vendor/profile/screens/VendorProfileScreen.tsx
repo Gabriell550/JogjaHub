@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,30 +10,37 @@ import {
   Linking,
   Alert,
   Share,
+  Switch,
+  Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  CheckCircle2,
-  Pencil,
-  Clock,
-  ChevronRight,
-  ExternalLink,
-  MapPin,
-  Star,
-  Plus,
-  LayoutGrid,
-  ClipboardList,
   Share2,
+  Settings,
   Camera,
+  Pencil,
+  Star,
+  MapPin,
+  Store,
+  ClipboardList,
+  FolderKanban,
+  CalendarCheck,
+  MessageSquare,
+  Bot,
+  Plus,
+  Clock,
+  ExternalLink,
+  ShieldCheck,
+  FileText,
   LogOut,
-  ShoppingBag,
+  Navigation,
 } from 'lucide-react-native';
-import { FontAwesome } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, setTenantProfile } from '../../../../features/auth/store/authSlice';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
-import { getPhotoUrl, type ServicePhotoLike } from '../../../../utils/serviceImage';
+import { getPrimaryPhotoUrl } from '../../../../utils/serviceImage';
 import type { RootState } from '../../../../store';
 
 type ServiceItem = {
@@ -42,7 +49,7 @@ type ServiceItem = {
   price: number;
   description?: string;
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-  photos?: ServicePhotoLike[];
+  photos?: Array<{ url: string; is_primary?: boolean; sort_order?: number }>;
 };
 
 type CategoryItem = {
@@ -51,20 +58,24 @@ type CategoryItem = {
 };
 
 export default function VendorProfileScreen({ navigation }: { navigation: any }) {
-  const profile      = useSelector((state: RootState) => state.auth.tenantProfile);
-  const businessName = useSelector((state: RootState) => state.auth?.businessName);
-  const dispatch     = useDispatch();
+  const profile = useSelector((state: RootState) => state.auth.tenantProfile);
+  const businessName = useSelector((state: RootState) => state.auth?.businessName) || profile?.business_name || 'Nama Bisnis';
+  const dispatch = useDispatch();
 
-  const [services, setServices]               = useState<ServiceItem[]>([]);
-  const [categories, setCategories]           = useState<CategoryItem[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
-  const [refreshing, setRefreshing]           = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
+
+  // Status toggle tampilan listing secara lokal
+  const [serviceVisibility, setServiceVisibility] = useState<Record<number, boolean>>({});
 
   const fetchServices = useCallback(async () => {
     try {
-      const res     = await vendorApi.listMyServices();
+      const res = await vendorApi.listMyServices();
       const rawData = res.data?.data;
-      const items   = Array.isArray(rawData)
+      const items = Array.isArray(rawData)
         ? rawData
         : Array.isArray(rawData?.data)
         ? rawData.data
@@ -79,7 +90,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res  = await categoryApi.getCategories();
+      const res = await categoryApi.getCategories();
       const list = (res.data?.data ?? []).map((c: any) => ({ id: c.id, name: c.name }));
       setCategories(list);
     } catch (err) {
@@ -89,7 +100,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res  = await vendorApi.getMyProfile();
+      const res = await vendorApi.getMyProfile();
       const data = res.data?.data;
       if (data) dispatch(setTenantProfile(data));
     } catch (err) {
@@ -97,11 +108,14 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
     }
   }, [dispatch]);
 
-  useEffect(() => {
-    fetchServices();
-    fetchCategories();
-    fetchProfile();
-  }, [fetchServices, fetchCategories, fetchProfile]);
+  // Otomatis refresh saat layar aktif / difokuskan
+  useFocusEffect(
+    useCallback(() => {
+      fetchServices();
+      fetchCategories();
+      fetchProfile();
+    }, [fetchServices, fetchCategories, fetchProfile])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -111,28 +125,25 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
   // ── Actions ──────────────────────────────────────────────────────────────────
   const handleEditProfile = () => navigation?.navigate('EditBusinessProfile');
-  const handleServicePress = () => navigation?.getParent()?.navigate('Listing');
-  const handleGoToOrders   = () => navigation?.getParent()?.navigate('Orders');
-  const handleGoToListing  = () => navigation?.getParent()?.navigate('Listing');
-
-  const handleWhatsApp = () => {
-    if (!profile?.whatsapp_number) return;
-    const number = profile.whatsapp_number.replace(/[^0-9]/g, '');
-    if (number.length >= 10) Linking.openURL(`https://wa.me/${number}`);
-  };
+  const handleGoToListing = () => navigation?.getParent()?.navigate('Listing');
+  const handleGoToOrders = () => navigation?.getParent()?.navigate('Orders');
+  const handleGoToCalendar = () => navigation?.getParent()?.navigate('Calendar');
 
   const handleOpenMaps = () => {
-    if (!profile?.latitude || !profile?.longitude) return;
+    if (!profile?.latitude || !profile?.longitude) {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress || 'Yogyakarta')}`);
+      return;
+    }
     Linking.openURL(`https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`);
   };
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Apakah Anda yakin ingin keluar dari akun?',
+      'Keluar dari Akun Bisnis',
+      'Apakah Anda yakin ingin keluar dari akun bisnis ini?',
       [
         { text: 'Batal', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => dispatch(logout()) },
+        { text: 'Keluar', style: 'destructive', onPress: () => dispatch(logout()) },
       ]
     );
   };
@@ -140,414 +151,497 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const handleShareProfile = async () => {
     try {
       await Share.share({
-        message: `Temukan layanan dari ${businessName ?? 'kami'} di JogjaHub! 🎉`,
-        title: businessName ?? 'JogjaHub Vendor',
+        message: `Temukan dan pesan layanan terbaik dari ${businessName} di JogjaHub! ✨`,
+        title: businessName,
       });
     } catch {}
   };
 
-  // ── Status config ─────────────────────────────────────────────────────────────
-  const getStatusConfig = () => {
-    if (!profile) return null;
-    switch (profile.status) {
-      case 'approved':
-        return {
-          Icon: CheckCircle2, iconColor: colors.accentGreen,
-          title: 'Profil Disetujui', badgeText: 'APPROVED', badgeColor: colors.accentGreen,
-          description: 'Profil bisnis Anda telah disetujui. Pelanggan dapat menemukan dan memesan layanan Anda.',
-          bgColor: colors.accentGreenContainer, borderColor: colors.accentGreenContainer,
-          iconBgColor: colors.accentGreenContainer, textColor: colors.accentGreen, descColor: colors.accentGreen,
-        };
-      case 'rejected':
-        return {
-          Icon: Clock, iconColor: colors.error,
-          title: 'Profil Ditolak', badgeText: 'REJECTED', badgeColor: colors.error,
-          description: 'Profil bisnis Anda tidak memenuhi persyaratan. Silakan perbaiki dan ajukan kembali.',
-          bgColor: colors.errorContainer, borderColor: colors.errorContainer,
-          iconBgColor: colors.errorContainer, textColor: colors.error, descColor: colors.error,
-        };
-      default:
-        return {
-          Icon: Clock, iconColor: colors.primary,
-          title: 'Profil Sedang Ditinjau', badgeText: 'PENDING', badgeColor: colors.primary,
-          description: 'Admin sedang memeriksa informasi bisnis Anda. Proses verifikasi biasanya 1×24 jam kerja.',
-          bgColor: colors.surfaceContainerLow, borderColor: colors.outline,
-          iconBgColor: colors.primaryContainer, textColor: colors.onSurface, descColor: colors.onSurfaceVariant,
-        };
-    }
+  const toggleServiceVisibility = (id: number) => {
+    setServiceVisibility((prev) => ({
+      ...prev,
+      [id]: prev[id] !== undefined ? !prev[id] : false,
+    }));
   };
 
-  const statusConfig = getStatusConfig();
-
   // ── Helpers ───────────────────────────────────────────────────────────────────
-  const addr        = profile?.address;
+  const addr = profile?.address;
   const fullAddress = [addr?.street, addr?.city, addr?.province].filter(Boolean).join(', ');
-  const addressSub  = addr?.postal_code
+  const addressSub = addr?.postal_code
     ? `${addr.city}, ${addr.province} ${addr.postal_code}`
-    : `${addr?.city ?? ''}, ${addr?.province ?? ''}`;
-  const city        = addr?.city ?? 'Yogyakarta';
+    : `${addr?.city ?? 'Kota Yogyakarta'}, ${addr?.province ?? 'DIY'}`;
+  const city = addr?.city ?? 'Malioboro, DIY';
 
   const categoryNames = profile?.categories?.map((c) => c.name) ?? [];
-  const formatRupiah  = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
+  const formatRupiah = (n: number) => `Rp ${Number(n).toLocaleString('id-ID')}`;
 
-  const initials = (businessName ?? 'V')
+  const initials = (businessName ?? 'CS')
     .split(' ')
     .slice(0, 2)
     .map((w: string) => w[0]?.toUpperCase() ?? '')
     .join('');
 
-  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-
-      {/* ── Header Banner ── */}
-      <View style={styles.headerBanner}>
-        {/* Dekorasi lingkaran */}
-        <View style={styles.bannerDecorA} />
-        <View style={styles.bannerDecorB} />
-        <View style={styles.bannerDecorC} />
-
-        {/* Baris atas: label + share */}
-        <View style={styles.bannerTopRow}>
-          <View>
-            <Text style={styles.bannerLabel}>JogjaHub Vendor</Text>
-            <Text style={styles.bannerTitle}>Profil Bisnis</Text>
-          </View>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShareProfile}>
-            <Share2 size={16} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Divider tipis */}
-        <View style={styles.bannerDivider} />
-
-        {/* Avatar + info bisnis */}
-        <View style={styles.avatarRow}>
-          {/* Avatar */}
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitials}>{initials}</Text>
-            </View>
-            <TouchableOpacity style={styles.cameraBtn} onPress={handleEditProfile}>
-              <Camera size={11} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Info */}
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={styles.businessName} numberOfLines={1}>
-              {businessName ?? 'Nama Bisnis'}
-            </Text>
-            {categoryNames.length > 0 && (
-              <Text style={styles.businessCategory} numberOfLines={1}>
-                {categoryNames.join(' • ')}
-              </Text>
-            )}
-            <Text style={styles.businessCity}>📍 {city}</Text>
-
-            {/* Badge status */}
-            {profile?.status === 'approved' && (
-              <View style={styles.verifiedBadge}>
-                <CheckCircle2 size={10} color="#fff" />
-                <Text style={styles.verifiedText}>Terverifikasi</Text>
-              </View>
-            )}
-            {profile?.status === 'pending' && (
-              <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                <Clock size={10} color="#fff" />
-                <Text style={styles.verifiedText}>Menunggu Verifikasi</Text>
-              </View>
-            )}
-            {profile?.status === 'rejected' && (
-              <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(220,38,38,0.7)' }]}>
-                <Text style={styles.verifiedText}>Ditolak</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Edit button */}
-          <TouchableOpacity style={styles.editBtn} onPress={handleEditProfile}>
-            <Pencil size={13} color={colors.primary} />
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
         }
       >
-        {/* ── Stat cards ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <ShoppingBag size={18} color={colors.primary} />
-            <Text style={styles.statValue}>{services.length}</Text>
-            <Text style={styles.statLabel}>Layanan</Text>
-          </View>
-          <View style={styles.statCardDivider} />
-          <View style={styles.statCard}>
-            <ClipboardList size={18} color="#2563EB" />
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>--</Text>
-            <Text style={styles.statLabel}>Pesanan</Text>
-          </View>
-          <View style={styles.statCardDivider} />
-          <View style={styles.statCard}>
-            <Star size={18} color="#F59E0B" />
-            <Text style={[styles.statValue, { color: '#F59E0B' }]}>--</Text>
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
-        </View>
+        {/* ── HEADER BANNER UTAMA DENGAN POLA ORANYE JOGJAHUB ── */}
+        <View style={styles.headerBanner}>
+          <View style={styles.decorCircleA} />
+          <View style={styles.decorCircleB} />
 
-        {/* ── Quick actions ── */}
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickCard} onPress={handleGoToListing}>
-            <View style={[styles.quickIconBox, { backgroundColor: '#EFF6FF' }]}>
-              <LayoutGrid size={20} color="#2563EB" />
+          {/* Baris Navigasi Atas */}
+          <View style={styles.navTopRow}>
+            <View style={styles.logoAndTitle}>
+              <View style={styles.logoBox}>
+                <Image
+                  source={require('../../../../assets/images/logo.png')}
+                  style={styles.logoImg}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.bannerHeaderTitle}>Profil Bisnis</Text>
             </View>
-            <Text style={styles.quickLabel}>Layanan Saya</Text>
-            <Text style={styles.quickSub}>Kelola listing</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickCard} onPress={handleGoToOrders}>
-            <View style={[styles.quickIconBox, { backgroundColor: '#FEF3C7' }]}>
-              <ClipboardList size={20} color="#D97706" />
-            </View>
-            <Text style={styles.quickLabel}>Pesanan</Text>
-            <Text style={styles.quickSub}>Kelola booking</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickCard} onPress={handleShareProfile}>
-            <View style={[styles.quickIconBox, { backgroundColor: '#F0FDF4' }]}>
-              <Share2 size={20} color="#16A34A" />
-            </View>
-            <Text style={styles.quickLabel}>Bagikan</Text>
-            <Text style={styles.quickSub}>Share profil</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* ── Status verifikasi ── */}
-        {statusConfig && (
-          <View style={[styles.statusCard, {
-            backgroundColor: statusConfig.bgColor,
-            borderColor: statusConfig.borderColor,
-          }]}>
-            <View style={styles.statusCardHeader}>
-              <View style={styles.statusTitleGroup}>
-                <View style={[styles.statusIconBox, { backgroundColor: statusConfig.iconBgColor }]}>
-                  <statusConfig.Icon size={16} color={statusConfig.iconColor} />
+            <View style={styles.headerActionBtns}>
+              <TouchableOpacity style={styles.roundActionBtn} onPress={handleShareProfile} activeOpacity={0.8}>
+                <Share2 size={17} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.roundActionBtn} onPress={handleEditProfile} activeOpacity={0.8}>
+                <Settings size={17} color="#fff" />
+                <View style={styles.settingBadgeDot} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Profil Bisnis Identitas */}
+          <View style={styles.vendorIdentityRow}>
+            {/* Avatar Toko */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarBox}>
+                <Text style={styles.avatarInitialsText}>{initials || 'CS'}</Text>
+              </View>
+              <TouchableOpacity style={styles.avatarCameraBadge} onPress={handleEditProfile} activeOpacity={0.8}>
+                <Camera size={12} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Info Bisnis */}
+            <View style={styles.vendorInfoWrap}>
+              <Text style={styles.businessTitleText} numberOfLines={1}>
+                {businessName}
+              </Text>
+
+              <Text style={styles.categorySubText} numberOfLines={1}>
+                {categoryNames.length > 0 ? categoryNames.join(' • ') : 'Penginapan • Beauty & Style'}
+              </Text>
+
+              <View style={styles.ratingAndLocationRow}>
+                <View style={styles.ratingGroup}>
+                  <Star size={13} color="#FDE047" fill="#FDE047" />
+                  <Text style={styles.ratingValueText}>4.9</Text>
+                  <Text style={styles.reviewsCountText}>(42 ulasan)</Text>
                 </View>
-                <Text style={[styles.statusTitle, { color: statusConfig.textColor }]}>
-                  {statusConfig.title}
+                <Text style={styles.dotDivider}>•</Text>
+                <View style={styles.locationGroup}>
+                  <MapPin size={12} color="#FDE047" />
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {city}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Tombol Edit */}
+            <TouchableOpacity style={styles.headerEditBtn} onPress={handleEditProfile} activeOpacity={0.8}>
+              <Pencil size={12} color="#fff" />
+              <Text style={styles.headerEditBtnText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Saklar Operasional Toko (Buka / Tutup) */}
+          <View style={styles.storeStatusCard}>
+            <View style={styles.storeStatusLeft}>
+              <View style={styles.pulseContainer}>
+                <View style={[styles.pulseOuter, !isOpen && { backgroundColor: '#EF4444' }]} />
+                <View style={[styles.pulseInner, !isOpen && { backgroundColor: '#EF4444' }]} />
+              </View>
+              <View>
+                <Text style={styles.storeStatusTitle}>
+                  {isOpen ? 'Toko Sedang Buka' : 'Toko Sedang Tutup'}
+                </Text>
+                <Text style={styles.storeStatusSubtitle}>
+                  {isOpen ? 'Menerima pesanan & booking online' : 'Tidak menerima reservasi baru saat ini'}
                 </Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: statusConfig.badgeColor }]}>
-                <Text style={styles.statusBadgeText}>{statusConfig.badgeText}</Text>
-              </View>
             </View>
-            <Text style={[styles.statusDesc, { color: statusConfig.descColor }]}>
-              {statusConfig.description}
-            </Text>
-            <TouchableOpacity style={styles.statusAction} onPress={handleEditProfile}>
-              <Text style={styles.statusActionText}>Lihat Detail Peninjauan</Text>
-              <ChevronRight size={14} color={colors.primary} />
-            </TouchableOpacity>
+            <Switch
+              value={isOpen}
+              onValueChange={setIsOpen}
+              trackColor={{ false: 'rgba(255,255,255,0.3)', true: '#10B981' }}
+              thumbColor="#ffffff"
+            />
           </View>
-        )}
+        </View>
 
-        {/* ── Tentang Bisnis ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tentang Bisnis</Text>
-            <TouchableOpacity onPress={handleEditProfile}>
-              <Text style={styles.actionLink}>Ubah</Text>
+        {/* ── CARD METRIK UTAMA (4 KOLOM) ── */}
+        <View style={styles.metricsWrapper}>
+          <View style={styles.metricsCard}>
+            {/* 1. Layanan */}
+            <TouchableOpacity style={styles.metricItem} onPress={handleGoToListing} activeOpacity={0.7}>
+              <View style={[styles.metricIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                <Store size={19} color="#FF6B00" />
+              </View>
+              <Text style={styles.metricValueText}>{services.length} Layanan</Text>
+              <View style={styles.activeTag}>
+                <View style={styles.tinyGreenDot} />
+                <Text style={styles.activeTagText}>Aktif</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.aboutText}>
-              {profile?.description ||
-                'Belum ada deskripsi bisnis. Lengkapi profil Anda untuk memberikan informasi lebih lanjut kepada pelanggan.'}
-            </Text>
-            <TouchableOpacity style={styles.readMoreBtn} onPress={handleEditProfile}>
-              <Text style={styles.readMoreText}>Edit deskripsi</Text>
-              <ChevronRight size={14} color={colors.primary} />
+
+            {/* 2. Pesanan */}
+            <TouchableOpacity style={styles.metricItem} onPress={handleGoToOrders} activeOpacity={0.7}>
+              <View style={[styles.metricIconWrap, { backgroundColor: '#F0F9FF' }]}>
+                <ClipboardList size={19} color="#0EA5E9" />
+              </View>
+              <Text style={styles.metricValueText}>128 Order</Text>
+              <Text style={styles.metricSubText}>+12% bln ini</Text>
+            </TouchableOpacity>
+
+            {/* 3. Katalog */}
+            <TouchableOpacity style={styles.metricItem} onPress={handleGoToListing} activeOpacity={0.7}>
+              <View style={[styles.metricIconWrap, { backgroundColor: '#F8FAFC' }]}>
+                <FolderKanban size={19} color="#475569" />
+              </View>
+              <Text style={styles.metricValueText}>Katalog</Text>
+              <Text style={styles.metricSubText}>Atur Produk</Text>
+            </TouchableOpacity>
+
+            {/* 4. Jadwal */}
+            <TouchableOpacity style={styles.metricItem} onPress={handleGoToCalendar} activeOpacity={0.7}>
+              <View style={[styles.metricIconWrap, { backgroundColor: '#F0F9FF' }]}>
+                <CalendarCheck size={19} color="#0EA5E9" />
+              </View>
+              <Text style={styles.metricValueText}>Jadwal</Text>
+              <Text style={styles.metricSubText}>Reservasi</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Layanan ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleWithBadge}>
-              <Text style={styles.sectionTitle}>Layanan Tersedia</Text>
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{services.length}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.seeAllBtn} onPress={handleServicePress}>
-              <Text style={styles.actionLink}>Lihat semua</Text>
-              <ChevronRight size={14} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+        {/* ── CARD REALTIME LIVE CHAT ── */}
+        <View style={styles.chatSection}>
+          <View style={styles.chatCard}>
+            <View style={styles.chatGlowA} />
+            <View style={styles.chatGlowB} />
 
-          {servicesLoading ? (
-            <View style={styles.serviceLoadingCard}>
-              <Text style={{ color: colors.secondary, fontSize: 13 }}>Memuat layanan...</Text>
-            </View>
-          ) : services.length === 0 ? (
-            <TouchableOpacity style={styles.addServiceCard} onPress={handleGoToListing}>
-              <Plus size={24} color={colors.primary} />
-              <Text style={styles.addServiceText}>Tambah Layanan Pertama</Text>
-              <Text style={styles.addServiceSub}>Tampilkan jasa Anda kepada pelanggan</Text>
-            </TouchableOpacity>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-              {services.slice(0, 4).map((service) => {
-                const photo    = service.photos?.[0];
-                const imageUri = photo?.url
-                  ? getPhotoUrl(photo)
-                  : 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=400';
-                
-                return (
-                  <TouchableOpacity
-                    key={service.id}
-                    style={styles.serviceCard}
-                    activeOpacity={0.8}
-                    onPress={handleServicePress}
-                  >
-                    <Image source={{ uri: imageUri }} style={styles.serviceImage} />
-                    <View style={styles.serviceContent}>
-                      <Text style={styles.serviceTitle} numberOfLines={1}>{service.name}</Text>
-                      <Text style={styles.serviceDesc} numberOfLines={2}>
-                        {service.description || 'Tidak ada deskripsi.'}
-                      </Text>
-                      <Text style={styles.servicePrice}>{formatRupiah(service.price)}</Text>
+            {/* Header Chat */}
+            <View style={styles.chatHeaderRow}>
+              <View style={styles.chatHeaderLeft}>
+                <View style={styles.chatIconBox}>
+                  <MessageSquare size={17} color="#fff" />
+                  <View style={styles.chatOnlinePulse} />
+                </View>
+                <View>
+                  <View style={styles.chatTitleGroup}>
+                    <Text style={styles.chatCardTitle}>JogjaHub Live Chat</Text>
+                    <View style={styles.newChatBadge}>
+                      <Text style={styles.newChatBadgeText}>3 Pesan Baru</Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity style={styles.addMoreCard} onPress={handleGoToListing}>
-                <Plus size={22} color={colors.primary} />
-                <Text style={styles.addMoreText}>Tambah{'\n'}Layanan</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </View>
-
-        {/* ── Kategori ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Kategori</Text>
-            <Text style={styles.subtext}>{profile?.categories?.length ?? 0} Terpilih</Text>
-          </View>
-          <View style={styles.card}>
-            {profile?.categories && profile.categories.length > 0 ? (
-              <View style={styles.chipRow}>
-                {profile.categories.map((cat, idx) => (
-                  <View key={cat.id} style={styles.categoryChip}>
-                    <View style={[styles.dot, {
-                      backgroundColor:
-                        idx === 0 ? colors.primary :
-                        idx === 1 ? colors.tertiary :
-                        colors.secondary,
-                    }]} />
-                    <Text style={styles.categoryChipText}>{cat.name}</Text>
                   </View>
-                ))}
-                <TouchableOpacity style={styles.addChipBtn} onPress={handleEditProfile}>
-                  <Plus size={14} color={colors.onSurfaceVariant} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.emptyChipRow} onPress={handleEditProfile}>
-                <Plus size={16} color={colors.primary} />
-                <Text style={styles.emptyChipText}>Tambah kategori bisnis</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* ── Kontak ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Kontak Bisnis</Text>
-            {profile?.whatsapp_number && (
-              <View style={styles.connectedStatus}>
-                <View style={[styles.dot, { backgroundColor: colors.accentGreen }]} />
-                <Text style={styles.connectedText}>Terhubung</Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity style={[styles.card, styles.contactCard]} onPress={handleWhatsApp}>
-            <View style={[styles.contactIconBox, { backgroundColor: '#25D366' }]}>
-              <FontAwesome name="whatsapp" size={24} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.contactLabel}>WhatsApp Resmi</Text>
-              <Text style={styles.contactNumber}>
-                {profile?.whatsapp_number ?? 'Belum diisi'}
-              </Text>
-            </View>
-            <View style={styles.contactAction}>
-              <Text style={styles.contactActionText}>Hubungi</Text>
-              <ChevronRight size={14} color={colors.primary} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Lokasi ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Lokasi Bisnis</Text>
-            <TouchableOpacity style={styles.externalLinkBtn} onPress={handleOpenMaps}>
-              <Text style={styles.actionLink}>Buka Maps</Text>
-              <ExternalLink size={12} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
-            <View style={styles.mapContainer}>
-              <View style={styles.mapBackground}>
-                <View style={styles.mapRoadHorizontal} />
-                <View style={styles.mapRoadVertical} />
-                <View style={styles.mapPinContainer}>
-                  <View style={styles.mapPinCallout}>
-                    <Text style={styles.mapPinCalloutText}>
-                      {profile?.business_name ?? 'Lokasi Bisnis'}
-                    </Text>
-                  </View>
-                  <View style={styles.mapPinIcon}>
-                    <MapPin size={18} color="#fff" />
-                  </View>
+                  <Text style={styles.chatCardSubtitle}>Komunikasi resmi & aman antar vendor-klien</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.mapOpenBtn} onPress={handleOpenMaps}>
-                <ExternalLink size={13} color={colors.primary} />
-                <Text style={styles.mapOpenBtnText}>Buka Google Maps</Text>
+              <View style={styles.responseSpeedBadge}>
+                <View style={styles.tinyGreenDot} />
+                <Text style={styles.responseSpeedText}>Respon ~2 mnt</Text>
+              </View>
+            </View>
+
+            {/* Preview Bubble Chat Aktif */}
+            <TouchableOpacity
+              style={styles.chatBubblePreview}
+              activeOpacity={0.8}
+              onPress={() => Alert.alert('Live Chat', 'Membuka riwayat pesan terbaru dengan pelanggan...')}
+            >
+              <View style={styles.chatBubbleLeft}>
+                <View style={styles.clientAvatar}>
+                  <Text style={styles.clientAvatarText}>AD</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.clientInfoRow}>
+                    <Text style={styles.clientNameText}>Annisa Dwi</Text>
+                    <Text style={styles.chatTimeText}>3 mnt lalu</Text>
+                  </View>
+                  <Text style={styles.chatPreviewMessage} numberOfLines={1}>
+                    "Halo kak, jadwal besok jam 14.00 ada slot kosong?"
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.unreadOrangeDot} />
+            </TouchableOpacity>
+
+            {/* Action Buttons Chat */}
+            <View style={styles.chatActionBtnRow}>
+              <TouchableOpacity
+                style={styles.openChatBtn}
+                onPress={() => Alert.alert('Chatroom', 'Membuka ruang live chat JogjaHub...')}
+                activeOpacity={0.8}
+              >
+                <MessageSquare size={14} color="#fff" />
+                <Text style={styles.openChatBtnText}>Buka Chatroom</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.autoReplyBtn}
+                onPress={() => Alert.alert('Auto-Reply', 'Pengaturan template balasan otomatis untuk pelanggan.')}
+                activeOpacity={0.8}
+              >
+                <Bot size={15} color="#38BDF8" />
+                <Text style={styles.autoReplyBtnText}>Auto-Reply</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.addressContainer}>
-              <View style={styles.addressIconBox}>
-                <MapPin size={16} color={colors.primary} />
+          </View>
+        </View>
+
+        {/* ── SECTION: LAYANAN & LISTING AKTIF ── */}
+        <View style={styles.listingSection}>
+          <View style={styles.listingSectionHeader}>
+            <View>
+              <View style={styles.listingTitleWrap}>
+                <Text style={styles.sectionHeadingText}>Layanan & Listing</Text>
+                <View style={styles.listingCountBadge}>
+                  <Text style={styles.listingCountBadgeText}>{services.length} Listing</Text>
+                </View>
+              </View>
+              <Text style={styles.sectionSubHeadingText}>Katalog aktif yang dapat dipesan pelanggan</Text>
+            </View>
+
+            <TouchableOpacity style={styles.addServiceTopBtn} onPress={handleGoToListing} activeOpacity={0.8}>
+              <Plus size={14} color="#fff" />
+              <Text style={styles.addServiceTopBtnText}>Tambah</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Horizontal Scroll Katalog */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listingScrollRow}>
+            {services.length === 0 ? (
+              <TouchableOpacity style={styles.emptyListingBox} onPress={handleGoToListing} activeOpacity={0.8}>
+                <View style={styles.emptyListingIconWrap}>
+                  <Store size={24} color="#FF6B00" />
+                </View>
+                <Text style={styles.emptyListingTitle}>Belum ada layanan</Text>
+                <Text style={styles.emptyListingSub}>Tekan untuk menambah layanan pertama Anda</Text>
+              </TouchableOpacity>
+            ) : (
+              services.map((item) => {
+                const photoUri = getPrimaryPhotoUrl(item);
+                const imageUri = photoUri || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=400';
+                const isVisible = serviceVisibility[item.id] !== false;
+
+                return (
+                  <View key={item.id} style={styles.productCard}>
+                    <View>
+                      {/* Thumbnail Image */}
+                      <View style={styles.productImageWrap}>
+                        <Image source={{ uri: imageUri }} style={styles.productImage} />
+                        <View style={styles.badgePopuler}>
+                          <Text style={styles.badgePopulerText}>Populer</Text>
+                        </View>
+                        <View style={styles.badgeStatusAktif}>
+                          <View style={styles.tinyGreenDot} />
+                          <Text style={styles.badgeStatusAktifText}>Aktif</Text>
+                        </View>
+                      </View>
+
+                      {/* Detail Produk */}
+                      <View style={styles.productInfoWrap}>
+                        <Text style={styles.productTitleText} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.productDescText} numberOfLines={1}>
+                          {item.description || 'Layanan unggulan berkualitas'}
+                        </Text>
+                        <View style={styles.priceRow}>
+                          <Text style={styles.productPriceText}>{formatRupiah(item.price)}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Kontrol Saklar & Kelola */}
+                    <View style={styles.productControlRow}>
+                      <View style={styles.visibilityToggleGroup}>
+                        <Switch
+                          value={isVisible}
+                          onValueChange={() => toggleServiceVisibility(item.id)}
+                          trackColor={{ false: '#E2E8F0', true: '#10B981' }}
+                          thumbColor="#ffffff"
+                          style={{ transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }] }}
+                        />
+                        <Text style={styles.toggleLabelText}>Tampil</Text>
+                      </View>
+
+                      <TouchableOpacity style={styles.kelolaBtn} onPress={handleGoToListing} activeOpacity={0.7}>
+                        <Pencil size={11} color="#FF6B00" />
+                        <Text style={styles.kelolaBtnText}>Kelola</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Card Tambah Layanan Baru */}
+            <TouchableOpacity style={styles.addNewCardDashed} onPress={handleGoToListing} activeOpacity={0.8}>
+              <View style={styles.addNewCircleIcon}>
+                <Plus size={20} color="#fff" />
+              </View>
+              <Text style={styles.addNewCardTitle}>+ Tambah Layanan</Text>
+              <Text style={styles.addNewCardSubtitle}>Jasa/kamar baru</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* ── SECTION: PROFIL & OPERASIONAL BISNIS ── */}
+        <View style={styles.standardSection}>
+          <View style={styles.whiteCardBox}>
+            <View style={styles.whiteCardHeader}>
+              <View style={styles.cardHeaderTitleRow}>
+                <Store size={18} color="#FF6B00" />
+                <Text style={styles.cardHeaderTitle}>PROFIL & OPERASIONAL</Text>
+              </View>
+              <TouchableOpacity onPress={handleEditProfile}>
+                <Text style={styles.cardHeaderActionText}>Ubah</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.businessDescriptionText}>
+              {profile?.description ||
+                'Salon kecantikan & studio perawatan profesional di pusat Kota Jogja. Mengutamakan kenyamanan pelanggan, higienitas tinggi, dengan staf berpengalaman.'}
+            </Text>
+
+            {/* Tag Spesialisasi */}
+            <View style={styles.specialtyTagsRow}>
+              <View style={[styles.specialtyTag, { backgroundColor: '#FFF7ED', borderColor: '#FFEDD5' }]}>
+                <Text style={[styles.specialtyTagText, { color: '#FF6B00' }]}># Salon Rambut</Text>
+              </View>
+              <View style={[styles.specialtyTag, { backgroundColor: '#F0F9FF', borderColor: '#E0F2FE' }]}>
+                <Text style={[styles.specialtyTagText, { color: '#0EA5E9' }]}># Eyelash Ext.</Text>
+              </View>
+              <View style={[styles.specialtyTag, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
+                <Text style={[styles.specialtyTagText, { color: '#059669' }]}># Facial Estetika</Text>
+              </View>
+            </View>
+
+            {/* Jam Operasional */}
+            <View style={styles.operatingHoursRow}>
+              <View style={styles.clockIconAndHours}>
+                <View style={styles.clockIconBox}>
+                  <Clock size={14} color="#64748B" />
+                </View>
+                <View>
+                  <Text style={styles.operatingDaysText}>Setiap Hari</Text>
+                  <Text style={styles.operatingTimeText}>09:00 - 20:30 WIB</Text>
+                </View>
+              </View>
+              <View style={styles.openNowBadge}>
+                <Text style={styles.openNowBadgeText}>Sedang Buka</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── SECTION: LOKASI & TITIK ALAMAT ── */}
+        <View style={styles.standardSection}>
+          <View style={styles.whiteCardBox}>
+            <View style={styles.whiteCardHeader}>
+              <View style={styles.cardHeaderTitleRow}>
+                <MapPin size={18} color="#FF6B00" />
+                <Text style={styles.cardHeaderTitleBold}>Lokasi & Titik Alamat</Text>
+              </View>
+              <TouchableOpacity style={styles.mapLinkBtn} onPress={handleOpenMaps} activeOpacity={0.7}>
+                <Text style={styles.mapLinkBtnText}>Buka Peta & Navigasi</Text>
+                <ExternalLink size={12} color="#0EA5E9" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Minimalist Map View */}
+            <View style={styles.stylizedMapBox}>
+              <View style={styles.mapRoadH} />
+              <View style={styles.mapRoadV} />
+
+              {/* Pin Marker */}
+              <View style={styles.mapPinWrap}>
+                <View style={styles.mapPinCallout}>
+                  <Text style={styles.mapPinCalloutText}>{businessName}</Text>
+                </View>
+                <View style={styles.mapPinDotCircle}>
+                  <Store size={12} color="#fff" />
+                </View>
+              </View>
+
+              {/* Tombol Rute Maps */}
+              <TouchableOpacity style={styles.mapFloatRuteBtn} onPress={handleOpenMaps} activeOpacity={0.8}>
+                <Navigation size={11} color="#FF6B00" />
+                <Text style={styles.mapFloatRuteBtnText}>Rute Google Maps</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Alamat Fisik */}
+            <View style={styles.addressDetailRow}>
+              <View style={styles.addressPinIconBox}>
+                <MapPin size={16} color="#FF6B00" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.addressTitle}>
-                  {fullAddress || 'Jl. Malioboro No. 123, Umbulharjo'}
+                <Text style={styles.addressPrimaryText}>
+                  {fullAddress || 'Jl. Malioboro No. 42, Danurejan'}
                 </Text>
-                <Text style={styles.addressSub}>
-                  {addressSub || 'Kota Yogyakarta, DI Yogyakarta 55161'}
+                <Text style={styles.addressSecondaryText}>
+                  {addressSub || 'Kota Yogyakarta, Daerah Istimewa Yogyakarta 55213'}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* ── Logout ── */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
-          <LogOut size={16} color="#fff" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        {/* ── SECTION: PENGATURAN TOKO & KEAMANAN ── */}
+        <View style={[styles.standardSection, { gap: 10 }]}>
+          <TouchableOpacity
+            style={styles.menuSettingRow}
+            onPress={() => Alert.alert('Pengaturan Akun', 'Fitur pengaturan akun dan verifikasi dokumen bisnis.')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuSettingLeft}>
+              <ShieldCheck size={18} color="#64748B" />
+              <Text style={styles.menuSettingLabel}>Pengaturan Akun & Keamanan</Text>
+            </View>
+            <Text style={styles.menuSettingArrow}>›</Text>
+          </TouchableOpacity>
 
-        <View style={{ height: 32 }} />
+          <TouchableOpacity
+            style={styles.menuSettingRow}
+            onPress={() => Alert.alert('Kebijakan', 'Kebijakan pembatalan pesanan dan aturan pengembalian dana JogjaHub.')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuSettingLeft}>
+              <FileText size={18} color="#64748B" />
+              <Text style={styles.menuSettingLabel}>Kebijakan Pembatalan & Pengembalian</Text>
+            </View>
+            <Text style={styles.menuSettingArrow}>›</Text>
+          </TouchableOpacity>
+
+          {/* Tombol Logout Merah */}
+          <TouchableOpacity style={styles.logoutVendorBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <LogOut size={16} color="#E11D48" />
+            <Text style={styles.logoutVendorText}>Keluar dari Akun Bisnis</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -555,450 +649,1070 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
 
-  // ── Header Banner ─────────────────────────────────────────────────────────
+  // ── Header Banner ──
   headerBanner: {
-    backgroundColor: colors.primary,
-    paddingTop: 52,
-    paddingHorizontal: spacing.containerMargin,
-    paddingBottom: 22,
+    backgroundColor: '#FF6B00',
+    paddingTop: Platform.OS === 'android' ? 44 : 54,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     position: 'relative',
     overflow: 'hidden',
   },
-  bannerDecorA: {
-    position: 'absolute', top: -50, right: -40,
-    width: 180, height: 180, borderRadius: 90,
-    backgroundColor: '#fff', opacity: 0.08,
+  decorCircleA: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
-  bannerDecorB: {
-    position: 'absolute', bottom: -40, left: -30,
-    width: 120, height: 120, borderRadius: 60,
-    backgroundColor: '#fff', opacity: 0.06,
+  decorCircleB: {
+    position: 'absolute',
+    bottom: -20,
+    left: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
   },
-  bannerDecorC: {
-    position: 'absolute', top: 10, left: 60,
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#fff', opacity: 0.05,
-  },
-
-  bannerTopRow: {
+  navTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  bannerLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  bannerTitle: {
-    fontFamily: typography.headlineLg.fontFamily,
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  shareBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-    marginTop: 4,
-  },
-  bannerDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 14,
-  },
-
-  // Avatar row
-  avatarRow: {
+  logoAndTitle: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  logoBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    padding: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  logoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerHeaderTitle: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  headerActionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  roundActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  settingBadgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#38BDF8',
+    borderWidth: 1.5,
+    borderColor: '#FF6B00',
+  },
+
+  // Identitas Vendor
+  vendorIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  avatarWrap: { position: 'relative' },
-  avatarCircle: {
-    width: 60, height: 60, borderRadius: 30,
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     backgroundColor: '#fff',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: 'rgba(255,255,255,0.9)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
-  avatarInitials: {
+  avatarInitialsText: {
     fontFamily: typography.headlineLg.fontFamily,
-    fontSize: 22, fontWeight: '800',
-    color: colors.primary,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FF6B00',
   },
-  cameraBtn: {
-    position: 'absolute', bottom: -2, right: -2,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#fff',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: colors.outlineVariant,
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
   },
-
-  businessName: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: 16, fontWeight: '700',
+  vendorInfoWrap: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  businessTitleText: {
+    fontFamily: typography.headlineLg.fontFamily,
+    fontSize: 18,
+    fontWeight: '800',
     color: '#fff',
+    lineHeight: 22,
   },
-  businessCategory: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12,
+  categorySubText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 11,
+    color: '#FFEDD5',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  ratingAndLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  ratingGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  ratingValueText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FDE047',
+  },
+  reviewsCountText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.85)',
   },
-  businessCity: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
+  dotDivider: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
   },
-
-  verifiedBadge: {
+  locationGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    flex: 1,
+  },
+  locationText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 11,
+    color: '#fff',
+  },
+  headerEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(22,163,74,0.75)',
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: radius.full,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
     marginTop: 2,
   },
-  verifiedText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 10, fontWeight: '700',
+  headerEditBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
     color: '#fff',
   },
 
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: radius.full,
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
-  },
-  editBtnText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, fontWeight: '700',
-    color: colors.primary,
-  },
-
-  // ── Scroll content ──────────────────────────────────────────────────────────
-  scrollContent: {
-    paddingHorizontal: spacing.containerMargin,
-    paddingTop: 16,
-    gap: 16,
-    paddingBottom: 16,
-  },
-
-  // ── Stat cards ──────────────────────────────────────────────────────────────
-  statsRow: {
+  // Toko Sedang Buka Card
+  storeStatusCard: {
+    marginTop: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  storeStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  pulseContainer: {
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pulseOuter: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#34D399',
+    opacity: 0.4,
+  },
+  pulseInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+  },
+  storeStatusTitle: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  storeStatusSubtitle: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#A7F3D0',
+    marginTop: 1,
+  },
+
+  // ── 4 Metrics Card Strip ──
+  metricsWrapper: {
+    paddingHorizontal: 20,
+    marginTop: -22,
+    zIndex: 10,
+  },
+  metricsCard: {
     backgroundColor: '#fff',
-    borderRadius: radius.lg,
-    paddingVertical: 16, paddingHorizontal: 12,
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 3,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  metricIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  metricValueText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  activeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  tinyGreenDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  activeTagText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  metricSubText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+
+  // ── Section Live Chat Dark Card ──
+  chatSection: {
+    paddingHorizontal: 20,
+    marginTop: 18,
+  },
+  chatCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 22,
+    padding: 16,
+    position: 'relative',
+    overflow: 'hidden',
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+  },
+  chatGlowA: {
+    position: 'absolute',
+    bottom: -20,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 107, 0, 0.2)',
+  },
+  chatGlowB: {
+    position: 'absolute',
+    top: -10,
+    right: 40,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+  },
+  chatHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  chatHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  chatIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  chatOnlinePulse: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    borderWidth: 1.5,
+    borderColor: '#0F172A',
+  },
+  chatTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chatCardTitle: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  newChatBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  newChatBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  chatCardSubtitle: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  responseSpeedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  responseSpeedText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#34D399',
+  },
+  chatBubblePreview: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  chatBubbleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  clientAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#38BDF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientAvatarText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  clientInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  clientNameText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  chatTimeText: {
+    fontSize: 9,
+    color: '#94A3B8',
+  },
+  chatPreviewMessage: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    marginTop: 1,
+  },
+  unreadOrangeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FF6B00',
+    marginLeft: 6,
+  },
+  chatActionBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  openChatBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FF6B00',
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+  openChatBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  autoReplyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  autoReplyBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E2E8F0',
+  },
+
+  // ── Section Layanan & Listing ──
+  listingSection: {
+    marginTop: 22,
+  },
+  listingSectionHeader: {
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  listingTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionHeadingText: {
+    fontFamily: typography.headlineSm.fontFamily,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  listingCountBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+  },
+  listingCountBadgeText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF6B00',
+  },
+  sectionSubHeadingText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  addServiceTopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FF6B00',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  addServiceTopBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  listingScrollRow: {
+    paddingHorizontal: 20,
+    gap: 12,
+    paddingBottom: 4,
+  },
+  emptyListingBox: {
+    width: 220,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyListingIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyListingTitle: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  emptyListingSub: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  productCard: {
+    width: 175,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+    justifyContent: 'space-between',
     elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
   },
-  statCard: { flex: 1, alignItems: 'center', gap: 4 },
-  statCardDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 4 },
-  statValue: {
-    fontFamily: typography.headlineLg.fontFamily,
-    fontSize: 20, fontWeight: '700',
-    color: colors.primary,
+  productImageWrap: {
+    height: 110,
+    width: '100%',
+    backgroundColor: '#F1F5F9',
+    position: 'relative',
   },
-  statLabel: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11, color: colors.secondary,
+  productImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  badgePopuler: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgePopulerText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  badgeStatusAktif: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  badgeStatusAktifText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  productInfoWrap: {
+    padding: 10,
+  },
+  productTitleText: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  productDescText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  priceRow: {
+    marginTop: 6,
+  },
+  productPriceText: {
+    fontFamily: typography.headlineSm.fontFamily,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FF6B00',
+  },
+  productControlRow: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  visibilityToggleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  toggleLabelText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  kelolaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFF7ED',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  kelolaBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FF6B00',
+  },
+  addNewCardDashed: {
+    width: 135,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#FED7AA',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  addNewCircleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  addNewCardTitle: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  addNewCardSubtitle: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#FF6B00',
+    marginTop: 2,
   },
 
-  // ── Quick actions ───────────────────────────────────────────────────────────
-  quickRow: { flexDirection: 'row', gap: 10 },
-  quickCard: {
-    flex: 1, backgroundColor: '#fff',
-    borderRadius: radius.lg, padding: 14,
-    alignItems: 'center', gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 3,
-    elevation: 1,
+  // ── Standard Section Containers ──
+  standardSection: {
+    paddingHorizontal: 20,
+    marginTop: 18,
   },
-  quickIconBox: {
-    width: 44, height: 44, borderRadius: radius.md,
-    alignItems: 'center', justifyContent: 'center',
+  whiteCardBox: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
   },
-  quickLabel: {
+  whiteCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  cardHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardHeaderTitle: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  cardHeaderTitleBold: {
     fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, fontWeight: '700', color: colors.onSurface,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  quickSub: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 10, color: colors.secondary, textAlign: 'center',
+  cardHeaderActionText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF6B00',
+  },
+  businessDescriptionText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  specialtyTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  specialtyTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  specialtyTagText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  operatingHoursRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  clockIconAndHours: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clockIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  operatingDaysText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  operatingTimeText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 10,
+    color: '#64748B',
+  },
+  openNowBadge: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  openNowBadgeText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
   },
 
-  // ── Status card ─────────────────────────────────────────────────────────────
-  statusCard: { borderRadius: radius.lg, padding: 14, borderWidth: 1 },
-  statusCardHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  // ── Lokasi Map Minimalis ──
+  mapLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
-  statusTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusIconBox: {
-    width: 28, height: 28, borderRadius: radius.sm,
-    alignItems: 'center', justifyContent: 'center',
+  mapLinkBtnText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0EA5E9',
   },
-  statusTitle: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '700',
+  stylizedMapBox: {
+    width: '100%',
+    height: 125,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+    position: 'relative',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
-  statusBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm,
-  },
-  statusBadgeText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 10, fontWeight: '700', color: '#fff',
-  },
-  statusDesc: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 13, marginTop: 8, lineHeight: 19,
-  },
-  statusAction: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
-  },
-  statusActionText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.primary,
-  },
-
-  // ── Generic section / card ──────────────────────────────────────────────────
-  section: { gap: 8 },
-  sectionHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  sectionTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: '700', color: colors.onSurface,
-  },
-  actionLink: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.primary,
-  },
-  subtext: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, color: colors.secondary,
-  },
-  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  titleWithBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  countBadge: {
-    minWidth: 22, height: 22, paddingHorizontal: 6,
-    borderRadius: 11, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  countBadgeText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11, fontWeight: '700', color: '#fff',
-  },
-  card: {
-    backgroundColor: '#fff', borderRadius: radius.lg, padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 3,
-    elevation: 1,
-  },
-
-  // About
-  aboutText: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 13, color: colors.secondary, lineHeight: 20,
-  },
-  readMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  readMoreText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.primary,
-  },
-
-  // Services horizontal scroll
-  horizontalScroll: {
-    marginHorizontal: -spacing.containerMargin,
-    paddingLeft: spacing.containerMargin,
-  },
-  serviceCard: {
-    width: 160, backgroundColor: '#fff', borderRadius: radius.lg,
-    marginRight: 10, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
-  },
-  serviceImage: { width: '100%', height: 95 },
-  serviceContent: { padding: 10 },
-  serviceTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 13, fontWeight: '700', color: colors.onSurface,
-  },
-  serviceDesc: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11, color: colors.secondary, marginTop: 3, lineHeight: 16,
-  },
-  servicePrice: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, fontWeight: '700', color: colors.primary, marginTop: 6,
-  },
-  addMoreCard: {
-    width: 90, minHeight: 140,
-    backgroundColor: '#F8FAFC', borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.outline, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center',
-    gap: 6, marginRight: 16,
-  },
-  addMoreText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11, fontWeight: '600', color: colors.primary, textAlign: 'center',
-  },
-  serviceLoadingCard: {
-    height: 120, backgroundColor: '#fff', borderRadius: radius.lg,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addServiceCard: {
-    height: 120, backgroundColor: '#fff', borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.outline, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', gap: 6,
-  },
-  addServiceText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '700', color: colors.primary,
-  },
-  addServiceSub: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12, color: colors.secondary,
-  },
-
-  // Category chips
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+  mapRoadH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 22,
     backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#CBD5E1',
   },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  categoryChipText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, fontWeight: '600', color: colors.onSurface,
+  mapRoadV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 24,
+    left: '35%',
+    backgroundColor: '#F8FAFC',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#CBD5E1',
   },
-  addChipBtn: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: colors.outlineVariant,
-    alignItems: 'center', justifyContent: 'center',
+  mapPinWrap: {
+    alignItems: 'center',
+    zIndex: 10,
   },
-  emptyChipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  emptyChipText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.primary,
-  },
-
-  // Contact
-  connectedStatus: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  connectedText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12, color: colors.accentGreen, fontWeight: '600',
-  },
-  contactCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  contactIconBox: {
-    width: 42, height: 42, borderRadius: radius.md,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  contactLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11, color: colors.secondary,
-  },
-  contactNumber: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 14, fontWeight: '700', color: colors.onSurface, marginTop: 2,
-  },
-  contactAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  contactActionText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.primary,
-  },
-
-  // Location
-  externalLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  mapContainer: {
-    height: 130, backgroundColor: '#CBD5E1',
-    position: 'relative', justifyContent: 'center', alignItems: 'center',
-  },
-  mapBackground: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#CBD5E1',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  mapRoadHorizontal: {
-    position: 'absolute', height: 12, width: '100%', backgroundColor: '#fff',
-  },
-  mapRoadVertical: {
-    position: 'absolute', width: 12, height: '100%', backgroundColor: '#fff',
-  },
-  mapPinContainer: { alignItems: 'center' },
   mapPinCallout: {
-    backgroundColor: colors.onSurface,
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: radius.sm, marginBottom: 4,
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 2,
+    elevation: 3,
   },
   mapPinCalloutText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11, color: '#fff', fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
   },
-  mapPinIcon: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
+  mapPinDotCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
-  mapOpenBtn: {
-    position: 'absolute', bottom: 8, right: 8,
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+  mapFloatRuteBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
     backgroundColor: '#fff',
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: radius.md,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    elevation: 2,
   },
-  mapOpenBtnText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11, fontWeight: '600', color: colors.primary,
+  mapFloatRuteBtnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#334155',
   },
-  addressContainer: {
-    flexDirection: 'row', padding: 14, gap: 10, alignItems: 'flex-start',
+  addressDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
   },
-  addressIconBox: {
-    width: 32, height: 32, borderRadius: radius.sm,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center', justifyContent: 'center',
+  addressPinIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  addressTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 13, fontWeight: '600', color: colors.onSurface, lineHeight: 18,
+  addressPrimaryText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  addressSub: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 12, color: colors.secondary, marginTop: 3,
+  addressSecondaryText: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
   },
 
-  // ── Logout ──────────────────────────────────────────────────────────────────
-  logoutButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, height: 50,
-    borderRadius: radius.md,
-    backgroundColor: colors.error,
+  // ── Menu Pengaturan & Logout ──
+  menuSettingRow: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  logoutText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 14, fontWeight: '700',
-    color: '#fff',
+  menuSettingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuSettingLabel: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  menuSettingArrow: {
+    fontSize: 18,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  logoutVendorBtn: {
+    backgroundColor: '#FFF1F2',
+    borderRadius: 16,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    marginTop: 4,
+  },
+  logoutVendorText: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E11D48',
   },
 });
