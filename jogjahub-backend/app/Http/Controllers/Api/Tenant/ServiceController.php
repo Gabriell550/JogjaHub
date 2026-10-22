@@ -24,10 +24,7 @@ class ServiceController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(100);
 
-        return response()->json([
-            'success' => true,
-            'data'    => ServiceResource::collection($services),
-        ]);
+        return ServiceResource::collection($services)->additional(['success' => true]);
     }
 
     public function store(StoreServiceRequest $request)
@@ -130,8 +127,16 @@ class ServiceController extends Controller
         ]);
     }
 
-    public function show(Service $service)
+    public function show(Request $request, Service $service)
     {
+        // Tenant hanya boleh lihat service miliknya sendiri
+        if ($service->tenant_id !== $request->user()->tenantProfile?->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak diizinkan',
+            ], 403);
+        }
+
         $service->load(['subcategory', 'tenant']);
         $service->loadCount(['bookings as bookings_count' => fn($q) => $q->where('status', 'confirmed')]);
         $service->reviews_avg_rating = round(

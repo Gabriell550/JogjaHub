@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\UpdateProfileRequest;
 use App\Models\TenantProfile;
 use App\Http\Resources\TenantProfileResource;
+use App\Rules\GoogleMapsEmbed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -41,6 +42,13 @@ class ProfileController extends Controller
                 'whatsapp_number' => $request->whatsapp_number,
                 'status'          => 'pending',
                 'rejection_reason'=> null,
+                // Ekstrak URL src dari <iframe> jika user paste HTML mentah,
+                // atau simpan URL langsung jika sudah berupa URL.
+                // Null-safe: kalau field tidak dikirim (tenant lama update hal lain),
+                // biarkan nilai lama yang tersimpan di database.
+                'maps_embed_url'  => $request->has('maps_embed_url')
+                    ? (new GoogleMapsEmbed)->extractSrc($request->maps_embed_url)
+                    : ($existing?->maps_embed_url),
             ], $documentPaths)
         );
 

@@ -12,6 +12,8 @@ class TenantController extends Controller
     public function map()
     {
         $tenant = TenantProfile::where('status', 'approved')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
             ->select('id', 'business_name', 'latitude', 'longitude', 'whatsapp_number')
             ->with('categories:id,name')
             ->get();

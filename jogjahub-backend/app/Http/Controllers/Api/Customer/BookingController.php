@@ -20,7 +20,7 @@ class BookingController extends Controller
             ->latest()
             ->paginate(15);
 
-        return response()->json(['success' => true, 'data' => BookingResource::collection($bookings)]);
+        return BookingResource::collection($bookings)->additional(['success' => true]);
     }
 
     public function store(StoreBookingRequest $request)

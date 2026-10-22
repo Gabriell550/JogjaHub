@@ -33,7 +33,8 @@ class TenantApprovalTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(1, 'data.data');
+            ->assertJsonCount(1, 'data')
+            ->assertJsonStructure(['data', 'links', 'meta']);
     }
 
     public function test_admin_can_approve_tenant_by_uuid(): void

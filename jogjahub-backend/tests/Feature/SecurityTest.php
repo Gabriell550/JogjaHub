@@ -103,6 +103,7 @@ class SecurityTest extends TestCase
             'longitude'       => 110.36,
             'whatsapp_number' => '081234567890',
             'category_ids'    => [$category->id],
+            'maps_embed_url'  => 'https://www.google.com/maps/embed?pb=!1m18FAKE',
             'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
             'nib'             => UploadedFile::fake()->image('nib.jpg'),
         ], ['Accept' => 'application/json']);
@@ -121,7 +122,10 @@ class SecurityTest extends TestCase
         /** @var \Illuminate\Support\Testing\Fakes\StorageFake $localDisk */
         $localDisk = Storage::fake('local');
 
-        $tenant  = TenantProfile::factory()->approved()->create(['ktp_url' => 'tenant_documents/lama.jpg']);
+        $tenant  = TenantProfile::factory()->approved()->create([
+            'ktp_url'        => 'tenant_documents/lama.jpg',
+            'maps_embed_url' => 'https://www.google.com/maps/embed?pb=!1m18EXISTING',
+        ]);
         $localDisk->put('tenant_documents/lama.jpg', 'isi lama');
         $category = Category::factory()->create();
 
@@ -210,5 +214,284 @@ class SecurityTest extends TestCase
         // Kuota tenant B tidak boleh berkurang, dan tidak ada booking tercipta
         $this->assertDatabaseHas('time_slots', ['id' => $slotB->id, 'booked_count' => 0]);
         $this->assertDatabaseCount('bookings', 0);
+    }
+
+    // ─── #3 Booking ke tenant belum approved & slot di masa lalu ───────────────
+
+    public function test_booking_gagal_jika_tenant_masih_pending()
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant   = TenantProfile::factory()->pending()->create();
+        $service  = Service::factory()->create(['tenant_id' => $tenant->id]);
+
+        $response = $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id'     => $service->id,
+            'payment_method' => 'transfer',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('service_id');
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_booking_gagal_jika_tanggal_slot_sudah_lewat()
+    {
+        $customer    = User::factory()->customer()->create();
+        $tenant      = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+        $service     = Service::factory()->create([
+            'tenant_id'      => $tenant->id,
+            'subcategory_id' => $subcategory->id,
+        ]);
+        $pastSlot = TimeSlot::factory()->create([
+            'service_id'   => $service->id,
+            'slot_date'    => now()->subDay()->toDateString(),
+            'quota'        => 5,
+            'booked_count' => 0,
+        ]);
+
+        $response = $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id'     => $service->id,
+            'slot_id'        => $pastSlot->id,
+            'payment_method' => 'transfer',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('slot_id');
+        $this->assertDatabaseHas('time_slots', ['id' => $pastSlot->id, 'booked_count' => 0]);
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    // ─── #4 Tenant pending/rejected tidak boleh kelola service & slot ──────────
+
+    public function test_tenant_pending_tidak_bisa_buat_service_atau_slot()
+    {
+        $tenant      = TenantProfile::factory()->pending()->create();
+        $subcategory = Subcategory::factory()->create();
+
+        $this->actingAs($tenant->user)->postJson('/api/v1/tenant/services', [
+            'subcategory_id' => $subcategory->id,
+            'name'           => 'Layanan Baru',
+            'description'    => 'Deskripsi',
+            'price'          => 50000,
+        ])->assertStatus(403);
+
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/services')
+             ->assertStatus(403);
+    }
+
+    public function test_tenant_rejected_masih_bisa_akses_profile_tapi_tidak_bisa_kelola_service()
+    {
+        $tenant = TenantProfile::factory()->rejected()->create();
+
+        // Profile tetap boleh dibuka untuk revisi dokumen
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/profile')
+             ->assertStatus(200);
+
+        // Operasional service tetap ditolak
+        $this->actingAs($tenant->user)
+             ->getJson('/api/v1/tenant/services')
+             ->assertStatus(403);
+    }
+
+    // ─── #5 Pagination meta & links tersedia (bisa pindah ke halaman 2) ────────
+
+    public function test_list_services_mengembalikan_meta_pagination_dan_bisa_halaman_2()
+    {
+        $tenant = TenantProfile::factory()->approved()->create();
+        Service::factory()->count(20)->create(['tenant_id' => $tenant->id]);
+
+        $page1 = $this->getJson('/api/v1/services');
+        $page1->assertStatus(200)
+              ->assertJsonPath('success', true)
+              ->assertJsonPath('meta.current_page', 1)
+              ->assertJsonPath('meta.per_page', 15)
+              ->assertJsonPath('meta.total', 20)
+              ->assertJsonPath('meta.last_page', 2)
+              ->assertJsonStructure(['data', 'links', 'meta', 'success']);
+
+        $this->assertCount(15, $page1->json('data'));
+
+        // Halaman ke-2 berisi 5 sisanya
+        $page2 = $this->getJson('/api/v1/services?page=2');
+        $page2->assertStatus(200)
+              ->assertJsonPath('meta.current_page', 2);
+
+        $this->assertCount(5, $page2->json('data'));
+    }
+    // ─── #6 Token expiration dikonfigurasi ────────────────────────────────────
+
+    public function test_sanctum_expiration_dikonfigurasi_bukan_null()
+    {
+        // null = token tidak pernah kadaluarsa = risiko keamanan jika token dicuri
+        $this->assertNotNull(
+            config('sanctum.expiration'),
+            'sanctum.expiration harus diset (bukan null) supaya token kadaluarsa otomatis'
+        );
+    }
+
+    // ─── #7 Route scope — PUT/DELETE booking tidak boleh ada untuk customer ───
+
+    public function test_customer_tidak_bisa_update_booking_via_put()
+    {
+        $customer = User::factory()->customer()->create();
+
+        // Route PUT /customer/bookings/{id} seharusnya 405 (method not allowed), bukan 500
+        $this->actingAs($customer)
+             ->putJson('/api/v1/customer/bookings/1', [])
+             ->assertStatus(405);
+    }
+
+    public function test_customer_tidak_bisa_delete_booking()
+    {
+        $customer = User::factory()->customer()->create();
+
+        // Route DELETE /customer/bookings/{id} seharusnya 405 (method not allowed), bukan 500
+        $this->actingAs($customer)
+             ->deleteJson('/api/v1/customer/bookings/1')
+             ->assertStatus(405);
+    }
+
+    // ─── #8 Tenant tidak bisa lihat service milik tenant lain ────────────────
+
+    public function test_tenant_tidak_bisa_lihat_service_milik_tenant_lain()
+    {
+        $tenantA = TenantProfile::factory()->approved()->create();
+        $tenantB = TenantProfile::factory()->approved()->create();
+        $service = Service::factory()->create(['tenant_id' => $tenantB->id]);
+
+        // Tenant A mencoba akses detail service milik Tenant B
+        $this->actingAs($tenantA->user)
+             ->getJson("/api/v1/tenant/services/{$service->id}")
+             ->assertStatus(403);
+    }
+
+    public function test_tenant_bisa_lihat_service_miliknya_sendiri()
+    {
+        $tenant  = TenantProfile::factory()->approved()->create();
+        $service = Service::factory()->create(['tenant_id' => $tenant->id]);
+
+        $this->actingAs($tenant->user)
+             ->getJson("/api/v1/tenant/services/{$service->id}")
+             ->assertStatus(200)
+             ->assertJsonPath('data.id', $service->id);
+    }
+
+    // ─── #9 maps_embed_url — validasi & penyimpanan ──────────────────────────
+
+    private function baseProfilePayload(array $override = []): array
+    {
+        $category = Category::factory()->create();
+
+        return array_merge([
+            'business_name'   => 'Salon Test',
+            'address'         => [
+                'street'   => 'Jl. Malioboro 1',
+                'city'     => 'Yogyakarta',
+                'province' => 'DI Yogyakarta',
+            ],
+            'latitude'        => -7.79,
+            'longitude'       => 110.36,
+            'whatsapp_number' => '081234567890',
+            'category_ids'    => [$category->id],
+            'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
+            'nib'             => UploadedFile::fake()->image('nib.jpg'),
+        ], $override);
+    }
+
+    public function test_profil_tenant_baru_wajib_isi_maps_embed_url()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        // Tidak kirim maps_embed_url sama sekali → harus 422
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload(), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_maps_link_biasa_bukan_embed_ditolak()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 // Link share biasa, bukan embed
+                 'maps_embed_url' => 'https://maps.app.goo.gl/ABC123',
+             ]), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_maps_dari_domain_bukan_google_ditolak()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => 'https://openstreetmap.org/export/embed.html',
+             ]), ['Accept' => 'application/json'])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors('maps_embed_url');
+    }
+
+    public function test_tenant_baru_bisa_simpan_profil_dengan_url_embed_valid()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';
+
+        $response = $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => $embedUrl,
+             ]), ['Accept' => 'application/json']);
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.maps_embed_url', $embedUrl);
+    }
+
+    public function test_tenant_baru_bisa_simpan_profil_dengan_paste_html_iframe()
+    {
+        Storage::fake('local');
+        $tenant = User::factory()->tenant()->create();
+
+        $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';
+        // User paste HTML mentah dari tombol "Sematkan peta"
+        $iframeHtml = '<iframe src="' . $embedUrl . '" width="600" height="450" allowfullscreen loading="lazy"></iframe>';
+
+        $response = $this->actingAs($tenant)
+             ->put('/api/v1/tenant/profile', $this->baseProfilePayload([
+                 'maps_embed_url' => $iframeHtml,
+             ]), ['Accept' => 'application/json']);
+
+        // Disimpan sebagai URL saja, bukan HTML mentah
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.maps_embed_url', $embedUrl);
+    }
+
+    public function test_tenant_lama_tanpa_maps_tetap_bisa_update_profil()
+    {
+        Storage::fake('local');
+
+        // Tenant sudah ada tapi belum punya maps_embed_url (data lama)
+        $tenant = TenantProfile::factory()->approved()->create([
+            'maps_embed_url' => null,
+        ]);
+
+        // Update profil tanpa kirim maps_embed_url → harus tetap 200
+        $this->actingAs($tenant->user)
+             ->put('/api/v1/tenant/profile', [
+                 'business_name'   => $tenant->business_name,
+                 'address'         => ['street' => 'Jl. A', 'city' => 'Yogyakarta', 'province' => 'DI Yogyakarta'],
+                 'latitude'        => -7.79,
+                 'longitude'       => 110.36,
+                 'whatsapp_number' => '081234567890',
+                 'category_ids'    => [Category::factory()->create()->id],
+             ], ['Accept' => 'application/json'])
+             ->assertStatus(200);
     }
 }
