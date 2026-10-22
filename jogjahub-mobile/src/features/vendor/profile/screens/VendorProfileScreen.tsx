@@ -356,10 +356,6 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
                   <Text style={styles.chatCardSubtitle}>Komunikasi resmi & aman antar vendor-klien</Text>
                 </View>
               </View>
-              <View style={styles.responseSpeedBadge}>
-                <View style={styles.tinyGreenDot} />
-                <Text style={styles.responseSpeedText}>Respon ~2 mnt</Text>
-              </View>
             </View>
 
             {/* Preview Bubble Chat Aktif */}
