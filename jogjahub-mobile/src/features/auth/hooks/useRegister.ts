@@ -23,8 +23,8 @@ type RegisterVendorPayload = {
   email: string;
   password: string;
   passwordConfirmation: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   // File documents will be uploaded here. Note: currently backend may process these via 
   // ProfileController@update later, but we prepare the payload format.
   ktpFile?: SelectedDocument;
@@ -91,10 +91,8 @@ export function useRegister() {
       formData.append('name', payload.businessName);
       formData.append('business_name', payload.businessName);
       formData.append('address', payload.address);
-      if (payload.latitude !== undefined && payload.longitude !== undefined) {
-        formData.append('latitude', String(payload.latitude));
-        formData.append('longitude', String(payload.longitude));
-      }
+      formData.append('latitude', String(payload.latitude));
+      formData.append('longitude', String(payload.longitude));
       formData.append('phone', payload.phone);
       formData.append('email', payload.email);
       formData.append('password', payload.password);
