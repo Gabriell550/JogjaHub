@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { isAxiosError } from 'axios';
 import {
   View,
   Text,
@@ -26,6 +27,9 @@ type ServiceFormRoute = RouteProp<VendorServicesStackParamList, 'ServiceForm'>;
 type Subcategory = { id: number; name: string; category_id: number };
 type Category = { id: number; name: string; subcategories: Subcategory[] };
 type PickedPhoto = { uri: string; name: string; type: string };
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 // Catatan scope: form ini pakai 1 harga per layanan (bukan multi-package) dan tidak
 // punya field lokasi tersendiri — lokasi layanan mengikuti alamat tenant yang sudah
@@ -106,9 +110,30 @@ export default function ServiceFormScreen() {
     });
     if (result.canceled || !result.assets?.length) return;
     const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    if (!ALLOWED_PHOTO_TYPES.includes(mimeType)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Format foto tidak didukung',
+        text2: 'Gunakan JPG, PNG, atau WebP.',
+        position: 'top',
+      });
+      return;
+    }
+    if (asset.fileSize && asset.fileSize > MAX_PHOTO_BYTES) {
+      Toast.show({
+        type: 'error',
+        text1: 'Ukuran foto terlalu besar',
+        text2: 'Maksimal 5 MB per foto.',
+        position: 'top',
+      });
+      return;
+    }
+
+    const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
     setPhotos((prev) => [
       ...prev,
-      { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.jpg`, type: asset.mimeType ?? 'image/jpeg' },
+      { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.${extension}`, type: mimeType },
     ]);
   };
 
@@ -169,10 +194,21 @@ export default function ServiceFormScreen() {
       });
       navigation.goBack();
     } catch (err) {
+      const data = isAxiosError<{
+        errors?: Record<string, string | string[]>;
+        message?: string;
+      }>(err)
+        ? err.response?.data
+        : undefined;
+      const firstValidationError = data?.errors
+        ? Object.values(data.errors)
+            .flat()
+            .find((message): message is string => typeof message === 'string')
+        : undefined;
       Toast.show({
         type: 'error',
         text1: 'Gagal menyimpan layanan',
-        text2: 'Coba lagi dalam beberapa saat.',
+        text2: firstValidationError ?? data?.message ?? 'Coba lagi dalam beberapa saat.',
         position: 'top',
       });
     } finally {

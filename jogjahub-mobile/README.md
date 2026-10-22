@@ -27,8 +27,11 @@ Lalu isi `.env`:
 
 | Variabel | Keterangan |
 | --- | --- |
-| `EXPO_PUBLIC_API_BASE_URL` | Base URL backend. Android emulator: `http://10.0.2.2:8000/api/v1`. Perangkat fisik: `http://<IP-LAN>:8000/api/v1`. |
+| `EXPO_PUBLIC_API_URL` | Base URL backend. Android emulator: `http://10.0.2.2:8000/api/v1`. Perangkat fisik: `http://<IP-LAN>:8000/api/v1`. |
 | `EXPO_PUBLIC_MAPS_API_KEY` | Google Maps API key (diisi saat fitur peta aktif). |
+
+For a physical device, use the backend computer's LAN IP and keep both devices on the same Wi-Fi.
+Restart Expo with `npx expo start -c` after changing `.env`.
 
 ## Menjalankan
 

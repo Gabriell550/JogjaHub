@@ -21,7 +21,13 @@
     },
 
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "JogjaHub memakai lokasi Anda untuk menandai titik lokasi usaha di peta."
+        }
+      ]
     ],
 
     "experiments": {

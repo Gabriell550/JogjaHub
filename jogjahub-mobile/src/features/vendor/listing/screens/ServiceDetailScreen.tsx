@@ -12,11 +12,9 @@ import {
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { ImageOff, ShoppingBag, Star, MessageSquare } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
-import { API_BASE_URL } from '../../../../constants/config';
+import { getPhotoUrl } from '../../../../utils/serviceImage';
 import { vendorApi } from '../../../../api/vendorApi';
 import type { VendorServicesStackParamList, ServiceParam } from '../../../../navigation/types';
-
-const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/storage/';
 
 const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
 
@@ -79,7 +77,7 @@ export default function ServiceDetailScreen() {
             scrollEventThrottle={16}
             renderItem={({ item }) => (
               <Image
-                source={{ uri: `${STORAGE_BASE_URL}${item.url}` }}
+                source={{ uri: getPhotoUrl(item) }}
                 style={{ width, height: width }}
                 resizeMode="cover"
               />

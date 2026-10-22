@@ -21,6 +21,8 @@ class RegisterTenantRequest extends FormRequest
             'phone'          => 'nullable|string|max:20',
             'categories'     => 'nullable|array|min:1',
             'categories.*'   => 'nullable|string',
+            'latitude'       => 'nullable|required_with:longitude|numeric|between:-90,90',
+            'longitude'      => 'nullable|required_with:latitude|numeric|between:-180,180',
         ];
     }
 }

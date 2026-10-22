@@ -7,6 +7,21 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Public File Storage
+
+Service photos are stored on Laravel's `public` disk and served from `/storage`. Run this once
+for every local and deployed environment after setting up the application:
+
+```bash
+php artisan storage:link
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+This creates `public/storage` pointing to `storage/app/public`. Re-run the command if the link is
+missing so uploaded service photos can be loaded by the mobile app. When testing with a physical
+phone, set `APP_URL` in `.env` to the backend computer's LAN address (not `localhost`) and connect
+the phone and computer to the same Wi-Fi.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

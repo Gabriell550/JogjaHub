@@ -9,10 +9,11 @@ import { Input } from '../../../components/Input/Input';
 import { Button } from '../../../components/Button/Button';
 import { FileUploadField } from '../../../components/FileUploadField/FileUploadField';
 import CategoryMultiSelect from '../components/CategoryMultiSelect';
+import { MapPickerModal, type Coordinate } from '../components/MapPickerModal';
 import { useRegister } from '../hooks/useRegister';
 import type { AuthStackParamList } from '../../../navigation/types';
 import Toast from 'react-native-toast-message';
-import { User, Mail, Lock, Phone, ArrowLeft, MapPin, Building2, Store } from 'lucide-react-native';
+import { User, Mail, Lock, Phone, ArrowLeft, MapPin, Building2, Store, X } from 'lucide-react-native';
 
 type RegisterVendorNav = NativeStackNavigationProp<AuthStackParamList, 'RegisterVendor'>;
 
@@ -23,6 +24,9 @@ export default function RegisterVendorScreen() {
   const [businessName, setBusinessName] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [address, setAddress] = useState('');
+  const [coordinate, setCoordinate] = useState<Coordinate | null>(null);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [locationError, setLocationError] = useState(false);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -71,6 +75,17 @@ export default function RegisterVendorScreen() {
       });
       return;
     }
+    if (!coordinate) {
+      setLocationError(true);
+      Toast.show({
+        type: 'error',
+        text1: 'Titik lokasi belum dipilih',
+        text2: 'Pilih titik lokasi usaha Anda di peta.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
   
     const result = await registerVendor({
       businessName,
@@ -80,6 +95,8 @@ export default function RegisterVendorScreen() {
       email,
       password,
       passwordConfirmation: confirmPassword,
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
       ...(ktpFile && {
         ktpFile: {
           uri: ktpFile.uri,
@@ -149,6 +166,28 @@ export default function RegisterVendorScreen() {
             leftIcon={<MapPin size={20} color={colors.outline} style={{ marginTop: 12 }} />}
             style={styles.textArea}
           />
+
+          <Pressable
+            style={({ pressed }) => [styles.mapPickerRow, pressed && styles.mapPickerRowPressed, locationError && !coordinate && styles.mapPickerRowError]}
+            onPress={() => setMapVisible(true)}
+          >
+            <MapPin size={20} color={colors.primaryContainer} />
+            <View style={styles.mapPickerTextWrap}>
+              <Text style={styles.mapPickerTitle}>
+                {coordinate ? 'Titik lokasi dipilih' : 'Pilih titik lokasi di peta'}
+              </Text>
+              <Text style={[styles.mapPickerSub, locationError && !coordinate && styles.mapPickerSubError]} numberOfLines={1}>
+                {coordinate
+                  ? `${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`
+                  : 'Wajib dipilih — tandai lokasi usaha Anda di peta'}
+              </Text>
+            </View>
+            {coordinate ? (
+              <Pressable onPress={() => setCoordinate(null)} hitSlop={12}>
+                <X size={18} color={colors.error} />
+              </Pressable>
+            ) : null}
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -220,6 +259,17 @@ export default function RegisterVendorScreen() {
           <Button label="Daftar Sekarang" onPress={handleRegister} loading={loading} />
         </View>
       </ScrollView>
+
+      <MapPickerModal
+        visible={mapVisible}
+        initialCoordinate={coordinate}
+        onClose={() => setMapVisible(false)}
+        onConfirm={(picked) => {
+          setCoordinate(picked);
+          setLocationError(false);
+          setMapVisible(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -285,5 +335,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.stackLg,
     textAlign: 'center'
   },
+  mapPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+    padding: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.DEFAULT,
+    backgroundColor: colors.surfaceContainerLowest,
+  },
+  mapPickerRowPressed: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.primaryContainer },
+  mapPickerTextWrap: { flex: 1 },
+  mapPickerTitle: {
+    fontFamily: typography.labelLg.fontFamily,
+    fontSize: typography.labelLg.fontSize,
+    color: colors.onSurface,
+  },
+  mapPickerSub: {
+    fontFamily: typography.bodySm.fontFamily,
+    fontSize: typography.bodySm.fontSize,
+    color: colors.outline,
+  },
+  mapPickerRowError: { borderColor: colors.error },
+  mapPickerSubError: { color: colors.error },
   footerSpacing: { marginBottom: spacing.stackXl },
 });

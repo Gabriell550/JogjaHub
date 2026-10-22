@@ -14,7 +14,12 @@ class ServiceResource extends JsonResource
             'name'        => $this->name,
             'description' => $this->description,
             'price'       => $this->price,
-            'photos'      => $this->photos,
+            'photos'      => collect($this->photos ?? [])->map(fn (array $photo) => [
+                'url'        => $photo['url'],
+                'full_url'   => asset('storage/' . ltrim($photo['url'], '/')),
+                'is_primary' => $photo['is_primary'] ?? false,
+                'sort_order' => $photo['sort_order'] ?? 0,
+            ])->values(),
             'subcategory' => $this->whenLoaded('subcategory', fn() => [
                 'id'   => $this->subcategory->id,
                 'name' => $this->subcategory->name,
@@ -27,4 +32,3 @@ class ServiceResource extends JsonResource
         ];
     }
 }
-

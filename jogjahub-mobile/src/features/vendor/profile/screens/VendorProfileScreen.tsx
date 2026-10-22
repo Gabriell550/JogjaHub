@@ -33,7 +33,7 @@ import { logout, setTenantProfile } from '../../../../features/auth/store/authSl
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
 import { categoryApi } from '../../../../api/categoryApi';
-import { API_BASE_URL } from '../../../../constants/config';
+import { getPhotoUrl, type ServicePhotoLike } from '../../../../utils/serviceImage';
 import type { RootState } from '../../../../store';
 
 type ServiceItem = {
@@ -42,7 +42,7 @@ type ServiceItem = {
   price: number;
   description?: string;
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-  photos?: Array<{ url: string; is_primary?: boolean; sort_order?: number }>;
+  photos?: ServicePhotoLike[];
 };
 
 type CategoryItem = {
@@ -404,9 +404,8 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               {services.slice(0, 4).map((service) => {
                 const photo    = service.photos?.[0];
-                const BASE_URL = API_BASE_URL.replace('/api/v1', '');
                 const imageUri = photo?.url
-                  ? (photo.url.startsWith('http') ? photo.url : `${BASE_URL}/storage/${photo.url}`)
+                  ? getPhotoUrl(photo)
                   : 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?q=80&w=400';
                 
                 return (

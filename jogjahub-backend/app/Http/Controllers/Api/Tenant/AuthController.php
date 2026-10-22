@@ -90,6 +90,8 @@ class AuthController extends Controller
             'user_id'         => $user->id,
             'business_name'   => $request->name,
             'address'         => $address,
+            'latitude'        => $request->input('latitude'),
+            'longitude'       => $request->input('longitude'),
             'whatsapp_number' => $request->phone ?? '',
             'status'          => 'pending',
         ]);
