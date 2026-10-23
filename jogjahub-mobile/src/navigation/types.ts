@@ -3,7 +3,9 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 export type AuthStackParamList = {
   Login: undefined;
   RegisterCustomer: undefined;
-  RegisterVendor: undefined;
+  // `mode: 'resubmit'` = form registrasi awal dipakai untuk pengajuan ulang
+  // tenant berstatus rejected (issue #59) — data lama terisi otomatis.
+  RegisterVendor: { mode?: 'resubmit' } | undefined;
   PendingApproval: { businessName?: string; rejected?: boolean };
   VendorOnboarding: undefined;
 };

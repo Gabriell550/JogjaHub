@@ -44,7 +44,9 @@ export default function PendingApprovalScreen() {
   };
 
   const handleGoToRevision = () => {
-    navigation.navigate("VendorOnboarding");
+    // Issue #59: pengajuan ulang harus membuka FORM REGISTRASI AWAL (mode
+    // resubmit), bukan layar edit profil yang berbeda — data lama terisi otomatis.
+    navigation.navigate("RegisterVendor", { mode: "resubmit" });
   };
 
   return (
@@ -94,7 +96,7 @@ export default function PendingApprovalScreen() {
         {isRejected && (
           <>
             <Button
-              label="Perbaiki Data Pendaftaran"
+              label="Ajukan Ulang Pendaftaran"
               onPress={handleGoToRevision}
             />
             <View style={{ height: 12 }} />

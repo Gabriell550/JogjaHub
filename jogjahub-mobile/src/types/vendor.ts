@@ -10,6 +10,8 @@ export interface TenantProfile {
   };
   latitude: number;
   longitude: number;
+  // Dihitung di backend (TenantProfileResource.getLocationAttribute).
+  location?: { latitude: number; longitude: number } | null;
   whatsapp_number: string;
   status: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string | null;

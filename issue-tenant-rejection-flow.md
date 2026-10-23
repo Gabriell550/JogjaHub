@@ -81,14 +81,15 @@ sequenceDiagram
 
 ### Skenario 3: Tenant Melakukan Revisi dan Mengirim Ulang Pendaftaran
 - **Given** Tenant berada di layar `PendingApprovalScreen` yang menampilkan catatan penolakan.
-- **When** Tenant menekan tombol **"Perbaiki Data Pendaftaran"**.
-- **Then** Aplikasi membuka layar formulir revisi (`VendorOnboardingScreen` atau layar edit registrasi).
-- **And** Semua input (Nama Usaha, Deskripsi, Kategori Layanan, Alamat Lengkap, Koordinat Peta, dan WhatsApp) sudah **terisi otomatis** sesuai data pendaftaran sebelumnya.
-- **And** Terdapat banner di bagian atas formulir yang mengingatkan catatan revisi dari admin.
-- **When** Tenant memperbarui data yang salah / mengunggah dokumen KTP baru dan menekan tombol **"Simpan & Ajukan Ulang"**.
-- **Then** Aplikasi mengirim request `PUT /api/v1/tenant/profile` ke backend.
-- **And** Backend mengupdate data tenant, mengubah status menjadi `pending`, dan mereset `rejection_reason` menjadi `null`.
-- **And** Aplikasi mengarahkan kembali tenant ke layar status antrean dengan pesan: *"Pendaftaran Berhasil Dikirim Ulang. Menunggu Persetujuan Admin."*
+- **When** Tenant menekan tombol **"Ajukan Ulang Pendaftaran"**.
+- **Then** Aplikasi membuka **form registrasi tenant awal** (`RegisterVendorScreen`) dalam mode *resubmit* — bukan form edit profil yang berbeda.
+- **And** Semua data lama (Nama Usaha, Kategori Layanan, Alamat Lengkap, Koordinat Peta, Email, dan WhatsApp) ditampilkan **read-only** sudah terisi sesuai data pendaftaran sebelumnya — tenant tidak perlu mengisi ulang.
+- **And** Terdapat banner **"Catatan Revisi dari Admin"** di bagian atas formulir yang tetap menampilkan alasan penolakan.
+- **When** Tenant mengunggah dokumen yang diminta (KTP/NIB/Portofolio — minimal 1) dan menekan tombol **"Simpan & Ajukan Ulang"**.
+- **Then** Aplikasi mengirim request `POST /api/v1/tenant/profile/resubmit` berisi **hanya file dokumen**.
+- **And** Backend mengganti dokumen yang diunggah ulang, mempertahankan seluruh data profil lama, mengubah status menjadi `pending`, dan mereset `rejection_reason` menjadi `null`.
+- **And** Jika upload gagal, muncul pesan error yang jelas dan status tetap `rejected`.
+- **And** Jika sukses, aplikasi mengarahkan kembali tenant ke layar status antrean: **"Menunggu Persetujuan Admin"**.
 
 ---
 
@@ -124,6 +125,17 @@ Bagian ini ditulis secara mendalam agar dapat langsung diikuti oleh programmer j
   - Method `show(Request $request)` mengembalikan `TenantProfileResource` yang sudah memuat `rejection_reason` ketika diakses oleh pemilik profil.
 - `app/Http/Requests/Tenant/UpdateProfileRequest.php`:
   - Pastikan field file (`ktp`, `nib`, `portfolio`) bertipe `sometimes|file` jika tenant hanya ingin mengubah informasi teks tanpa mengunggah ulang file yang sudah benar.
+
+#### C. File Baru: `app/Http/Controllers/Api/Tenant/ProfileController.php` → method `resubmit()` (issue #59)
+- **Route:** `POST /api/v1/tenant/profile/resubmit` (auth:sanctum + role:tenant, di `routes/api.php`).
+- **Request:** `app/Http/Requests/Tenant/ResubmitRequest` — `ktp`/`nib`/`portfolio` opsional per-item tapi **minimal satu wajib** (validasi `withValidator`).
+- **Aturan:**
+  1. Hanya tenant berstatus `rejected` yang boleh memanggil endpoint ini (selain itu → 422).
+  2. Hanya dokumen yang diunggah ulang yang diganti — data profil lama (nama, alamat, kategori, dll) **dipertahankan**.
+  3. File lama yang tergantikan dihapus dari disk `local` setelah update sukses.
+  4. Status diubah `rejected → pending` dan `rejection_reason` di-null-kan.
+  5. Jika validasi gagal → 422, status di DB tetap `rejected`.
+- **Test:** `tests/Feature/Tenant/TenantResubmitTest.php` (5 skenario: sukses, tanpa dokumen, file tidak valid, pending ditolak, approved ditolak).
 
 ---
 
@@ -256,7 +268,7 @@ dispatch(setSession({
 ```
 
 #### E. File: `src/navigation/RootNavigator.tsx`
-Daftarkan screen edit/revisi pada navigator antrean pending/rejected:
+Daftarkan **form registrasi awal** (`RegisterVendorScreen`) di dalam navigator antrean pending/rejected sehingga tenant rejected bisa membukanya dalam mode `resubmit`:
 ```tsx
 {user &&
   normalizedRole === 'vendor' &&
@@ -274,12 +286,14 @@ Daftarkan screen edit/revisi pada navigator antrean pending/rejected:
         }}
       />
       <Stack.Screen
-        name="VendorOnboarding"
-        component={VendorOnboardingScreen}
+        name="RegisterVendor"
+        component={RegisterVendorScreen}
+        initialParams={{ mode: 'resubmit' }}
       />
     </Stack.Navigator>
 )}
 ```
+> ⚠️ `VendorOnboardingScreen` TIDAK lagi dipakai untuk alur pengajuan ulang — layar itu tetap ada dan dipakai oleh `VendorProfileStackNavigator` (edit profil vendor yang sudah approved).
 
 #### F. File: `src/features/vendor/onboarding/screens/PendingApprovalScreen.tsx`
 - Ambil `rejectionReason` dari Redux:
@@ -303,8 +317,8 @@ Daftarkan screen edit/revisi pada navigator antrean pending/rejected:
     ```tsx
     <View style={styles.buttonContainer}>
       <Button
-        label="Perbaiki Data Pendaftaran"
-        onPress={() => navigation.navigate("VendorOnboarding" as any)}
+        label="Ajukan Ulang Pendaftaran"
+        onPress={() => navigation.navigate("RegisterVendor", { mode: "resubmit" })}
       />
       <View style={{ height: 12 }} />
       <Button
@@ -315,24 +329,20 @@ Daftarkan screen edit/revisi pada navigator antrean pending/rejected:
     </View>
     ```
 
-#### G. File: `src/features/vendor/onboarding/screens/VendorOnboardingScreen.tsx`
-- Saat layar dibuka (`useEffect`):
-  Jika data profil di Redux belum ada, lakukan pemanggilan `vendorApi.getMyProfile()` untuk memuat profil lama dari database.
-- Tampilkan Banner Catatan Revisi di atas formulir:
-  Jika `rejectionReason` terisi, tampilkan alert di atas form:
-  ```tsx
-  <View style={styles.alertBanner}>
-    <Text style={styles.alertTitle}>Perhatian (Catatan Admin):</Text>
-    <Text style={styles.alertMessage}>{rejectionReason}</Text>
-  </View>
-  ```
-- Form sudah memuat field: Nama Bisnis, Deskripsi, Kategori, Alamat, Koordinat GPS, dan WhatsApp.
-- Tambahkan bagian unggah dokumen KTP / NIB jika sebelumnya dokumen ditolak.
-- Saat tombol **"Simpan & Kirim Ulang"** ditekan:
-  - Kirim data ke `vendorApi.updateMyProfile(...)`.
-  - Dispatch action Redux `setTenantStatusPending()`.
-  - Tampilkan Toast: *"Pendaftaran berhasil diperbarui dan dikirim kembali ke admin."*
-  - Arahkan navigasi kembali ke `PendingApprovalScreen`.
+#### G. File: `src/features/auth/screens/RegisterVendorScreen.tsx` (form registrasi awal + mode resubmit)
+- Saat menerima route param `{ mode: 'resubmit' }`:
+  - Ambil `tenantProfile`, `user`, dan `rejectionReason` dari Redux.
+  - Jika `tenantProfile` belum ada, panggil `vendorApi.getMyProfile()` lalu simpan ke Redux via `setTenantProfile`.
+  - Pre-fill data lama sebagai teks read-only: Nama Bisnis, Kategori, Alamat, Koordinat, Email (dari `user`), WhatsApp.
+  - Tampilkan banner **"Catatan Revisi dari Admin"** berisi `rejectionReason`.
+  - Tampilkan bagian unggah dokumen KTP / NIB / Portofolio — satu-satunya bagian yang interaktif.
+- Saat tombol **"Simpan & Ajukan Ulang"** ditekan:
+  - Validasi minimal 1 dokumen dipilih (Toast error jika kosong — status tetap `rejected`).
+  - Kirim ke `vendorApi.resubmitProfile(formData)` — payload HANYA berisi file.
+  - Jika sukses: dispatch `setTenantStatusPending()`, Toast sukses, `navigation.reset` ke `PendingApprovalScreen`.
+  - Jika gagal: `resubmitError` ditampilkan, status di Redux tetap `rejected`.
+- Mode default (`!isResubmit`) TIDAK diubah — registrasi tenant baru tetap seperti sebelumnya.
+- `VendorOnboardingScreen` tetap dipakai untuk edit profil vendor approved (bukan untuk pengajuan ulang).
 
 ---
 
@@ -353,12 +363,15 @@ Lakukan pengujian berikut secara urut untuk memastikan tidak ada regresi:
   3. Verifikasi bahwa teks alasan penolakan *"Foto KTP buram / tidak terbaca"* muncul dengan jelas di kartu catatan admin.
   4. Tutup aplikasi dan buka kembali. Pastikan sesi tetap bertahan dan alasan penolakan tetap muncul (tidak hilang karena restart app).
 
-- [ ] **Test Case 3: Revisi Tanpa Mengulang Pendaftaran**
-  1. Pada `PendingApprovalScreen`, klik tombol **"Perbaiki Data Pendaftaran"**.
-  2. Pastikan layar formulir terbuka dan data Nama Bisnis, Alamat, WhatsApp, dan Kategori **sudah terisi otomatis** tanpa kosong.
-  3. Ubah salah satu data atau unggah dokumen baru, lalu tekan *"Simpan Profil"*.
-  4. Pastikan muncul notifikasi sukses dan layar kembali ke `PendingApprovalScreen` dengan tampilan status **"Menunggu Persetujuan Admin"** (icon jam pasir ⏳ dan alasan penolakan bersih).
-  5. Periksa database: `status` berubah kembali menjadi `'pending'` dan `rejection_reason` bernilai `null`.
+- [ ] **Test Case 3: Ajukan Ulang Tanpa Mengulang Pendaftaran**
+  1. Pada `PendingApprovalScreen` (mode rejected), klik tombol **"Ajukan Ulang Pendaftaran"**.
+  2. Pastikan **form registrasi awal** terbuka (bukan form edit profil) dan data Nama Bisnis, Kategori, Alamat, Koordinat, Email, dan WhatsApp **sudah terisi otomatis** (read-only) tanpa kosong.
+  3. Banner **"Catatan Revisi dari Admin"** masih menampilkan alasan penolakan.
+  4. Unggah minimal satu dokumen (mis. KTP baru), lalu tekan **"Simpan & Ajukan Ulang"**.
+  5. Pastikan muncul notifikasi sukses dan layar kembali ke `PendingApprovalScreen` dengan tampilan status **"Menunggu Persetujuan Admin"** (icon jam pasir ⏳ dan alasan penolakan bersih).
+  6. Periksa database: dokumen baru tersimpan, dokumen lain yang tidak diunggah ulang tetap ada, `status` berubah kembali menjadi `'pending'`, dan `rejection_reason` bernilai `null`.
+  7. **Skenario gagal:** kosongkan pilihan dokumen / pilih file non-gambar, tekan submit → error muncul, status di database tetap `rejected`.
+  8. **Skenario status lain:** tenant `pending`/`approved` tidak melihat tombol pengajuan ulang dan `POST /tenant/profile/resubmit` menolak mereka (422).
 
 - [ ] **Test Case 4: Verifikasi Ulang oleh Admin**
   1. Buka kembali dashboard Web Admin.
@@ -374,13 +387,21 @@ Lakukan pengujian berikut secara urut untuk memastikan tidak ada regresi:
 |---|---|---|
 | **Backend** | `jogjahub-backend/app/Http/Controllers/Api/AuthController.php` | Sertakan `rejection_reason` pada respon JSON `login()` |
 | **Web Admin** | `jogjahub-web/src/app/admin/vendors/page.tsx` | Implementasikan Modal Dialog penolakan dengan presets & validasi |
-| **Mobile** | `jogjahub-mobile/src/types/vendor.ts` | Tambahkan `rejection_reason` pada interface `TenantProfile` |
+| **Backend** | `jogjahub-backend/app/Http/Controllers/Api/Tenant/ProfileController.php` | Tambah method `resubmit()` — endpoint `POST /tenant/profile/resubmit` (issue #59) |
+| **Backend** | `jogjahub-backend/app/Http/Requests/Tenant/ResubmitRequest.php` | File baru — validasi dokumen pengajuan ulang (minimal 1) |
+| **Backend** | `jogjahub-backend/routes/api.php` | Daftarkan route `POST /tenant/profile/resubmit` |
+| **Backend** | `jogjahub-backend/tests/Feature/Tenant/TenantResubmitTest.php` | File baru — 5 skenario pengajuan ulang (success & fail) |
+| **Mobile** | `jogjahub-mobile/src/types/vendor.ts` | Tambahkan `rejection_reason` & `location` pada interface `TenantProfile` |
 | **Mobile** | `jogjahub-mobile/src/features/auth/store/authSlice.ts` | Tambahkan `rejectionReason` ke state Redux & action helper |
 | **Mobile** | `jogjahub-mobile/src/features/auth/store/bootstrapAuth.ts` | Persistensi & restorasi `rejectionReason` dari storage |
 | **Mobile** | `jogjahub-mobile/src/features/auth/hooks/useLogin.ts` | Simpan `rejection_reason` ke Redux saat login |
-| **Mobile** | `jogjahub-mobile/src/navigation/RootNavigator.tsx` | Daftarkan screen revisi di dalam navigator `pending-stack` |
-| **Mobile** | `jogjahub-mobile/src/features/vendor/onboarding/screens/PendingApprovalScreen.tsx` | Tampilkan catatan admin dan tombol "Perbaiki Data Pendaftaran" |
-| **Mobile** | `jogjahub-mobile/src/features/vendor/onboarding/screens/VendorOnboardingScreen.tsx` | Tampilkan banner catatan revisi & kirim data update ke backend |
+| **Mobile** | `jogjahub-mobile/src/features/auth/hooks/useResubmit.ts` | File baru — hook pengajuan ulang (payload hanya dokumen) |
+| **Mobile** | `jogjahub-mobile/src/api/vendorApi.ts` | Tambah `resubmitProfile()` memanggil `POST /tenant/profile/resubmit` |
+| **Mobile** | `jogjahub-mobile/src/navigation/types.ts` | `RegisterVendor` menerima param `{ mode: 'resubmit' }` |
+| **Mobile** | `jogjahub-mobile/src/navigation/RootNavigator.tsx` | Daftarkan `RegisterVendor` (mode resubmit) di `pending-stack` |
+| **Mobile** | `jogjahub-mobile/src/features/vendor/onboarding/screens/PendingApprovalScreen.tsx` | Tombol "Ajukan Ulang Pendaftaran" → navigasi ke `RegisterVendor` mode resubmit |
+| **Mobile** | `jogjahub-mobile/src/features/auth/screens/RegisterVendorScreen.tsx` | Mode `resubmit`: banner catatan admin, data lama read-only, unggah dokumen saja |
+| **Mobile** | `jogjahub-mobile/src/features/vendor/onboarding/screens/VendorOnboardingScreen.tsx` | Tetap dipakai untuk edit profil vendor approved (bukan pengajuan ulang) |
 
 ---
 

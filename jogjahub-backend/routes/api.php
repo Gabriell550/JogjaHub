@@ -49,6 +49,10 @@ Route::prefix('v1')->group(function () {
         Route::get('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'show']);
         Route::put('profile', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'update']);
 
+        // Pengajuan ulang pendaftaran tenant yang ditolak (issue #59):
+        // hanya mengunggah dokumen, data profil lama dipertahankan, status => pending.
+        Route::post('profile/resubmit', [\App\Http\Controllers\Api\Tenant\ProfileController::class, 'resubmit']);
+
         // Operasional layanan, slot, dan booking WAJIB sudah approved
         Route::middleware('tenant.approved')->group(function () {
             // ServiceController: index, store, show, update, destroy (semua diimplementasikan)
