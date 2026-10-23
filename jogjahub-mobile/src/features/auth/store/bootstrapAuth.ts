@@ -18,6 +18,7 @@ type PersistedSession = {
   user: User | null;
   tenantStatus?: string | null;
   businessName?: string | null;
+  rejectionReason?: string | null;
   tenantProfile?: TenantProfile | null;
 };
 
@@ -74,6 +75,7 @@ export function bootstrapAuth(): ThunkAction<
           token,
           tenantStatus: session.tenantStatus ?? undefined,
           businessName: session.businessName ?? undefined,
+          rejectionReason: session.rejectionReason ?? undefined,
           tenantProfile: session.tenantProfile ?? undefined,
         }),
       );

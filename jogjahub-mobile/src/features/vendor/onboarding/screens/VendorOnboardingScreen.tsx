@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity,
   KeyboardAvoidingView, Platform 
@@ -6,7 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../../../store';
-import { setTenantProfile } from '../../../../features/auth/store/authSlice';
+import { setTenantProfile, setTenantStatusPending } from '../../../../features/auth/store/authSlice';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
@@ -18,7 +18,7 @@ import { vendorApi } from '../../../../api/vendorApi';
 import type { TenantProfile } from '../../../../types/vendor';
 import { 
   Store, MapPin, Tag, ChevronLeft, Map, Compass, 
-  AlignLeft
+  AlignLeft, AlertCircle
 } from 'lucide-react-native';
 import { FontAwesome } from '@expo/vector-icons';
 
@@ -28,6 +28,7 @@ export default function VendorOnboardingScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const existingProfile = useSelector((state: RootState) => state.auth.tenantProfile);
+  const rejectionReason = useSelector((state: RootState) => state.auth.rejectionReason);
 
   const [businessName, setBusinessName] = useState('');
   const [description, setDescription] = useState('');
@@ -59,6 +60,23 @@ export default function VendorOnboardingScreen() {
       }
     })();
   }, []);
+
+  // Ambil profil dari API jika Redux belum memuat existingProfile
+  useEffect(() => {
+    if (!existingProfile) {
+      (async () => {
+        try {
+          const res = await vendorApi.getMyProfile();
+          const profile = res.data?.data as TenantProfile | undefined;
+          if (profile) {
+            dispatch(setTenantProfile(profile));
+          }
+        } catch (err) {
+          console.log("Belum ada profil atau gagal memuat:", err);
+        }
+      })();
+    }
+  }, [existingProfile, dispatch]);
 
   useEffect(() => {
     if (existingProfile) {
@@ -152,12 +170,18 @@ export default function VendorOnboardingScreen() {
       });
 
       const profileData = res.data?.data as TenantProfile | undefined;
-      if (profileData && existingProfile) {
-        if (existingProfile.status === 'approved') profileData.status = 'approved';
+      if (profileData) {
         dispatch(setTenantProfile(profileData));
       }
 
-      Toast.show({ type: 'success', text1: 'Profil berhasil diperbarui!' });
+      // Reset status Redux ke pending dan bersihkan rejection_reason
+      dispatch(setTenantStatusPending());
+
+      Toast.show({ 
+        type: 'success', 
+        text1: 'Profil berhasil diperbarui!', 
+        text2: 'Pendaftaran Anda sedang ditinjau ulang oleh admin.' 
+      });
       navigation.goBack();
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Gagal menyimpan data.';
@@ -186,7 +210,7 @@ export default function VendorOnboardingScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <ChevronLeft size={24} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profil Bisnis</Text>
+        <Text style={styles.headerTitle}>Perbaiki Profil Pendaftaran</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -206,8 +230,21 @@ export default function VendorOnboardingScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ── ALERT BANNER CATATAN ADMIN (JIKA ADA) ── */}
+        {(rejectionReason || existingProfile?.rejection_reason) && (
+          <View style={styles.rejectionBanner}>
+            <View style={styles.rejectionBannerHeader}>
+              <AlertCircle size={18} color="#BE123C" />
+              <Text style={styles.rejectionBannerTitle}>Catatan Revisi dari Admin</Text>
+            </View>
+            <Text style={styles.rejectionBannerMessage}>
+              {rejectionReason || existingProfile?.rejection_reason}
+            </Text>
+          </View>
+        )}
+
         <Text style={styles.subtitle}>
-          Pastikan informasi di bawah valid agar pelanggan mudah memesan layanan Anda.
+          Data pendaftaran lama Anda sudah terisi di bawah. Silakan sesuaikan data yang diminta dan simpan kembali.
         </Text>
 
         {/* ── SECTION 1: INFO UTAMA ── */}
@@ -353,7 +390,7 @@ export default function VendorOnboardingScreen() {
       {/* ── STICKY FOOTER ── */}
       <View style={styles.stickyFooter}>
         <Button 
-          label={saving ? 'Menyimpan Perubahan...' : 'Simpan Profil'} 
+          label={saving ? 'Menyimpan & Mengajukan Ulang...' : 'Simpan & Ajukan Ulang'} 
           onPress={handleSave} 
           disabled={saving} 
         />
@@ -414,6 +451,34 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: typography.bodyMd.fontFamily,
     fontSize: 13, color: colors.secondary, marginBottom: 20, lineHeight: 20,
+  },
+
+  // Banner Catatan Revisi Admin
+  rejectionBanner: {
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: radius.lg,
+    padding: 14,
+    marginBottom: 16,
+  },
+  rejectionBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  rejectionBannerTitle: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#BE123C',
+  },
+  rejectionBannerMessage: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 13,
+    color: '#881337',
+    lineHeight: 18,
   },
   
   // Cards

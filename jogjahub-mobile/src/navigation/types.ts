@@ -5,6 +5,7 @@ export type AuthStackParamList = {
   RegisterCustomer: undefined;
   RegisterVendor: undefined;
   PendingApproval: { businessName?: string; rejected?: boolean };
+  VendorOnboarding: undefined;
 };
 
 export type CustomerTabParamList = {
@@ -120,3 +121,4 @@ export type VendorServicesStackParamList = {
   ServiceOrders: { serviceId: number; serviceName: string };
   ServiceReviews: { serviceId: number; serviceName: string };
 };
+

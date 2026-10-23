@@ -7,6 +7,7 @@ interface AuthState {
   token: string | null;
   tenantStatus?: string | null;
   businessName?: string | null;
+  rejectionReason?: string | null;
   tenantProfile?: TenantProfile | null;
   // true setelah bootstrapAuth() selesai (ada/tidak ada sesi) —
   // RootNavigator menjaga loading splash selama masih false supaya tidak flash ke Login.
@@ -18,6 +19,7 @@ const initialState: AuthState = {
   token: null,
   tenantStatus: null,
   businessName: null,
+  rejectionReason: null,
   tenantProfile: null,
   isHydrated: false,
 };
@@ -29,6 +31,7 @@ export type RestoreSessionPayload = {
   token: string;
   tenantStatus?: string;
   businessName?: string;
+  rejectionReason?: string;
   tenantProfile?: TenantProfile;
 } | null;
 
@@ -41,14 +44,20 @@ const authSlice = createSlice({
       token: string
       tenantStatus?: string
       businessName?: string
+      rejectionReason?: string | null
       tenantProfile?: TenantProfile
     }>) {
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.tenantStatus = action.payload.tenantStatus ?? null;
       state.businessName = action.payload.businessName ?? null;
+      state.rejectionReason = action.payload.rejectionReason ?? null;
       state.tenantProfile = action.payload.tenantProfile ?? null;
       state.isHydrated = true;
+    },
+    setTenantStatusPending(state) {
+      state.tenantStatus = 'pending';
+      state.rejectionReason = null;
     },
     setTenantProfile(state, action: PayloadAction<TenantProfile | null>) {
       state.tenantProfile = action.payload;
@@ -58,6 +67,7 @@ const authSlice = createSlice({
       state.token = null;
       state.tenantStatus = null;
       state.businessName = null;
+      state.rejectionReason = null;
       state.tenantProfile = null;
       // Tetap true supaya UI tidak balik ke loading screen setelah logout.
       state.isHydrated = true;
@@ -69,12 +79,14 @@ const authSlice = createSlice({
         state.token = payload.token;
         state.tenantStatus = payload.tenantStatus ?? null;
         state.businessName = payload.businessName ?? null;
+        state.rejectionReason = payload.rejectionReason ?? null;
         state.tenantProfile = payload.tenantProfile ?? null;
       } else {
         state.user = null;
         state.token = null;
         state.tenantStatus = null;
         state.businessName = null;
+        state.rejectionReason = null;
         state.tenantProfile = null;
       }
       // Bootstrap selesai dalam kondisi apa pun — loading splash boleh ditutup.
@@ -83,5 +95,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setSession, setTenantProfile, logout, restoreSession } = authSlice.actions;
+export const { setSession, setTenantStatusPending, setTenantProfile, logout, restoreSession } = authSlice.actions;
 export const authReducer = authSlice.reducer;
