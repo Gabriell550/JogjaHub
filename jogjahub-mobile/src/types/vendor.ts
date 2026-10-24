@@ -12,6 +12,7 @@ export interface TenantProfile {
   longitude: number;
   whatsapp_number: string;
   status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
   categories: Array<{
     id: number;
     name: string;

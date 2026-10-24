@@ -39,7 +39,7 @@ export function useLogin() {
       console.log('=== LOGIN RESPONSE ===');
       console.log(JSON.stringify(response.data, null, 2));
 
-      const { user, token, tenant_status, business_name } = response.data.data;
+      const { user, token, tenant_status, business_name, rejection_reason } = response.data.data;
       const normalizedUser = {
         ...user,
         role: user?.role === 'tenant' ? 'vendor' : user?.role,
@@ -50,6 +50,7 @@ export function useLogin() {
       console.log('normalizedUser.role:', normalizedUser.role);
       console.log('tenant_status:', tenant_status);
       console.log('business_name:', business_name);
+      console.log('rejection_reason:', rejection_reason);
       console.log('USER DARI BACKEND:', user);
       console.log('ROLE:', user?.role);
       console.log('NORMALIZED:', normalizedUser);
@@ -59,6 +60,7 @@ export function useLogin() {
         token,
         tenantStatus: tenant_status ?? null,
         businessName: business_name ?? null,
+        rejectionReason: rejection_reason ?? null,
       }));
       setToken(token);
 

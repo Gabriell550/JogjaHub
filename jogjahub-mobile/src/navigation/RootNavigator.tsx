@@ -17,6 +17,7 @@ import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-me
 import { colors } from '../constants/theme';
 
 import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
+import VendorOnboardingScreen from '../features/vendor/onboarding/screens/VendorOnboardingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -174,6 +175,10 @@ export function RootNavigator() {
                     rejected:
                       tenantStatus === 'rejected',
                   }}
+                />
+                <Stack.Screen
+                  name="VendorOnboarding"
+                  component={VendorOnboardingScreen}
                 />
               </Stack.Navigator>
             </>

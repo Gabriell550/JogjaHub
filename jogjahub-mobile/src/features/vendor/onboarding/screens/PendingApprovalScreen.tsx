@@ -1,94 +1,37 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-
 import { useNavigation, useRoute } from "@react-navigation/native";
-
 import type { RouteProp } from "@react-navigation/native";
-
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
 import { useSelector } from "react-redux";
-
 import {
   colors,
   typography,
   spacing,
   radius,
 } from "../../../../constants/theme";
-
 import { Button } from "../../../../components/Button/Button";
-
 import type { AuthStackParamList } from "../../../../navigation/types";
-
 import type { RootState } from "../../../../store";
-
 import { useLogout } from "../../../auth/hooks/useLogout";
 
 type Route = RouteProp<AuthStackParamList, "PendingApproval">;
-
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 export default function PendingApprovalScreen() {
   const navigation = useNavigation<NavigationProp>();
-
   const { params } = useRoute<Route>();
-
   const user = useSelector((state: RootState) => state.auth?.user);
-
+  const rejectionReason = useSelector((state: RootState) => state.auth?.rejectionReason);
   const { handleLogout } = useLogout();
 
   const isRejected = params?.rejected ?? false;
 
   const handleBackToLogin = () => {
-    console.log("=== KEMBALI KE LOGIN ===");
-
-    console.log("USER SAAT INI:", user);
-
-    /*
-     * =====================================
-     * KONDISI 1
-     * =====================================
-     *
-     * PendingApproval berasal dari
-     * LOGIN vendor.
-     *
-     * user masih ada.
-     *
-     * Maka logout akan mengubah:
-     *
-     * user → null
-     *
-     * lalu RootNavigator otomatis
-     * menampilkan AuthStack → Login.
-     */
-
     if (user) {
-      console.log("→ Pending berasal dari LOGIN");
-
       handleLogout();
-
       return;
     }
-
-    /*
-     * =====================================
-     * KONDISI 2
-     * =====================================
-     *
-     * PendingApproval berasal dari
-     * REGISTER vendor.
-     *
-     * Pada kondisi ini user memang
-     * masih null.
-     *
-     * Jadi dispatch(logout()) tidak akan
-     * mengubah navigation.
-     *
-     * Kita harus reset AuthStack
-     * langsung ke Login.
-     */
-
-    console.log("→ Pending berasal dari REGISTER");
 
     navigation.reset({
       index: 0,
@@ -100,27 +43,28 @@ export default function PendingApprovalScreen() {
     });
   };
 
+  const handleGoToRevision = () => {
+    navigation.navigate("VendorOnboarding");
+  };
+
   return (
     <View style={styles.screen}>
       {/* ICON */}
-
       <View style={[styles.iconCircle, isRejected && styles.iconCircleError]}>
-        <Text style={styles.icon}>{isRejected ? "❌" : "⏳"}</Text>
+        <Text style={styles.icon}>{isRejected ? "⚠️" : "⏳"}</Text>
       </View>
 
       {/* TITLE */}
-
       <Text style={styles.title}>
-        {isRejected ? "Pendaftaran Ditolak" : "Menunggu Persetujuan Admin"}
+        {isRejected ? "Pendaftaran Perlu Diperbaiki" : "Menunggu Persetujuan Admin"}
       </Text>
 
       {/* BODY */}
-
       <Text style={styles.body}>
         {isRejected
           ? `Pendaftaran ${
-              params?.businessName ?? "Anda"
-            } tidak disetujui oleh admin JogjaHub.`
+              params?.businessName ?? "usaha Anda"
+            } belum dapat disetujui oleh admin JogjaHub.`
           : `${
               params?.businessName
                 ? `Pendaftaran ${params.businessName} `
@@ -128,17 +72,40 @@ export default function PendingApprovalScreen() {
             }berhasil dikirim. Admin JogjaHub akan meninjau KTP dan Surat Badan Usaha yang kamu upload — proses ini biasanya memakan waktu 1–2 hari kerja.`}
       </Text>
 
-      {/* SECONDARY BODY */}
+      {/* REJECTION REASON CARD */}
+      {isRejected && (
+        <View style={styles.rejectionCard}>
+          <Text style={styles.rejectionHeader}>Catatan dari Admin:</Text>
+          <Text style={styles.rejectionText}>
+            {rejectionReason || "Admin belum menyertakan catatan khusus. Silakan periksa kembali data profil dan kelengkapan dokumen Anda."}
+          </Text>
+        </View>
+      )}
 
+      {/* SECONDARY BODY */}
       <Text style={styles.bodySecondary}>
         {isRejected
-          ? "Silakan hubungi support untuk informasi lebih lanjut atau coba daftar ulang dengan data yang benar."
+          ? "Data pendaftaran Anda tersimpan. Silakan periksa catatan admin di atas dan perbaiki data Anda tanpa perlu mengulang dari awal."
           : "Kamu akan bisa login penuh sebagai vendor setelah status akun disetujui. Silakan cek lagi nanti."}
       </Text>
 
-      {/* BACK TO LOGIN */}
-
-      <Button label="Kembali ke Login" onPress={handleBackToLogin} />
+      {/* ACTION BUTTONS */}
+      <View style={styles.actionContainer}>
+        {isRejected && (
+          <>
+            <Button
+              label="Perbaiki Data Pendaftaran"
+              onPress={handleGoToRevision}
+            />
+            <View style={{ height: 12 }} />
+          </>
+        )}
+        <Button
+          label={isRejected ? "Keluar / Ganti Akun" : "Kembali ke Login"}
+          style={isRejected ? styles.secondaryBtn : undefined}
+          onPress={handleBackToLogin}
+        />
+      </View>
     </View>
   );
 }
@@ -163,7 +130,7 @@ const styles = StyleSheet.create({
   },
 
   iconCircleError: {
-    backgroundColor: colors.errorContainer,
+    backgroundColor: "#FEE2E2",
   },
 
   icon: {
@@ -172,43 +139,62 @@ const styles = StyleSheet.create({
 
   title: {
     fontFamily: typography.headlineLg.fontFamily,
-
     fontSize: typography.headlineLg.fontSize,
-
     fontWeight: typography.headlineLg.fontWeight,
-
     color: colors.onSurface,
-
     textAlign: "center",
-
     marginBottom: spacing.stackMd,
   },
 
   body: {
     fontFamily: typography.bodyLg.fontFamily,
-
     fontSize: typography.bodyLg.fontSize,
-
     color: colors.onSurface,
-
     textAlign: "center",
-
     marginBottom: spacing.stackMd,
-
     lineHeight: typography.bodyLg.lineHeight,
+  },
+
+  rejectionCard: {
+    width: "100%",
+    backgroundColor: "#FFF1F2",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "#FECDD3",
+    padding: 16,
+    marginBottom: spacing.stackLg,
+  },
+
+  rejectionHeader: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#BE123C",
+    marginBottom: 4,
+  },
+
+  rejectionText: {
+    fontFamily: typography.bodyMd.fontFamily,
+    fontSize: 13,
+    color: "#881337",
+    lineHeight: 18,
   },
 
   bodySecondary: {
     fontFamily: typography.bodyMd.fontFamily,
-
     fontSize: typography.bodyMd.fontSize,
-
     color: colors.onSurfaceVariant,
-
     textAlign: "center",
-
     marginBottom: spacing.sectionGap,
-
     lineHeight: typography.bodyMd.lineHeight,
   },
+
+  actionContainer: {
+    width: "100%",
+  },
+  secondaryBtn: {
+    backgroundColor: colors.surfaceContainerHigh,
+  },
 });
+
+

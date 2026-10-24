@@ -4,18 +4,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createListenerMiddleware, isAnyOf } from '@reduxjs/toolkit';
 import type { RootState } from '../../../store';
-import { logout, setSession, setTenantProfile } from './authSlice';
+import { logout, setSession, setTenantStatusPending, setTenantProfile } from './authSlice';
 
 // Satu key gabungan JSON untuk seluruh data sesi non-token
-// (user, tenantStatus, businessName, tenantProfile).
+// (user, tenantStatus, businessName, rejectionReason, tenantProfile).
 // Token disimpan terpisah di tokenStore.ts (TOKEN_STORAGE_KEY).
 export const SESSION_STORAGE_KEY = '@jogjahub/session';
 
 export const authListenerMiddleware = createListenerMiddleware();
 
-// Tulis ulang sesi tiap kali data user/tenant berubah (login, update profil).
+// Tulis ulang sesi tiap kali data user/tenant berubah (login, update profil, pengajuan revisi).
 authListenerMiddleware.startListening({
-  matcher: isAnyOf(setSession, setTenantProfile),
+  matcher: isAnyOf(setSession, setTenantStatusPending, setTenantProfile),
   effect: async (_action, listenerApi) => {
     try {
       const auth = (listenerApi.getState() as RootState).auth;
@@ -25,6 +25,7 @@ authListenerMiddleware.startListening({
           user: auth.user,
           tenantStatus: auth.tenantStatus,
           businessName: auth.businessName,
+          rejectionReason: auth.rejectionReason,
           tenantProfile: auth.tenantProfile,
         }),
       );

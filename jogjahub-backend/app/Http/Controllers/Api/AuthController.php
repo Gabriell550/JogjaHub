@@ -56,11 +56,13 @@ class AuthController extends Controller
         if ($user->role === 'tenant') {
             $tenantProfile = TenantProfile::where('user_id', $user->id)->first();
             if ($tenantProfile) {
-                $response['data']['tenant_status']  = $tenantProfile->status;
-                $response['data']['business_name']  = $tenantProfile->business_name;
+                $response['data']['tenant_status']    = $tenantProfile->status;
+                $response['data']['business_name']    = $tenantProfile->business_name;
+                $response['data']['rejection_reason'] = $tenantProfile->rejection_reason;
             } else {
-                $response['data']['tenant_status'] = 'pending';
-                $response['data']['business_name'] = $user->name;
+                $response['data']['tenant_status']    = 'pending';
+                $response['data']['business_name']    = $user->name;
+                $response['data']['rejection_reason'] = null;
             }
         }
 
