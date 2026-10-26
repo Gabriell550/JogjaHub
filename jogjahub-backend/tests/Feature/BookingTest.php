@@ -3,16 +3,27 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\Service;
+use App\Models\Subcategory;
 use App\Models\TenantProfile;
 use App\Models\TimeSlot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Traits\MocksXendit;
 
 class BookingTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, MocksXendit;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Mock Xendit untuk semua test di file ini
+        // supaya tidak ada HTTP call ke API Xendit sungguhan
+        $this->mockXendit();
+    }
 
     // ─── Create Booking ───────────────────────────────────────────────────────
 
@@ -24,18 +35,27 @@ class BookingTest extends TestCase
 
         $response = $this->actingAs($customer)
             ->postJson('/api/v1/customer/bookings', [
-                'service_id'     => $service->id,
-                'payment_method' => 'transfer',
+                'service_id' => $service->id,
             ]);
 
         $response->assertStatus(201)
                  ->assertJsonPath('success', true)
-                 ->assertJsonPath('data.status', 'pending');
+                 ->assertJsonPath('data.status', 'pending')
+                 ->assertJsonStructure([
+                     'data', 'payment_url', 'expires_at',
+                 ]);
 
         $this->assertDatabaseHas('bookings', [
             'customer_id' => $customer->id,
             'service_id'  => $service->id,
             'status'      => 'pending',
+        ]);
+
+        // Payment record harus ikut dibuat
+        $this->assertDatabaseHas('payments', [
+            'amount'  => (int) $service->price,
+            'status'  => 'pending',
+            'currency'=> 'IDR',
         ]);
     }
 
@@ -43,20 +63,19 @@ class BookingTest extends TestCase
     {
         $customer    = User::factory()->customer()->create();
         $tenant      = TenantProfile::factory()->approved()->create();
-        $subcategory = \App\Models\Subcategory::factory()->requiresSlot()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
         $service     = Service::factory()->create(['tenant_id' => $tenant->id, 'subcategory_id' => $subcategory->id]);
         $slot        = TimeSlot::factory()->create(['service_id' => $service->id, 'quota' => 5, 'booked_count' => 0]);
 
         $this->actingAs($customer)
             ->postJson('/api/v1/customer/bookings', [
-                'service_id'     => $service->id,
-                'slot_id'        => $slot->id,
-                'payment_method' => 'transfer',
+                'service_id' => $service->id,
+                'slot_id'    => $slot->id,
             ]);
 
         $this->assertDatabaseHas('time_slots', [
             'id'           => $slot->id,
-            'booked_count' => 1,  // ← harus bertambah
+            'booked_count' => 1,  // ← harus bertambah saat booking dibuat
         ]);
     }
 
@@ -64,15 +83,14 @@ class BookingTest extends TestCase
     {
         $customer    = User::factory()->customer()->create();
         $tenant      = TenantProfile::factory()->approved()->create();
-        $subcategory = \App\Models\Subcategory::factory()->requiresSlot()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
         $service     = Service::factory()->create(['tenant_id' => $tenant->id, 'subcategory_id' => $subcategory->id]);
         $slot        = TimeSlot::factory()->full()->create(['service_id' => $service->id]);
 
         $response = $this->actingAs($customer)
             ->postJson('/api/v1/customer/bookings', [
-                'service_id'     => $service->id,
-                'slot_id'        => $slot->id,
-                'payment_method' => 'transfer',
+                'service_id' => $service->id,
+                'slot_id'    => $slot->id,
             ]);
 
         $response->assertStatus(422);
@@ -83,8 +101,7 @@ class BookingTest extends TestCase
         $service = Service::factory()->create();
 
         $response = $this->postJson('/api/v1/customer/bookings', [
-            'service_id'     => $service->id,
-            'payment_method' => 'transfer',
+            'service_id' => $service->id,
         ]);
 
         $response->assertStatus(401);
@@ -97,8 +114,7 @@ class BookingTest extends TestCase
 
         $response = $this->actingAs($tenantUser)
             ->postJson('/api/v1/customer/bookings', [
-                'service_id'     => $service->id,
-                'payment_method' => 'transfer',
+                'service_id' => $service->id,
             ]);
 
         $response->assertStatus(403);
@@ -150,6 +166,69 @@ class BookingTest extends TestCase
         $response->assertStatus(403);
     }
 
+    // ─── Xendit Webhook ───────────────────────────────────────────────────────
+
+    public function test_webhook_xendit_paid_mengkonfirmasi_booking()
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant   = TenantProfile::factory()->approved()->create();
+        $service  = Service::factory()->create(['tenant_id' => $tenant->id]);
+        $booking  = Booking::factory()->create([
+            'customer_id' => $customer->id,
+            'service_id'  => $service->id,
+            'status'      => 'pending',
+        ]);
+        $payment = Payment::factory()->create([
+            'booking_id'         => $booking->id,
+            'xendit_external_id' => 'jogjahub-' . $booking->uuid,
+            'status'             => 'pending',
+            'amount'             => 100000,
+        ]);
+
+        $this->postJson('/api/v1/webhook/xendit', [
+            'id'             => 'inv_fake_123',
+            'external_id'    => 'jogjahub-' . $booking->uuid,
+            'status'         => 'PAID',
+            'payment_method' => 'VIRTUAL_ACCOUNT',
+            'payment_channel'=> 'BCA',
+            'paid_at'        => now()->toIso8601String(),
+            'amount'         => 100000,
+        ], ['x-callback-token' => config('xendit.webhook_token')]);
+
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'confirmed']);
+        $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'paid']);
+    }
+
+    public function test_webhook_xendit_expired_membatalkan_booking_dan_melepas_slot()
+    {
+        $customer    = User::factory()->customer()->create();
+        $tenant      = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+        $service     = Service::factory()->create(['tenant_id' => $tenant->id, 'subcategory_id' => $subcategory->id]);
+        $slot        = TimeSlot::factory()->create(['service_id' => $service->id, 'quota' => 5, 'booked_count' => 1]);
+        $booking     = Booking::factory()->create([
+            'customer_id' => $customer->id,
+            'service_id'  => $service->id,
+            'slot_id'     => $slot->id,
+            'status'      => 'pending',
+        ]);
+        Payment::factory()->create([
+            'booking_id'         => $booking->id,
+            'xendit_external_id' => 'jogjahub-' . $booking->uuid,
+            'status'             => 'pending',
+            'amount'             => 100000,
+        ]);
+
+        $this->postJson('/api/v1/webhook/xendit', [
+            'id'          => 'inv_fake_456',
+            'external_id' => 'jogjahub-' . $booking->uuid,
+            'status'      => 'EXPIRED',
+        ], ['x-callback-token' => config('xendit.webhook_token')]);
+
+        $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'status' => 'cancelled']);
+        $this->assertDatabaseHas('time_slots', ['id' => $slot->id, 'booked_count' => 0]);
+    }
+
     // ─── Tenant Update Status ─────────────────────────────────────────────────
 
     public function test_tenant_bisa_konfirmasi_booking()
@@ -177,7 +256,6 @@ class BookingTest extends TestCase
         $tenantUser1 = User::factory()->tenant()->create();
         $tenantUser2 = User::factory()->tenant()->create();
 
-        // tenantUser1 punya profile sendiri (diperlukan agar controller tidak throw null)
         TenantProfile::factory()->approved()->create(['user_id' => $tenantUser1->id]);
 
         $tenant2  = TenantProfile::factory()->approved()->create(['user_id' => $tenantUser2->id]);
@@ -212,9 +290,8 @@ class BookingTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Gunakan total dari pagination, atau count dari data array
-        $total = $response->json('data.meta.total')
-                 ?? count($response->json('data.data') ?? $response->json('data') ?? []);
+        $total = $response->json('meta.total')
+                 ?? count($response->json('data') ?? []);
 
         $this->assertEquals(3, $total);
     }
