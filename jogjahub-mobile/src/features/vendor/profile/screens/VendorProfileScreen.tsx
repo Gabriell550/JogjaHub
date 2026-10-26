@@ -23,10 +23,9 @@ import {
   MapPin,
   Store,
   ClipboardList,
-  FolderKanban,
+  TrendingUp,
   CalendarCheck,
   MessageSquare,
-  Bot,
   Plus,
   Clock,
   ExternalLink,
@@ -34,6 +33,7 @@ import {
   FileText,
   LogOut,
   Navigation,
+  Bot,
 } from 'lucide-react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, setTenantProfile } from '../../../../features/auth/store/authSlice';
@@ -50,6 +50,9 @@ type ServiceItem = {
   description?: string;
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
   photos?: Array<{ url: string; is_primary?: boolean; sort_order?: number }>;
+  confirmed_bookings_count?: number;
+  reviews_average_rating?: number | null;
+  reviews_counts?: number;
 };
 
 type CategoryItem = {
@@ -59,7 +62,7 @@ type CategoryItem = {
 
 export default function VendorProfileScreen({ navigation }: { navigation: any }) {
   const profile = useSelector((state: RootState) => state.auth.tenantProfile);
-  const businessName = useSelector((state: RootState) => state.auth?.businessName) || profile?.business_name || 'Nama Bisnis';
+  const businessName = useSelector((state: RootState) => state.auth?.businessName) || profile?.business_name || 'cantik style';
   const dispatch = useDispatch();
 
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -68,7 +71,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const [refreshing, setRefreshing] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
-  // Status toggle tampilan listing secara lokal
+  // Status toggle visibilitas listing per item
   const [serviceVisibility, setServiceVisibility] = useState<Record<number, boolean>>({});
 
   const fetchServices = useCallback(async () => {
@@ -108,7 +111,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
     }
   }, [dispatch]);
 
-  // Otomatis refresh saat layar aktif / difokuskan
+  // Otomatis refresh saat tab profil aktif/fokus
   useFocusEffect(
     useCallback(() => {
       fetchServices();
@@ -123,15 +126,56 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
     setRefreshing(false);
   }, [fetchServices, fetchCategories, fetchProfile]);
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
+  // ── Actions & Navigasi ─────────────────────────────────────────────────────
   const handleEditProfile = () => navigation?.navigate('EditBusinessProfile');
+  const handleGoToChatInbox = () => navigation?.navigate('VendorChatInbox');
   const handleGoToListing = () => navigation?.getParent()?.navigate('Listing');
   const handleGoToOrders = () => navigation?.getParent()?.navigate('Orders');
   const handleGoToCalendar = () => navigation?.getParent()?.navigate('Calendar');
+  
+  // Aksi ke Halaman Tambah Layanan
+  const handleAddNewService = () => {
+    navigation?.getParent()?.navigate('Listing', {
+      screen: 'ServiceForm',
+      params: { mode: 'create' },
+    });
+  };
+
+  // Aksi tombol 'Kelola' pada item kartu -> Form Edit Layanan
+  const handleManageService = (service: ServiceItem) => {
+    navigation?.getParent()?.navigate('Listing', {
+      screen: 'ServiceForm',
+      params: {
+        mode: 'edit',
+        service: {
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          description: service.description,
+          photos: service.photos?.map((p) => ({
+            url: p.url,
+            is_primary: p.is_primary ?? false,
+            sort_order: p.sort_order ?? 0,
+          })),
+          subcategory: service.subcategory,
+          confirmed_bookings_count: service.confirmed_bookings_count,
+          reviews_average_rating: service.reviews_average_rating,
+          reviews_counts: service.reviews_counts,
+        },
+      },
+    });
+  };
+
+  // Aksi ke Halaman Statistik Vendor di Dashboard Stack
+  const handleGoToStatistics = () => {
+    navigation?.getParent()?.navigate('Dashboard', {
+      screen: 'Statistics',
+    });
+  };
 
   const handleOpenMaps = () => {
     if (!profile?.latitude || !profile?.longitude) {
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress || 'Yogyakarta')}`);
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress || 'Malioboro Yogyakarta')}`);
       return;
     }
     Linking.openURL(`https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`);
@@ -169,7 +213,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   const fullAddress = [addr?.street, addr?.city, addr?.province].filter(Boolean).join(', ');
   const addressSub = addr?.postal_code
     ? `${addr.city}, ${addr.province} ${addr.postal_code}`
-    : `${addr?.city ?? 'Kota Yogyakarta'}, ${addr?.province ?? 'DIY'}`;
+    : `${addr?.city ?? 'Kota Yogyakarta'}, ${addr?.province ?? 'Daerah Istimewa Yogyakarta 55213'}`;
   const city = addr?.city ?? 'Malioboro, DIY';
 
   const categoryNames = profile?.categories?.map((c) => c.name) ?? [];
@@ -209,9 +253,24 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
             </View>
 
             <View style={styles.headerActionBtns}>
+              {/* Tombol Icon Live Chat langsung menuju VendorChatInbox */}
+              <TouchableOpacity
+                style={styles.roundActionBtn}
+                onPress={handleGoToChatInbox}
+                activeOpacity={0.8}
+              >
+                <MessageSquare size={17} color="#fff" />
+                <View style={styles.chatNotificationBadge}>
+                  <Text style={styles.chatNotificationBadgeText}>3</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Tombol Bagikan */}
               <TouchableOpacity style={styles.roundActionBtn} onPress={handleShareProfile} activeOpacity={0.8}>
                 <Share2 size={17} color="#fff" />
               </TouchableOpacity>
+
+              {/* Tombol Pengaturan Toko */}
               <TouchableOpacity style={styles.roundActionBtn} onPress={handleEditProfile} activeOpacity={0.8}>
                 <Settings size={17} color="#fff" />
                 <View style={styles.settingBadgeDot} />
@@ -292,7 +351,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
         {/* ── CARD METRIK UTAMA (4 KOLOM) ── */}
         <View style={styles.metricsWrapper}>
           <View style={styles.metricsCard}>
-            {/* 1. Layanan */}
+            {/* 1. Layanan -> Buka tab Listing */}
             <TouchableOpacity style={styles.metricItem} onPress={handleGoToListing} activeOpacity={0.7}>
               <View style={[styles.metricIconWrap, { backgroundColor: '#FFF7ED' }]}>
                 <Store size={19} color="#FF6B00" />
@@ -304,7 +363,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
               </View>
             </TouchableOpacity>
 
-            {/* 2. Pesanan */}
+            {/* 2. Pesanan -> Buka tab Orders */}
             <TouchableOpacity style={styles.metricItem} onPress={handleGoToOrders} activeOpacity={0.7}>
               <View style={[styles.metricIconWrap, { backgroundColor: '#F0F9FF' }]}>
                 <ClipboardList size={19} color="#0EA5E9" />
@@ -313,16 +372,16 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
               <Text style={styles.metricSubText}>+12% bln ini</Text>
             </TouchableOpacity>
 
-            {/* 3. Katalog */}
-            <TouchableOpacity style={styles.metricItem} onPress={handleGoToListing} activeOpacity={0.7}>
+            {/* 3. Statistik -> Buka layar Vendor Statistics */}
+            <TouchableOpacity style={styles.metricItem} onPress={handleGoToStatistics} activeOpacity={0.7}>
               <View style={[styles.metricIconWrap, { backgroundColor: '#F8FAFC' }]}>
-                <FolderKanban size={19} color="#475569" />
+                <TrendingUp size={19} color="#475569" />
               </View>
-              <Text style={styles.metricValueText}>Katalog</Text>
-              <Text style={styles.metricSubText}>Atur Produk</Text>
+              <Text style={styles.metricValueText}>Statistik</Text>
+              <Text style={styles.metricSubText}>Performa</Text>
             </TouchableOpacity>
 
-            {/* 4. Jadwal */}
+            {/* 4. Jadwal -> Buka tab Calendar */}
             <TouchableOpacity style={styles.metricItem} onPress={handleGoToCalendar} activeOpacity={0.7}>
               <View style={[styles.metricIconWrap, { backgroundColor: '#F0F9FF' }]}>
                 <CalendarCheck size={19} color="#0EA5E9" />
@@ -333,76 +392,6 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
           </View>
         </View>
 
-        {/* ── CARD REALTIME LIVE CHAT ── */}
-        <View style={styles.chatSection}>
-          <View style={styles.chatCard}>
-            <View style={styles.chatGlowA} />
-            <View style={styles.chatGlowB} />
-
-            {/* Header Chat */}
-            <View style={styles.chatHeaderRow}>
-              <View style={styles.chatHeaderLeft}>
-                <View style={styles.chatIconBox}>
-                  <MessageSquare size={17} color="#fff" />
-                  <View style={styles.chatOnlinePulse} />
-                </View>
-                <View>
-                  <View style={styles.chatTitleGroup}>
-                    <Text style={styles.chatCardTitle}>JogjaHub Live Chat</Text>
-                    <View style={styles.newChatBadge}>
-                      <Text style={styles.newChatBadgeText}>3 Pesan Baru</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.chatCardSubtitle}>Komunikasi resmi & aman antar vendor-klien</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Preview Bubble Chat Aktif */}
-            <TouchableOpacity
-              style={styles.chatBubblePreview}
-              activeOpacity={0.8}
-              onPress={() => Alert.alert('Live Chat', 'Membuka riwayat pesan terbaru dengan pelanggan...')}
-            >
-              <View style={styles.chatBubbleLeft}>
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>AD</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.clientInfoRow}>
-                    <Text style={styles.clientNameText}>Annisa Dwi</Text>
-                    <Text style={styles.chatTimeText}>3 mnt lalu</Text>
-                  </View>
-                  <Text style={styles.chatPreviewMessage} numberOfLines={1}>
-                    "Halo kak, jadwal besok jam 14.00 ada slot kosong?"
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.unreadOrangeDot} />
-            </TouchableOpacity>
-
-            {/* Action Buttons Chat */}
-            <View style={styles.chatActionBtnRow}>
-              <TouchableOpacity
-                style={styles.openChatBtn}
-                onPress={() => Alert.alert('Chatroom', 'Membuka ruang live chat JogjaHub...')}
-                activeOpacity={0.8}
-              >
-                <MessageSquare size={14} color="#fff" />
-                <Text style={styles.openChatBtnText}>Buka Chatroom</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.autoReplyBtn}
-                onPress={() => Alert.alert('Auto-Reply', 'Pengaturan template balasan otomatis untuk pelanggan.')}
-                activeOpacity={0.8}
-              >
-                <Bot size={15} color="#38BDF8" />
-                <Text style={styles.autoReplyBtnText}>Auto-Reply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
 
         {/* ── SECTION: LAYANAN & LISTING AKTIF ── */}
         <View style={styles.listingSection}>
@@ -417,7 +406,8 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
               <Text style={styles.sectionSubHeadingText}>Katalog aktif yang dapat dipesan pelanggan</Text>
             </View>
 
-            <TouchableOpacity style={styles.addServiceTopBtn} onPress={handleGoToListing} activeOpacity={0.8}>
+            {/* Tombol Tambah Layanan */}
+            <TouchableOpacity style={styles.addServiceTopBtn} onPress={handleAddNewService} activeOpacity={0.8}>
               <Plus size={14} color="#fff" />
               <Text style={styles.addServiceTopBtnText}>Tambah</Text>
             </TouchableOpacity>
@@ -426,7 +416,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
           {/* Horizontal Scroll Katalog */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listingScrollRow}>
             {services.length === 0 ? (
-              <TouchableOpacity style={styles.emptyListingBox} onPress={handleGoToListing} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.emptyListingBox} onPress={handleAddNewService} activeOpacity={0.8}>
                 <View style={styles.emptyListingIconWrap}>
                   <Store size={24} color="#FF6B00" />
                 </View>
@@ -468,7 +458,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
                       </View>
                     </View>
 
-                    {/* Kontrol Saklar & Kelola */}
+                    {/* Kontrol Saklar & Tombol Kelola */}
                     <View style={styles.productControlRow}>
                       <View style={styles.visibilityToggleGroup}>
                         <Switch
@@ -481,7 +471,12 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
                         <Text style={styles.toggleLabelText}>Tampil</Text>
                       </View>
 
-                      <TouchableOpacity style={styles.kelolaBtn} onPress={handleGoToListing} activeOpacity={0.7}>
+                      {/* Tombol Kelola -> Form Edit Layanan */}
+                      <TouchableOpacity
+                        style={styles.kelolaBtn}
+                        onPress={() => handleManageService(item)}
+                        activeOpacity={0.7}
+                      >
                         <Pencil size={11} color="#FF6B00" />
                         <Text style={styles.kelolaBtnText}>Kelola</Text>
                       </TouchableOpacity>
@@ -491,8 +486,8 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
               })
             )}
 
-            {/* Card Tambah Layanan Baru */}
-            <TouchableOpacity style={styles.addNewCardDashed} onPress={handleGoToListing} activeOpacity={0.8}>
+            {/* Card Tambah Layanan Baru di Ujung Carousel */}
+            <TouchableOpacity style={styles.addNewCardDashed} onPress={handleAddNewService} activeOpacity={0.8}>
               <View style={styles.addNewCircleIcon}>
                 <Plus size={20} color="#fff" />
               </View>
@@ -510,14 +505,14 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
                 <Store size={18} color="#FF6B00" />
                 <Text style={styles.cardHeaderTitle}>PROFIL & OPERASIONAL</Text>
               </View>
-              <TouchableOpacity onPress={handleEditProfile}>
+              <TouchableOpacity onPress={handleEditProfile} activeOpacity={0.7}>
                 <Text style={styles.cardHeaderActionText}>Ubah</Text>
               </TouchableOpacity>
             </View>
 
             <Text style={styles.businessDescriptionText}>
               {profile?.description ||
-                'Salon kecantikan & studio perawatan profesional di pusat Kota Jogja. Mengutamakan kenyamanan pelanggan, higienitas tinggi, dengan staf berpengalaman.'}
+                'Salon kecantikan & studio perawatan profesional di pusat Kota Jogja. Mengutamakan kenyamanan pelanggan, higienitas tinggi, dengan terapis berpengalaman.'}
             </Text>
 
             {/* Tag Spesialisasi */}
@@ -608,7 +603,7 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
         <View style={[styles.standardSection, { gap: 10 }]}>
           <TouchableOpacity
             style={styles.menuSettingRow}
-            onPress={() => Alert.alert('Pengaturan Akun', 'Fitur pengaturan akun dan verifikasi dokumen bisnis.')}
+            onPress={handleEditProfile}
             activeOpacity={0.7}
           >
             <View style={styles.menuSettingLeft}>
@@ -732,6 +727,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
+    position: 'relative',
+  },
+  chatNotificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: '#E11D48',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    paddingHorizontal: 2,
+  },
+  chatNotificationBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#fff',
   },
   settingBadgeDot: {
     position: 'absolute',
@@ -981,209 +996,187 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // ── Section Live Chat Dark Card ──
-  chatSection: {
+  // ── Live Chat Hub Banner ──
+  chatPromoSection: {
     paddingHorizontal: 20,
     marginTop: 18,
   },
-  chatCard: {
-    backgroundColor: '#0F172A',
+  chatPromoCard: {
+    backgroundColor: '#1E293B',
     borderRadius: 22,
     padding: 16,
-    position: 'relative',
-    overflow: 'hidden',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
-  chatGlowA: {
-    position: 'absolute',
-    bottom: -20,
-    right: -20,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 107, 0, 0.2)',
-  },
-  chatGlowB: {
-    position: 'absolute',
-    top: -10,
-    right: 40,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(14, 165, 233, 0.15)',
-  },
-  chatHeaderRow: {
+  chatPromoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  chatHeaderLeft: {
+  chatPromoTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flex: 1,
   },
-  chatIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+  chatPromoIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
     backgroundColor: '#FF6B00',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
-  chatOnlinePulse: {
+  chatPromoOnlineDot: {
     position: 'absolute',
     bottom: -1,
     right: -1,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: '#10B981',
     borderWidth: 1.5,
-    borderColor: '#0F172A',
+    borderColor: '#1E293B',
   },
-  chatTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  chatCardTitle: {
-    fontFamily: typography.labelMd.fontFamily,
+  chatPromoTitle: {
+    fontFamily: typography.headlineSm.fontFamily,
     fontSize: 13,
     fontWeight: '800',
     color: '#fff',
   },
-  newChatBadge: {
+  chatPromoPillBadge: {
     backgroundColor: '#FF6B00',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 10,
   },
-  newChatBadgeText: {
+  chatPromoPillBadgeText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#fff',
   },
-  chatCardSubtitle: {
+  chatPromoSub: {
     fontFamily: typography.bodySm.fontFamily,
     fontSize: 10,
     color: '#94A3B8',
     marginTop: 1,
   },
-  responseSpeedBadge: {
+  chatResponseBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: '#334155',
   },
-  responseSpeedText: {
-    fontFamily: typography.labelSm.fontFamily,
-    fontSize: 10,
+  chatResponseDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  chatResponseText: {
+    fontSize: 9,
     fontWeight: '700',
-    color: '#34D399',
+    color: '#6EE7B7',
   },
-  chatBubblePreview: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 14,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 12,
-  },
-  chatBubbleLeft: {
+  chatPreviewCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  clientAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#38BDF8',
+  chatPreviewAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0284C7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clientAvatarText: {
-    fontSize: 11,
+  chatPreviewAvatarText: {
+    fontSize: 12,
     fontWeight: '800',
-    color: '#0F172A',
-  },
-  clientInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  clientNameText: {
-    fontFamily: typography.labelSm.fontFamily,
-    fontSize: 11,
-    fontWeight: '700',
     color: '#fff',
   },
-  chatTimeText: {
+  chatPreviewTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  chatPreviewName: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  chatPreviewTime: {
     fontSize: 9,
     color: '#94A3B8',
   },
   chatPreviewMessage: {
+    fontFamily: typography.bodySm.fontFamily,
     fontSize: 11,
     color: '#CBD5E1',
-    marginTop: 1,
   },
-  unreadOrangeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+  chatUnreadDotOrange: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#FF6B00',
-    marginLeft: 6,
+    marginLeft: 4,
   },
-  chatActionBtnRow: {
+  chatActionButtonsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginTop: 12,
   },
-  openChatBtn: {
-    flex: 1,
+  openChatroomBtn: {
+    flex: 1.2,
+    backgroundColor: '#FF6B00',
+    borderRadius: 14,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FF6B00',
-    paddingVertical: 9,
-    borderRadius: 12,
   },
-  openChatBtnText: {
-    fontFamily: typography.labelSm.fontFamily,
+  openChatroomBtnText: {
+    fontFamily: typography.labelMd.fontFamily,
     fontSize: 12,
     fontWeight: '800',
     color: '#fff',
   },
   autoReplyBtn: {
     flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 9,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   autoReplyBtnText: {
-    fontFamily: typography.labelSm.fontFamily,
+    fontFamily: typography.labelMd.fontFamily,
     fontSize: 12,
     fontWeight: '700',
     color: '#E2E8F0',

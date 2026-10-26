@@ -1,2 +1,2 @@
-export const API_BASE_URL = 'http://192.168.50.216:8000/api/v1';
+export const API_BASE_URL = 'http://192.168.1.85:8000/api/v1';
 export const MAPS_API_KEY = 'your_google_or_leaflet_maps_key';

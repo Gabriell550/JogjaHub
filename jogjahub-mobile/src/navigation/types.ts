@@ -35,6 +35,17 @@ export type VendorTabParamList = {
 export type VendorProfileStackParamList = {
   ProfileHome: undefined;
   EditBusinessProfile: undefined;
+  VendorChatInbox: undefined;
+  VendorChatRoom: {
+    conversationId: string;
+    customerName: string;
+    customerAvatar?: string;
+    serviceName?: string;
+    servicePrice?: number;
+    bookingTime?: string;
+    bookingCode?: string;
+    unreadCount?: number;
+  };
 };
 
 export type AdminStackParamList = {

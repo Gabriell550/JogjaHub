@@ -25,12 +25,14 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request)
     {
-        $booking = $this->bookingService->createBooking($request->user()->id, $request->validated());
+        $result = $this->bookingService->createBooking($request->user()->id, $request->validated());
 
         return response()->json([
-            'success' => true,
-            'message' => 'Booking berhasil dibuat',
-            'data'    => new BookingResource($booking),
+            'success'     => true,
+            'message'     => 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.',
+            'data'        => new BookingResource($result['booking']),
+            'payment_url' => $result['payment_url'],    // URL halaman bayar Xendit
+            'expires_at'  => $result['expires_at'],     // batas waktu bayar (ISO 8601)
         ], 201);
     }
 
@@ -40,7 +42,7 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
-        $booking->load(['service.tenant', 'slot', 'review']);
+        $booking->load(['service.tenant', 'slot', 'review', 'payment']);
 
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
     }

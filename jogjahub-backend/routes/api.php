@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
+    // ===== Xendit Webhook (PUBLIC — dipanggil oleh Xendit, bukan user) =====
+    // Tidak pakai auth:sanctum, tapi diverifikasi dengan x-callback-token header.
+    Route::post('/webhook/xendit', [\App\Http\Controllers\Api\XenditWebhookController::class, 'handle']);
+
     // ===== Public (belum login) =====
     Route::middleware('throttle:5,1')->group(function () {
         Route::post('/auth/register/customer', [\App\Http\Controllers\Api\Customer\AuthController::class, 'register']);
