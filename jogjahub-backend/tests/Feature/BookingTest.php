@@ -10,6 +10,7 @@ use App\Models\TenantProfile;
 use App\Models\TimeSlot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 use Tests\Traits\MocksXendit;
 
@@ -20,9 +21,13 @@ class BookingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // Mock Xendit untuk semua test di file ini
-        // supaya tidak ada HTTP call ke API Xendit sungguhan
+        // Mock Xendit supaya tidak hit API sungguhan
         $this->mockXendit();
+        // Fake queue: job ReleaseExpiredBookingJob tidak langsung jalan di test.
+        // Di production job ini dijadwal 1 jam ke depan (delay).
+        // Di test dengan driver 'sync', delay diabaikan dan job jalan instan → booking
+        // langsung cancelled sebelum assertion selesai. Queue::fake() mencegah itu.
+        Queue::fake();
     }
 
     // ─── Create Booking ───────────────────────────────────────────────────────

@@ -38,9 +38,21 @@ trait MocksXendit
              });
 
         $mock->shouldReceive('verifyWebhookToken')->andReturn(true);
-        $mock->shouldReceive('parseWebhookPayload')->andReturnUsing(
-            fn($p) => app(XenditService::class)->parseWebhookPayload($p)
-        );
+        $mock->shouldReceive('parseWebhookPayload')->andReturnUsing(function (array $payload) {
+            // Duplikasi logic parseWebhookPayload agar tidak circular (mock memanggil dirinya sendiri)
+            $statusMap = ['PAID' => 'paid', 'EXPIRED' => 'expired', 'FAILED' => 'failed'];
+            return [
+                'external_id'      => $payload['external_id'] ?? null,
+                'xendit_invoice_id'=> $payload['id'] ?? null,
+                'status'           => $statusMap[$payload['status'] ?? ''] ?? 'pending',
+                'payment_method'   => $payload['payment_method'] ?? null,
+                'payment_channel'  => $payload['payment_channel'] ?? null,
+                'paid_at'          => isset($payload['paid_at'])
+                    ? \Carbon\Carbon::parse($payload['paid_at'])
+                    : null,
+                'raw' => $payload,
+            ];
+        });
 
         $this->app->instance(XenditService::class, $mock);
     }
