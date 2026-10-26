@@ -1,35 +1,151 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/src/features/admin/services/adminApi";
+import type { TenantDocumentType } from "@/src/features/admin/services/adminApi";
 import type { PendingTenant } from "@/src/features/admin/types";
 
-const PRESET_REASONS = [
-  "Foto KTP buram / tidak terbaca",
-  "Dokumen NIB / Legalitas tidak sesuai nama pemilik",
-  "Titik koordinat lokasi berada di luar Daerah Istimewa Yogyakarta",
-  "Kategori layanan tidak sesuai dengan portofolio yang dilampirkan",
-  "Nomor kontak WhatsApp tidak aktif atau tidak dapat dihubungi",
-];
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function initials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function DocumentPreview({
+  tenantUuid,
+  type,
+  title,
+  hasDocument,
+}: {
+  tenantUuid: string;
+  type: TenantDocumentType;
+  title: string;
+  hasDocument: boolean;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [contentType, setContentType] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+
+    async function loadDocument() {
+      if (!hasDocument) {
+        setIsLoading(false);
+        setError("");
+        setUrl(null);
+        return;
+      }
+      setIsLoading(true);
+      setError("");
+      setUrl(null);
+
+      try {
+        const document = await adminApi.getTenantDocument(tenantUuid, type);
+        if (!active) return;
+        objectUrl = URL.createObjectURL(document);
+        setContentType(document.type);
+        setUrl(objectUrl);
+      } catch (requestError) {
+        if (active) setError(errorMessage(requestError, "Dokumen gagal dimuat."));
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    loadDocument();
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [tenantUuid, type, hasDocument]);
+
+  const isImage = contentType.startsWith("image/");
+  const isPdf = contentType === "application/pdf";
+
+  return (
+    <section className="rounded-xl border border-[#E3E8F0] bg-white p-4 sm:p-5">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#1E293B]">
+        <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-lg bg-[#FFF0E5] text-[#A04100]">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6M8 13h8M8 17h8" />
+          </svg>
+        </span>
+        {title}
+      </h3>
+
+      <div className="grid min-h-48 place-items-center overflow-hidden rounded-lg border border-[#E3E8F0] bg-[#F4F6FA] p-3 sm:min-h-64">
+        {isLoading ? (
+          <p role="status" className="text-sm text-[#5A6472]">Memuat dokumen…</p>
+        ) : error ? (
+          <p role="alert" className="max-w-sm text-center text-sm text-[#BA1A1A]">{error}</p>
+        ) : url && isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={title} className="max-h-[30rem] w-full object-contain" />
+        ) : url && isPdf ? (
+          <iframe title={title} src={url} className="h-72 w-full rounded-md sm:h-96" />
+        ) : url ? (
+          <p className="text-center text-sm text-[#5A6472]">
+            Pratinjau tidak tersedia untuk format ini.{" "}
+            <a href={url} download className="font-medium text-[#A04100] underline underline-offset-2">
+              Unduh {title}
+            </a>
+          </p>
+        ) : (
+          <p className="text-sm text-[#5A6472]">{hasDocument ? "Dokumen tidak tersedia." : "Dokumen belum diunggah."}</p>
+        )}
+      </div>
+
+      {url && (isImage || isPdf) ? (
+        <a href={url} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-[#A04100] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
+          Buka dokumen di tab baru
+        </a>
+      ) : null}
+    </section>
+  );
+}
 
 export default function AdminVendorsPage() {
   const [tenants, setTenants] = useState<PendingTenant[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState<PendingTenant | null>(null);
+  const [selectedUuid, setSelectedUuid] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const selectedTenant = tenants.find((tenant) => tenant.uuid === selectedUuid) ?? null;
 
   useEffect(() => {
     let active = true;
 
     async function loadTenants() {
+      setIsLoading(true);
+      setError("");
       try {
-        const res = await adminApi.getPendingTenants();
+        const response = await adminApi.getPendingTenants();
         if (!active) return;
-        setTenants(adminApi.unwrapList(res.data));
-      } catch (err) {
-        console.log("Gagal memuat vendor pending:", err);
+        const pendingTenants = adminApi.unwrapList(response.data);
+        setTenants(pendingTenants);
+        setSelectedUuid((currentUuid) =>
+          pendingTenants.some((tenant) => tenant.uuid === currentUuid)
+            ? currentUuid
+            : pendingTenants[0]?.uuid ?? "",
+        );
+      } catch (requestError) {
+        if (active) setError(errorMessage(requestError, "Pengajuan verifikasi gagal dimuat."));
       } finally {
         if (active) setIsLoading(false);
       }
@@ -39,149 +155,214 @@ export default function AdminVendorsPage() {
     return () => {
       active = false;
     };
+  }, [reloadKey]);
+
+  const refreshTenants = useCallback(() => {
+    setFeedback("");
+    setReloadKey((current) => current + 1);
   }, []);
 
-  async function handleApprove(uuid: string) {
+  function selectTenant(uuid: string) {
+    setSelectedUuid(uuid);
+    setRejectionReason("");
+    setError("");
+    setFeedback("");
+  }
+
+  function removeProcessedTenant(uuid: string) {
+    const currentIndex = tenants.findIndex((tenant) => tenant.uuid === uuid);
+    const remainingTenants = tenants.filter((tenant) => tenant.uuid !== uuid);
+    setTenants(remainingTenants);
+    setSelectedUuid(remainingTenants[Math.min(currentIndex, remainingTenants.length - 1)]?.uuid ?? "");
+    setRejectionReason("");
+  }
+
+  async function handleApprove() {
+    if (!selectedTenant || isSubmitting) return;
+    setIsSubmitting(true);
+    setError("");
+    setFeedback("");
     try {
-      await adminApi.approveTenant(uuid);
-      setTenants((prev) => prev.filter((t) => t.uuid !== uuid));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui vendor.");
+      const response = await adminApi.approveTenant(selectedTenant.uuid);
+      removeProcessedTenant(selectedTenant.uuid);
+      setFeedback(response.message || "Pengajuan tenant berhasil disetujui.");
+    } catch (requestError) {
+      setError(errorMessage(requestError, "Pengajuan tenant gagal disetujui."));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function openRejectModal(tenant: PendingTenant) {
-    setSelectedTenant(tenant);
-    setRejectionReason("");
-    setIsRejectModalOpen(true);
-  }
-
-  function closeRejectModal() {
-    setIsRejectModalOpen(false);
-    setSelectedTenant(null);
-    setRejectionReason("");
-  }
-
-  async function handleConfirmReject() {
-    if (!selectedTenant || !rejectionReason.trim() || isSubmitting) return;
+  async function handleReject() {
+    const reason = rejectionReason.trim();
+    if (!selectedTenant || !reason || isSubmitting) return;
     setIsSubmitting(true);
+    setError("");
+    setFeedback("");
     try {
-      await adminApi.rejectTenant(selectedTenant.uuid, rejectionReason.trim());
-      setTenants((prev) => prev.filter((t) => t.uuid !== selectedTenant.uuid));
-      closeRejectModal();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menolak vendor.");
+      const response = await adminApi.rejectTenant(selectedTenant.uuid, reason);
+      removeProcessedTenant(selectedTenant.uuid);
+      setFeedback(response.message || "Pengajuan tenant berhasil ditolak.");
+    } catch (requestError) {
+      setError(errorMessage(requestError, "Pengajuan tenant gagal ditolak."));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="font-display text-2xl font-bold text-[#121C2A]">Verifikasi Vendor</h1>
-      <div className="overflow-x-auto rounded-2xl border border-[#D3E2ED] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-[#E6EEFF] text-[#5A4136]">
-            <tr>
-              <th className="p-4 font-medium">Nama Bisnis</th>
-              <th className="p-4 font-medium">Pemilik</th>
-              <th className="p-4 font-medium">Kategori</th>
-              <th className="p-4 font-medium">Dokumen</th>
-              <th className="p-4 font-medium">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#E6EEFF]">
+    <div className="mx-auto max-w-[1440px] space-y-6">
+      <header className="flex flex-col justify-between gap-4 border-b border-[#E3E8F0] pb-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-2 text-xs font-medium text-[#657184]">Admin <span aria-hidden="true">/</span> Verification</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-[#172033] sm:text-[28px]">
+            Verification Detail
+          </h1>
+          <p className="mt-1 text-sm text-[#5A6472]">Review dokumen dan informasi pendaftaran tenant.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="pending-tenant" className="text-sm font-medium text-[#384458]">Pengajuan</label>
+          <select
+            id="pending-tenant"
+            value={selectedTenant?.uuid ?? ""}
+            onChange={(event) => selectTenant(event.target.value)}
+            disabled={isLoading || tenants.length === 0 || isSubmitting}
+            className="min-h-11 min-w-52 max-w-full rounded-lg border border-[#D8DFE9] bg-white px-3 text-sm text-[#172033] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] disabled:cursor-not-allowed disabled:bg-[#F4F6FA]"
+          >
+            {tenants.length === 0 ? <option value="">Tidak ada pengajuan</option> : null}
             {tenants.map((tenant) => (
-              <tr key={tenant.id}>
-                <td className="p-4 font-medium text-[#121C2A]">{tenant.business_name}</td>
-                <td className="p-4 text-[#5A4136]">{tenant.user.name}<br /><span className="text-xs">{tenant.user.email}</span></td>
-                <td className="p-4 text-[#5A4136]">{tenant.categories.map((c) => c.name).join(", ") || "-"}</td>
-                <td className="p-4">
-                  <div className="flex flex-col gap-1 text-xs">
-                    {tenant.ktp_url ? <a href={tenant.ktp_url} target="_blank" rel="noreferrer" className="text-[#A04100] underline">Lihat KTP</a> : <span className="text-[#5A4136]/50">KTP belum ada</span>}
-                    {tenant.nib_url ? <a href={tenant.nib_url} target="_blank" rel="noreferrer" className="text-[#A04100] underline">Lihat NIB</a> : null}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApprove(tenant.uuid)} className="rounded-full bg-[#FF6B00] px-3 py-1.5 text-xs font-semibold text-[#121C2A] hover:bg-[#E85F00]">Setujui</button>
-                    <button onClick={() => openRejectModal(tenant)} className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Tolak</button>
-                  </div>
-                </td>
-              </tr>
+              <option key={tenant.uuid} value={tenant.uuid}>
+                {tenant.business_name} — {tenant.user.name}
+              </option>
             ))}
-          </tbody>
-        </table>
-        {!isLoading && tenants.length === 0 ? <p className="p-6 text-center text-sm text-[#5A4136]">Tidak ada vendor yang menunggu verifikasi.</p> : null}
-        {isLoading ? <p className="p-6 text-center text-sm text-[#5A4136]">Memuat...</p> : null}
-      </div>
+          </select>
+          <span className="rounded-full bg-[#FFF0E5] px-3 py-1.5 text-xs font-semibold text-[#A04100]">
+            {isLoading ? "Memuat…" : `${tenants.length} pending`}
+          </span>
+        </div>
+      </header>
 
-      {/* Modal Dialog Penolakan */}
-      {isRejectModalOpen && selectedTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-[#121C2A]">
-              Tolak Pendaftaran: {selectedTenant.business_name}
-            </h2>
-            <p className="mt-1 text-xs text-[#5A4136]">
-              Berikan alasan yang jelas mengapa pendaftaran ini ditolak. Catatan ini akan dibaca langsung oleh vendor di aplikasi mobile untuk perbaikan data.
-            </p>
+      {error ? (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-[#F2B8B5] bg-[#FFF5F4] p-4 text-sm text-[#8F1712] sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          {!selectedTenant ? (
+            <button type="button" onClick={refreshTenants} className="min-h-10 rounded-lg border border-[#D99792] px-4 font-semibold hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
+              Coba lagi
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {feedback ? (
+        <p role="status" className="rounded-xl border border-[#A7D8B5] bg-[#EFFAF2] px-4 py-3 text-sm font-medium text-[#176B34]">
+          {feedback}
+        </p>
+      ) : null}
 
-            <div className="mt-4">
-              <label className="text-xs font-medium text-[#121C2A]">Pilih Alasan Cepat (Opsional):</label>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {PRESET_REASONS.map((preset, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      if (!rejectionReason.trim()) {
-                        setRejectionReason(preset);
-                      } else if (!rejectionReason.includes(preset)) {
-                        setRejectionReason((prev) => `${prev.trim()}\n- ${preset}`);
-                      }
-                    }}
-                    className="rounded-full border border-[#D3E2ED] bg-[#F8FAFC] px-2.5 py-1 text-[11px] text-[#5A4136] hover:border-[#FF6B00] hover:text-[#FF6B00]"
-                  >
-                    + {preset}
-                  </button>
-                ))}
-              </div>
+      {isLoading ? (
+        <div role="status" className="grid min-h-72 place-items-center rounded-2xl border border-[#E3E8F0] bg-white text-sm text-[#5A6472]">
+          Memuat pengajuan dan dokumen verifikasi…
+        </div>
+      ) : !selectedTenant ? (
+        <section className="grid min-h-72 place-items-center rounded-2xl border border-dashed border-[#CBD4E1] bg-white px-6 text-center">
+          <div>
+            <div aria-hidden="true" className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#EFFAF2] text-[#176B34]">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m5 12 4 4L19 6" />
+              </svg>
             </div>
-
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-[#5A4136]">
-                <label className="font-medium text-[#121C2A]">Alasan / Catatan Penolakan (Wajib):</label>
-                <span>{rejectionReason.length}/500</span>
-              </div>
-              <textarea
-                value={rejectionReason}
-                maxLength={500}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Contoh: Foto KTP buram dan terpotong. Mohon upload ulang foto KTP yang jelas..."
-                className="mt-1.5 w-full min-h-[100px] rounded-lg border border-[#D3E2ED] p-3 text-xs focus:border-[#FF6B00] focus:outline-none"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeRejectModal}
-                disabled={isSubmitting}
-                className="rounded-full border border-[#D3E2ED] px-4 py-2 text-xs font-semibold text-[#121C2A] hover:bg-gray-50"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReject}
-                disabled={!rejectionReason.trim() || isSubmitting}
-                className="rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? "Mengirim..." : "Kirim Penolakan"}
-              </button>
-            </div>
+            <h2 className="mt-4 font-display text-lg font-semibold text-[#172033]">Tidak ada pengajuan pending</h2>
+            <p className="mt-1 max-w-md text-sm text-[#5A6472]">Pengajuan baru akan tampil di sini setelah tenant mengirimkan pendaftarannya.</p>
           </div>
+        </section>
+      ) : (
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
+          <section aria-labelledby="document-review-title" className="space-y-4">
+            <div>
+              <h2 id="document-review-title" className="font-display text-lg font-semibold text-[#172033]">Document Review</h2>
+              <p className="mt-1 text-sm text-[#5A6472]">Verifikasi keaslian dokumen legal dan portofolio yang dikirimkan.</p>
+            </div>
+            <DocumentPreview key={`${selectedTenant.uuid}-ktp`} tenantUuid={selectedTenant.uuid} type="ktp" title="Identity Card (KTP)" hasDocument={Boolean(selectedTenant.ktp_url)} />
+            <DocumentPreview key={`${selectedTenant.uuid}-nib`} tenantUuid={selectedTenant.uuid} type="nib" title="Business License (NIB)" hasDocument={Boolean(selectedTenant.nib_url)} />
+            {selectedTenant.portfolio_url ? (
+              <DocumentPreview key={`${selectedTenant.uuid}-portfolio`} tenantUuid={selectedTenant.uuid} type="portfolio" title="Portfolio" hasDocument />
+            ) : null}
+          </section>
+
+          <aside aria-labelledby="action-center-title" className="space-y-4 xl:sticky xl:top-6">
+            <h2 id="action-center-title" className="font-display text-lg font-semibold text-[#172033]">Action Center</h2>
+
+            <section className="rounded-xl border border-[#D8DFE9] bg-white p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#E4EEFF] text-sm font-semibold text-[#234D8F]">
+                  {initials(selectedTenant.user.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[#172033]">{selectedTenant.user.name}</p>
+                  <p className="text-sm text-[#5A6472]">{selectedTenant.business_name}</p>
+                  <p className="mt-1 break-all text-xs text-[#657184]">{selectedTenant.user.email}</p>
+                </div>
+                <span className="rounded-full bg-[#FFF3E6] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#9A4A00]">
+                  Pending
+                </span>
+              </div>
+
+              <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-[#E8ECF2] pt-4 text-xs">
+                <div>
+                  <dt className="text-[#657184]">Kategori</dt>
+                  <dd className="mt-1 font-medium text-[#263248]">{selectedTenant.categories.map((category) => category.name).join(", ") || "-"}</dd>
+                </div>
+                <div>
+                  <dt className="text-[#657184]">Kontak</dt>
+                  <dd className="mt-1 font-medium text-[#263248]">{selectedTenant.user.phone || "-"}</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-[#657184]">Lokasi</dt>
+                  <dd className="mt-1 font-medium text-[#263248]">{selectedTenant.address?.street || "-"}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="rounded-xl border border-[#D8DFE9] bg-white p-4 sm:p-5">
+              <label htmlFor="rejection-reason" className="font-display text-sm font-semibold text-[#172033]">
+                Review Notes &amp; Rejection Reason
+              </label>
+              <p className="mt-1 text-xs leading-5 text-[#657184]">
+                Isi catatan jika pengajuan ditolak. Alasan ini akan diteruskan kepada tenant.
+              </p>
+              <textarea
+                id="rejection-reason"
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                maxLength={500}
+                disabled={isSubmitting}
+                placeholder="Jelaskan alasan penolakan atau berikan umpan balik untuk tenant…"
+                className="mt-3 min-h-36 w-full resize-y rounded-lg border border-[#D8DFE9] bg-white p-3 text-sm leading-5 text-[#172033] placeholder:text-[#8A94A4] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#A04100] disabled:bg-[#F4F6FA]"
+              />
+              <p className="mt-1 text-right text-xs text-[#657184]">{rejectionReason.length}/500</p>
+            </section>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isSubmitting || !rejectionReason.trim()}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#C62828] px-3 text-sm font-semibold text-white transition hover:bg-[#A91F1F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? "Memproses…" : "Reject Application"}
+              </button>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={isSubmitting}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#159447] px-3 text-sm font-semibold text-white transition hover:bg-[#117A3A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? "Memproses…" : "Approve Vendor"}
+              </button>
+            </div>
+            <p className="text-center text-xs leading-5 text-[#657184]">
+              Persetujuan akan memindahkan tenant ke status approved. Penolakan memerlukan alasan.
+            </p>
+          </aside>
         </div>
       )}
     </div>
