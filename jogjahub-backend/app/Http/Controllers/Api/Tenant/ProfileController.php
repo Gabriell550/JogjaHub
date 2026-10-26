@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\UpdateProfileRequest;
+use App\Http\Requests\Tenant\ResubmitRequest;
+use App\Enums\VendorStatus;
 use App\Models\TenantProfile;
 use App\Http\Resources\TenantProfileResource;
 use App\Rules\GoogleMapsEmbed;
@@ -81,6 +83,65 @@ class ProfileController extends Controller
         return response()->json([
             'success' => true,
             'data'    => new TenantProfileResource($tenantProfile),
+        ]);
+    }
+
+    /**
+     * Pengajuan ulang pendaftaran tenant yang ditolak (issue #59).
+     *
+     * Alur: tenant rejected hanya diminta mengunggah ulang dokumen tertentu.
+     * Request TIDAK boleh mengosongkan/menimpa data profil yang sudah tersimpan —
+     * method ini hanya:
+     *   1. mengganti dokumen yang diunggah ulang (ktp/nib/portfolio),
+     *   2. mengubah status rejected → pending,
+     *   3. menghapus rejection_reason.
+     */
+    public function resubmit(ResubmitRequest $request)
+    {
+        $existing = $request->user()->tenantProfile;
+
+        if (!$existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Profil tenant tidak ditemukan',
+            ], 404);
+        }
+
+        if ($existing->status !== VendorStatus::REJECTED->value) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya tenant berstatus rejected yang dapat mengajukan ulang pendaftaran.',
+            ], 422);
+        }
+
+        $documentPaths = [];
+        $oldFiles      = [];
+
+        foreach (['ktp' => 'ktp_url', 'nib' => 'nib_url', 'portfolio' => 'portfolio_url'] as $input => $column) {
+            if ($request->hasFile($input)) {
+                $documentPaths[$column] = $request->file($input)->store('tenant_documents', 'local');
+
+                if ($existing->{$column}) {
+                    $oldFiles[] = $existing->{$column};
+                }
+            }
+        }
+
+        // Hanya dokumen yang diunggah ulang yang diganti — data profil lama dipertahankan.
+        $existing->update(array_merge($documentPaths, [
+            'status'           => VendorStatus::PENDING->value,
+            'rejection_reason' => null,
+        ]));
+
+        // Hapus file lama SETELAH update tersimpan, supaya tidak hilang duluan kalau penyimpanan gagal.
+        if ($oldFiles) {
+            Storage::disk('local')->delete($oldFiles);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengajuan ulang terkirim, menunggu persetujuan admin',
+            'data'    => new TenantProfileResource($existing->load('categories')),
         ]);
     }
 }

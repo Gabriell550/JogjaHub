@@ -19,6 +19,24 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function apiGetBlob(endpoint: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: { Accept: "*/*", ...authHeaders() },
+  });
+
+  if (!response.ok) {
+    const result: unknown = await response.json().catch(() => null);
+    const body = typeof result === "object" && result !== null
+      ? result as { message?: unknown }
+      : {};
+    throw new Error(
+      typeof body.message === "string" ? body.message : `Request failed: ${response.status}`,
+    );
+  }
+
+  return response.blob();
+}
+
 async function sendWithBody<T>(method: "POST" | "PATCH", endpoint: string, payload?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,

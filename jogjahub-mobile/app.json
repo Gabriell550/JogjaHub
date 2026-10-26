@@ -6,20 +6,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
     "splash": {
       "backgroundColor": "#f8f9ff"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jogjahub.app"
     },
-
     "android": {
       "package": "com.jogjahub.app"
     },
-
     "plugins": [
       "expo-font",
       [
@@ -27,9 +23,9 @@
         {
           "locationWhenInUsePermission": "JogjaHub memakai lokasi Anda untuk menandai titik lokasi usaha di peta."
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
-
     "experiments": {
       "tsconfigPaths": true
     }

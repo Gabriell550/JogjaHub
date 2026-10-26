@@ -9,12 +9,16 @@ export interface DashboardSummary {
   bookings_cancelled: number;
 }
 
+export interface TenantAddress {
+  street: string;
+}
+
 export interface PendingTenant {
   id: number;
   /** Route key publik tenant — semua aksi admin (approve/reject) memakai uuid ini. */
   uuid: string;
   business_name: string;
-  address: string | null;
+  address: TenantAddress | null;
   ktp_url: string | null;
   nib_url: string | null;
   portfolio_url: string | null;

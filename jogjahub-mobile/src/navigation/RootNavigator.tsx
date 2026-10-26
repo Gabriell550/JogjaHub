@@ -17,7 +17,7 @@ import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-me
 import { colors } from '../constants/theme';
 
 import PendingApprovalScreen from '../features/vendor/onboarding/screens/PendingApprovalScreen';
-import VendorOnboardingScreen from '../features/vendor/onboarding/screens/VendorOnboardingScreen';
+import RegisterVendorScreen from '../features/auth/screens/RegisterVendorScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -176,9 +176,12 @@ export function RootNavigator() {
                       tenantStatus === 'rejected',
                   }}
                 />
+                {/* Pengajuan ulang tenant rejected memakai form registrasi awal
+                    (RegisterVendorScreen mode 'resubmit'), bukan form berbeda. */}
                 <Stack.Screen
-                  name="VendorOnboarding"
-                  component={VendorOnboardingScreen}
+                  name="RegisterVendor"
+                  component={RegisterVendorScreen}
+                  initialParams={{ mode: 'resubmit' }}
                 />
               </Stack.Navigator>
             </>

@@ -34,6 +34,15 @@ listTenantsOnMap: () => apiClient.get('/tenants/map'),
 
   getMyProfile: () => apiClient.get('/tenant/profile'),
 
+  // Pengajuan ulang khusus tenant berstatus rejected (issue #59) — HANYA mengirim
+  // file dokumen baru. Backend mempertahankan data profil lama dan mengubah
+  // status rejected → pending (memakai POST, bukan PUT, karena Laravel sulit
+  // membaca multipart pada PUT).
+  resubmitProfile: (payload: FormData) =>
+    apiClient.post('/tenant/profile/resubmit', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
   createService: (payload: FormData | Record<string, unknown>) => {
     if (payload instanceof FormData) {
       return apiClient.post('/tenant/services', payload, { headers: { 'Content-Type': 'multipart/form-data' } });

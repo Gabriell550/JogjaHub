@@ -59,7 +59,7 @@ function LogOutIcon({ className }: IconProps) {
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: DashboardIcon },
-  { href: "/admin/vendors", label: "Verifikasi Vendor", icon: BadgeCheckIcon },
+  { href: "/admin/vendors", label: "Verification", icon: BadgeCheckIcon },
   { href: "/admin/disputes", label: "Sengketa", icon: DisputeIcon },
   { href: "/admin/users", label: "Users", icon: UsersIcon, disabled: true },
 ];
@@ -87,6 +87,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             key={item.href}
             href={item.href}
             onClick={onNavigate}
+            aria-current={isActive ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] ${isActive ? "bg-[#FFF0E5] text-[#A04100]" : "text-[#121C2A] hover:bg-[#F8F9FF]"}`}
           >
             <Icon className="h-[18px] w-[18px] shrink-0" />
