@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -29,6 +29,7 @@ type Props = {
   onClose: () => void;
   serviceId: number | null;
   selectedDates: string[];
+  isHotel: boolean | null;
   existingSlots: SlotItem[];
   onCreated: (createdDates: string[]) => void;
 };
@@ -63,18 +64,20 @@ export default function AddSlotModal({
   onClose,
   serviceId,
   selectedDates,
+  isHotel,
   existingSlots,
   onCreated,
 }: Props) {
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('09:00');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState(' ');
   const [quota, setQuota] = useState('1');
   const [saving, setSaving] = useState(false);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     if (visible) {
-      setStartTime('08:00');
-      setEndTime('09:00');
+      setStartTime(' ');
+      setEndTime(' ');
       setQuota('1');
     }
   }, [visible]);
@@ -85,7 +88,7 @@ export default function AddSlotModal({
   );
 
   const handleSubmit = async () => {
-    if (!serviceId || sortedDates.length === 0) return;
+    if (!serviceId || sortedDates.length === 0 || isHotel === null || submitLock.current) return;
 
     const today = new Date();
     const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -98,11 +101,11 @@ export default function AddSlotModal({
       });
       return;
     }
-    if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) {
+    if (isHotel && (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime))) {
       Toast.show({ type: 'error', text1: 'Format jam harus HH:mm', position: 'top' });
       return;
     }
-    if (endTime <= startTime) {
+    if (isHotel && endTime <= startTime) {
       Toast.show({ type: 'error', text1: 'Jam selesai harus setelah jam mulai', position: 'top' });
       return;
     }
@@ -117,20 +120,22 @@ export default function AddSlotModal({
       existingSlots.some(
         (slot) =>
           slot.slot_date === date &&
-          slot.start_time.slice(0, 5) === startTime &&
-          slot.end_time.slice(0, 5) === endTime,
+          (isHotel
+            ? slot.start_time.slice(0, 5) === startTime && slot.end_time.slice(0, 5) === endTime
+            : true),
       ),
     );
     if (duplicateDates.length > 0) {
       Toast.show({
         type: 'error',
-        text1: 'Slot dengan waktu yang sama sudah ada',
+        text1: isHotel ? 'Slot dengan waktu yang sama sudah ada' : 'Slot sudah ada pada tanggal ini',
         text2: duplicateDates.map(formatDate).join(', '),
         position: 'top',
       });
       return;
     }
 
+    submitLock.current = true;
     setSaving(true);
     const createdDates: string[] = [];
     const failedDates: { date: string; message?: string }[] = [];
@@ -168,6 +173,7 @@ export default function AddSlotModal({
       onClose();
     } finally {
       setSaving(false);
+      submitLock.current = false;
     }
   };
 
@@ -216,26 +222,34 @@ export default function AddSlotModal({
               Slot disimpan satu per satu. Jika sebagian gagal, tanggal yang berhasil akan tetap tersimpan.
             </Text>
 
-            <Text style={styles.label}>Jam mulai</Text>
-            <TextInput
-              value={startTime}
-              onChangeText={setStartTime}
-              placeholder="HH:mm"
-              placeholderTextColor={colors.onSurfaceVariant}
-              style={styles.input}
-              keyboardType="numbers-and-punctuation"
-              accessibilityLabel="Jam mulai"
-            />
-            <Text style={styles.label}>Jam selesai</Text>
-            <TextInput
-              value={endTime}
-              onChangeText={setEndTime}
-              placeholder="HH:mm"
-              placeholderTextColor={colors.onSurfaceVariant}
-              style={styles.input}
-              keyboardType="numbers-and-punctuation"
-              accessibilityLabel="Jam selesai"
-            />
+            {isHotel ? (
+              <>
+                <Text style={styles.label}>Jam mulai</Text>
+                <TextInput
+                  value={startTime}
+                  onChangeText={setStartTime}
+                  placeholder="HH:mm"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  style={styles.input}
+                  keyboardType="numbers-and-punctuation"
+                  accessibilityLabel="Jam mulai"
+                />
+                <Text style={styles.label}>Jam selesai</Text>
+                <TextInput
+                  value={endTime}
+                  onChangeText={setEndTime}
+                  placeholder="HH:mm"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                  style={styles.input}
+                  keyboardType="numbers-and-punctuation"
+                  accessibilityLabel="Jam selesai"
+                />
+              </>
+            ) : (
+              <Text style={styles.helperText}>
+                Layanan non-penginapan menggunakan waktu standar 08:00–09:00 sesuai kontrak API.
+              </Text>
+            )}
             <Text style={styles.label}>Kuota per tanggal</Text>
             <TextInput
               value={quota}
@@ -248,16 +262,16 @@ export default function AddSlotModal({
             />
 
             <Pressable
-              disabled={!serviceId || sortedDates.length === 0 || saving}
+              disabled={!serviceId || sortedDates.length === 0 || isHotel === null || saving}
               onPress={handleSubmit}
               style={({ pressed }) => [
                 styles.submitButton,
-                (!serviceId || sortedDates.length === 0 || saving) && styles.disabled,
+                (!serviceId || sortedDates.length === 0 || isHotel === null || saving) && styles.disabled,
                 pressed && !saving && styles.pressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Simpan slot untuk tanggal terpilih"
-              accessibilityState={{ disabled: !serviceId || sortedDates.length === 0 || saving, busy: saving }}
+              accessibilityState={{ disabled: !serviceId || sortedDates.length === 0 || isHotel === null || saving, busy: saving }}
             >
               {saving ? (
                 <ActivityIndicator color={colors.onPrimary} />

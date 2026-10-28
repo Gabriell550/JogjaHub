@@ -30,11 +30,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isAxiosError } from 'axios';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 import { vendorApi } from '../../../../api/vendorApi';
+import { categoryApi } from '../../../../api/categoryApi';
 import { timeSlotApi } from '../../../../api/timeSlotApi';
 import { bookingApi } from '../../../../api/bookingApi';
 import AddSlotModal from '../components/AddSlotModal';
 
-type ServiceItem = { id: number; name: string };
+type ServiceItem = { id: number; name: string; subcategoryId: number };
+type CategoryItem = { id: number; name: string; subcategories: { id: number }[] };
 type SlotItem = {
   id: number;
   slot_date: string;
@@ -69,6 +71,7 @@ const MONTH_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
+const HOTEL_CATEGORY_NAME = 'penginapan';
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null;
@@ -90,10 +93,27 @@ function resourceRows(payload: unknown): UnknownRecord[] {
 function parseServices(payload: unknown): ServiceItem[] {
   return resourceRows(payload).map((item) => {
     const id = Number(item.id);
-    if (!Number.isInteger(id) || typeof item.name !== 'string') {
+    const subcategory = isRecord(item.subcategory) ? item.subcategory : undefined;
+    const subcategoryId = Number(subcategory?.id);
+    if (!Number.isInteger(id) || typeof item.name !== 'string' || !Number.isInteger(subcategoryId)) {
       throw new Error('Data layanan dari API tidak valid.');
     }
-    return { id, name: item.name };
+    return { id, name: item.name, subcategoryId };
+  });
+}
+
+function parseCategories(payload: unknown): CategoryItem[] {
+  return resourceRows(payload).map((item) => {
+    if (typeof item.name !== 'string' || !Array.isArray(item.subcategories)) {
+      throw new Error('Data kategori dari API tidak valid.');
+    }
+    const subcategories = item.subcategories.map((subcategory) => {
+      if (!isRecord(subcategory) || !Number.isInteger(Number(subcategory.id))) {
+        throw new Error('Data subkategori dari API tidak valid.');
+      }
+      return { id: Number(subcategory.id) };
+    });
+    return { id: Number(item.id), name: item.name, subcategories };
   });
 }
 
@@ -211,6 +231,9 @@ export default function ManageCalendarScreen() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceError, setServiceError] = useState<string | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayISO);
@@ -218,12 +241,14 @@ export default function ManageCalendarScreen() {
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
   const [multiDateMode, setMultiDateMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [slotFormDates, setSlotFormDates] = useState<string[]>([]);
   const [showServicePicker, setShowServicePicker] = useState(false);
   const [serviceSearch, setServiceSearch] = useState('');
   const [datePicker, setDatePicker] = useState<'month' | 'year' | null>(null);
   const [showAddSlotModal, setShowAddSlotModal] = useState(false);
   const slotsRequestId = useRef(0);
   const bookingsRequestId = useRef(0);
+  const lastDateTap = useRef<{ date: string; time: number } | null>(null);
 
   const loadServices = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -250,6 +275,25 @@ export default function ManageCalendarScreen() {
     useCallback(() => {
       void loadServices();
     }, [loadServices]),
+  );
+
+  const loadCategories = useCallback(async () => {
+    setCategoryLoading(true);
+    setCategoryError(null);
+    try {
+      const response = await categoryApi.getCategories();
+      setCategories(parseCategories(response.data));
+    } catch (error) {
+      setCategoryError(responseMessage(error) ?? 'Gagal memuat kategori layanan.');
+    } finally {
+      setCategoryLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadCategories();
+    }, [loadCategories]),
   );
 
   const loadSlots = useCallback(async (serviceId: number) => {
@@ -344,6 +388,14 @@ export default function ManageCalendarScreen() {
   }, [selectedDate, selectedMonth, selectedYear, selectedDates, multiDateMode, slots, todayISO, slotLoading, slotError]);
 
   const selectedService = services.find((service) => service.id === selectedServiceId);
+  const selectedServiceCategory = selectedService
+    ? categories.find((category) => category.subcategories.some(
+      (subcategory) => subcategory.id === selectedService.subcategoryId,
+    ))
+    : undefined;
+  const isHotelService = selectedServiceCategory
+    ? selectedServiceCategory.name.trim().toLocaleLowerCase('id-ID') === HOTEL_CATEGORY_NAME
+    : null;
   const slotsForDate = useMemo(
     () => slots.filter((slot) => slot.slot_date === selectedDate).sort((a, b) => a.start_time.localeCompare(b.start_time)),
     [slots, selectedDate],
@@ -364,6 +416,16 @@ export default function ManageCalendarScreen() {
   ), [slotsForDate]);
 
   const handleSelectDate = (date: string) => {
+    const now = Date.now();
+    const previousTap = lastDateTap.current;
+    if (previousTap?.date === date && now - previousTap.time < 300) {
+      lastDateTap.current = null;
+      setSelectedDate(date);
+      openAddSlot([date]);
+      return;
+    }
+
+    lastDateTap.current = { date, time: now };
     const value = new Date(`${date}T00:00:00`);
     setSelectedDate(date);
     if (multiDateMode) {
@@ -375,6 +437,20 @@ export default function ManageCalendarScreen() {
       setSelectedMonth(value.getMonth());
       setSelectedYear(value.getFullYear());
     }
+  };
+
+  const openAddSlot = (dates: string[]) => {
+    if (categoryLoading || categoryError || isHotelService === null) {
+      Toast.show({
+        type: 'error',
+        text1: 'Kategori layanan belum tersedia',
+        text2: categoryError ?? 'Tunggu sampai data kategori selesai dimuat.',
+        position: 'top',
+      });
+      return;
+    }
+    setSlotFormDates(dates);
+    setShowAddSlotModal(true);
   };
 
   const handleToggleMultiDate = () => {
@@ -429,6 +505,7 @@ export default function ManageCalendarScreen() {
   const handleRefresh = async () => {
     await Promise.all([
       loadServices(true),
+      loadCategories(),
       selectedServiceId !== null ? loadSlots(selectedServiceId) : Promise.resolve(),
       loadBookings(),
     ]);
@@ -485,6 +562,19 @@ export default function ManageCalendarScreen() {
               </View>
               <ChevronDown size={20} color={colors.onSurfaceVariant} />
             </Pressable>
+          )}
+          {categoryError && (
+            <View style={styles.categoryWarning}>
+              <Text style={styles.categoryWarningText}>{categoryError} Pembuatan slot dinonaktifkan sampai tipe layanan dapat dipastikan.</Text>
+              <Pressable onPress={() => void loadCategories()} style={styles.retryButton} accessibilityRole="button">
+                <Text style={styles.retryText}>Muat ulang kategori</Text>
+              </Pressable>
+            </View>
+          )}
+          {!categoryLoading && !categoryError && selectedService && isHotelService === null && (
+            <View style={styles.categoryWarning}>
+              <Text style={styles.categoryWarningText}>Kategori untuk layanan ini tidak ditemukan. Pembuatan slot dinonaktifkan.</Text>
+            </View>
           )}
         </View>
 
@@ -571,6 +661,7 @@ export default function ManageCalendarScreen() {
                   : <LegendItem label="Tanpa slot" status="none" />}
               </View>
             </View>
+            <Text style={styles.calendarHint}>Ketuk tanggal untuk melihat ringkasan. Ketuk dua kali untuk menambah slot.</Text>
 
             <View style={styles.actionsRow}>
               <Pressable
@@ -585,11 +676,11 @@ export default function ManageCalendarScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => setShowAddSlotModal(true)}
-                disabled={!selectedServiceId || (multiDateMode && selectedDates.length === 0)}
+                onPress={() => openAddSlot(multiDateMode ? selectedDates : [selectedDate])}
+                disabled={!selectedServiceId || (multiDateMode && selectedDates.length === 0) || categoryLoading || Boolean(categoryError) || isHotelService === null}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  (!selectedServiceId || (multiDateMode && selectedDates.length === 0)) && styles.buttonDisabled,
+                  (!selectedServiceId || (multiDateMode && selectedDates.length === 0) || categoryLoading || Boolean(categoryError) || isHotelService === null) && styles.buttonDisabled,
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
@@ -820,7 +911,8 @@ export default function ManageCalendarScreen() {
         visible={showAddSlotModal}
         onClose={() => setShowAddSlotModal(false)}
         serviceId={selectedServiceId}
-        selectedDates={multiDateMode ? selectedDates : [selectedDate]}
+        selectedDates={slotFormDates}
+        isHotel={isHotelService}
         existingSlots={slots}
         onCreated={handleCreated}
       />
@@ -849,11 +941,11 @@ function CapacityValue({ label, value }: { label: string; value: number }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
   content: { paddingBottom: spacing.sectionGap, paddingHorizontal: spacing.containerMargin },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackMd, paddingTop: spacing.stackLg, paddingBottom: spacing.stackMd },
-  headerIcon: { width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackMd, paddingHorizontal: spacing.stackMd, paddingTop: spacing.stackLg, paddingBottom: spacing.stackMd, marginBottom: spacing.stackMd, borderRadius: radius.lg, backgroundColor: colors.primary },
+  headerIcon: { width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.onPrimary, alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1 },
-  title: { fontFamily: typography.headlineLgMobile.fontFamily, fontSize: typography.headlineLgMobile.fontSize, fontWeight: typography.headlineLgMobile.fontWeight, color: colors.onSurface },
-  subtitle: { fontFamily: typography.bodySm.fontFamily, fontSize: typography.bodySm.fontSize, color: colors.onSurfaceVariant, marginTop: 3 },
+  title: { fontFamily: typography.headlineLgMobile.fontFamily, fontSize: typography.headlineLgMobile.fontSize, fontWeight: typography.headlineLgMobile.fontWeight, color: colors.onPrimary },
+  subtitle: { fontFamily: typography.bodySm.fontFamily, fontSize: typography.bodySm.fontSize, color: colors.primaryFixed, marginTop: 3 },
   section: { marginTop: spacing.stackSm },
   sectionLabel: { fontFamily: typography.labelMd.fontFamily, fontSize: 11, letterSpacing: 0.8, color: colors.onSurfaceVariant, marginBottom: spacing.stackSm },
   serviceSelect: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.stackMd, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
@@ -868,6 +960,7 @@ const styles = StyleSheet.create({
   yearPickerButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.stackSm },
   yearTitle: { fontFamily: typography.labelLg.fontFamily, fontSize: typography.labelLg.fontSize, color: colors.onSurfaceVariant },
   calendarCard: { paddingHorizontal: spacing.stackSm, paddingTop: spacing.stackMd, paddingBottom: spacing.stackMd, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.outlineVariant },
+  calendarHint: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.stackSm },
   weekRow: { flexDirection: 'row', marginBottom: spacing.stackSm },
   weekDay: { flex: 1, textAlign: 'center', fontFamily: typography.labelSm.fontFamily, fontSize: 10, color: colors.onSurfaceVariant, paddingVertical: spacing.stackSm },
   daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -941,6 +1034,8 @@ const styles = StyleSheet.create({
   emptyBox: { padding: spacing.stackMd, borderRadius: radius.md, backgroundColor: colors.surfaceContainerLow },
   emptyTitle: { fontFamily: typography.labelLg.fontFamily, fontSize: 14, color: colors.onSurface, marginBottom: 4 },
   errorBox: { padding: spacing.stackMd, borderRadius: radius.md, backgroundColor: colors.errorContainer },
+  categoryWarning: { padding: spacing.stackMd, marginTop: spacing.stackSm, borderRadius: radius.md, backgroundColor: colors.primaryFixed },
+  categoryWarningText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onPrimaryFixedVariant, lineHeight: 18 },
   errorText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onErrorContainer, lineHeight: 18 },
   retryButton: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.stackSm },
   retryText: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, color: colors.onErrorContainer, textDecorationLine: 'underline' },
