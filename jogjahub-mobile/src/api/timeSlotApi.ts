@@ -1,9 +1,9 @@
-// Endpoint atur jadwal/slot milik tenant sendiri — dipakai untuk ManageCalendarScreen.
-// Backend sudah punya logika penuh untuk ini (bukan endpoint kosong seperti booking).
+// Tenant slot endpoints. Listing and deletion are scoped to the logged-in tenant;
+// creation accepts one date per request.
 import { apiClient } from './client';
 
 export const timeSlotApi = {
-  // Daftar slot untuk satu layanan tertentu (tanggal, jam, kuota, berapa yang sudah dibooking).
+  // Returns all dates (including past slots), sorted by date then start time.
   listByService: (serviceId: string | number) => apiClient.get(`/tenant/services/${serviceId}/time-slots`),
 
   createSlot: (payload: {

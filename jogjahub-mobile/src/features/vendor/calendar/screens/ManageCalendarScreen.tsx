@@ -1,1296 +1,1077 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Dimensions,
-  RefreshControl,
-  Modal,
-  FlatList,
   ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { ChevronLeft, ChevronRight, Clock, CalendarDays, Lock, SlidersHorizontal, ChevronDown, Trash2, Store } from 'lucide-react-native';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Plus,
+  Search,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isAxiosError } from 'axios';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
-import { Card } from '../../../../components/Card/Card';
-import { Button } from '../../../../components/Button/Button';
-import { EmptyState } from '../../../../components/EmptyState/EmptyState';
 import { vendorApi } from '../../../../api/vendorApi';
+import { categoryApi } from '../../../../api/categoryApi';
 import { timeSlotApi } from '../../../../api/timeSlotApi';
+import { bookingApi } from '../../../../api/bookingApi';
 import AddSlotModal from '../components/AddSlotModal';
 
-// ============ TYPES ============
-type ServiceItem = { id: number; name: string };
+type ServiceItem = { id: number; name: string; subcategoryId: number };
+type CategoryItem = { id: number; name: string; subcategories: { id: number }[] };
 type SlotItem = {
-  id: number; slot_date: string; start_time: string; end_time: string; quota: number; booked_count: number;
+  id: number;
+  slot_date: string;
+  start_time: string;
+  end_time: string;
+  quota: number;
+  booked_count: number;
 };
-type WorkingHour = {
-  id: number; day_of_week: number; label: string; start_time: string; end_time: string;
+type BookingItem = {
+  id: string;
+  status: string;
+  serviceId?: string;
+  serviceName?: string;
+  customerName: string;
+  slotDate?: string;
+  startTime?: string;
+  endTime?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
 };
 type CalendarDay = {
-  date: string; dayOfMonth: number; isCurrentMonth: boolean; isSelected: boolean;
-  status: 'available' | 'full' | 'none'; isToday: boolean;
+  date: string;
+  day: number;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
+  isToday: boolean;
+  isMultiSelected: boolean;
+  status: 'available' | 'partial' | 'full' | 'none' | 'unknown';
 };
+type UnknownRecord = Record<string, unknown>;
 
-// ============ MOCK DATA (ganti dengan API nanti) ============
-const MOCK_WORKING_HOURS: WorkingHour[] = [
-  { id: 1, day_of_week: 1, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 2, day_of_week: 1, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
-  { id: 3, day_of_week: 2, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 4, day_of_week: 2, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
-  { id: 5, day_of_week: 3, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 6, day_of_week: 3, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
-  { id: 7, day_of_week: 4, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 8, day_of_week: 4, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
-  { id: 9, day_of_week: 5, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 10, day_of_week: 5, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
-  { id: 11, day_of_week: 6, label: 'Sesi Pagi', start_time: '08:00', end_time: '12:00' },
-  { id: 12, day_of_week: 6, label: 'Sesi Siang', start_time: '13:00', end_time: '17:00' },
+const DAY_NAMES = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
+const MONTH_NAMES = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
-const MOCK_BOOKING_LIMIT_H1 = 24;
+const HOTEL_CATEGORY_NAME = 'penginapan';
 
-// ============ HELPERS ===========
-const DAY_NAMES_SHORT = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'];
-const STATUS_COLORS = {
-  available: colors.primary,
-  full: colors.outline,
-  none: colors.outlineVariant,
-};
-const STATUS_LABELS = {
-  available: 'Tersedia',
-  full: 'Penuh',
-  none: '',
-};
-const MONTH_NAMES_ID = [
-  'Januari','Februari','Maret','April','Mei','Juni',
-  'Juli','Agustus','September','Oktober','November','Desember'
-];
-const YEAR_RANGE = [2020, 2035];
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
 
-function calculateDayStatus(dateStr: string, slots: SlotItem[]): 'available' | 'full' | 'none' {
-  const daySlots = slots.filter((s) => s.slot_date === dateStr);
+function resourceRows(payload: unknown): UnknownRecord[] {
+  if (!isRecord(payload)) throw new Error('Respons API tidak valid.');
+  const rows = Array.isArray(payload.data)
+    ? payload.data
+    : isRecord(payload.data) && Array.isArray(payload.data.data)
+      ? payload.data.data
+      : null;
+  if (!rows) throw new Error('Daftar data tidak tersedia pada respons API.');
+  const records = rows.filter(isRecord);
+  if (records.length !== rows.length) throw new Error('Format item pada respons API tidak valid.');
+  return records;
+}
+
+function parseServices(payload: unknown): ServiceItem[] {
+  return resourceRows(payload).map((item) => {
+    const id = Number(item.id);
+    const subcategory = isRecord(item.subcategory) ? item.subcategory : undefined;
+    const subcategoryId = Number(subcategory?.id);
+    if (!Number.isInteger(id) || typeof item.name !== 'string' || !Number.isInteger(subcategoryId)) {
+      throw new Error('Data layanan dari API tidak valid.');
+    }
+    return { id, name: item.name, subcategoryId };
+  });
+}
+
+function parseCategories(payload: unknown): CategoryItem[] {
+  return resourceRows(payload).map((item) => {
+    if (typeof item.name !== 'string' || !Array.isArray(item.subcategories)) {
+      throw new Error('Data kategori dari API tidak valid.');
+    }
+    const subcategories = item.subcategories.map((subcategory) => {
+      if (!isRecord(subcategory) || !Number.isInteger(Number(subcategory.id))) {
+        throw new Error('Data subkategori dari API tidak valid.');
+      }
+      return { id: Number(subcategory.id) };
+    });
+    return { id: Number(item.id), name: item.name, subcategories };
+  });
+}
+
+function parseSlots(payload: unknown): SlotItem[] {
+  return resourceRows(payload).map((item) => {
+    const id = Number(item.id);
+    const quota = Number(item.quota);
+    const bookedCount = Number(item.booked_count);
+    if (
+      !Number.isInteger(id) ||
+      typeof item.slot_date !== 'string' ||
+      typeof item.start_time !== 'string' ||
+      typeof item.end_time !== 'string' ||
+      !Number.isInteger(quota) ||
+      quota < 1 ||
+      !Number.isInteger(bookedCount) ||
+      bookedCount < 0
+    ) {
+      throw new Error('Data slot dari API tidak valid.');
+    }
+    return {
+      id,
+      slot_date: item.slot_date,
+      start_time: item.start_time,
+      end_time: item.end_time,
+      quota,
+      booked_count: bookedCount,
+    };
+  });
+}
+
+function isDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function parseBookings(payload: unknown): BookingItem[] {
+  return resourceRows(payload).map((item) => {
+    const service = isRecord(item.service) ? item.service : undefined;
+    const customer = isRecord(item.customer) ? item.customer : undefined;
+    const slot = isRecord(item.slot) ? item.slot : undefined;
+    const details = isRecord(item.details) ? item.details : undefined;
+    const checkInDate = details?.check_in_date;
+    const checkOutDate = details?.check_out_date;
+    if (
+      item.id === undefined ||
+      item.id === null ||
+      typeof item.status !== 'string' ||
+      service?.id === undefined ||
+      typeof customer?.name !== 'string' ||
+      (slot !== undefined && typeof slot.slot_date !== 'string') ||
+      ((checkInDate !== undefined || checkOutDate !== undefined) &&
+        (!isDateOnly(checkInDate) || !isDateOnly(checkOutDate) || checkOutDate <= checkInDate))
+    ) {
+      throw new Error('Data booking dari API tidak valid.');
+    }
+    return {
+      id: String(item.id),
+      status: item.status,
+      serviceId: String(service.id),
+      serviceName: typeof service?.name === 'string' ? service.name : undefined,
+      customerName: customer.name,
+      slotDate: typeof slot?.slot_date === 'string' ? slot.slot_date : undefined,
+      startTime: typeof slot?.start_time === 'string' ? slot.start_time : undefined,
+      endTime: typeof slot?.end_time === 'string' ? slot.end_time : undefined,
+      checkInDate: isDateOnly(checkInDate) ? checkInDate : undefined,
+      checkOutDate: isDateOnly(checkOutDate) ? checkOutDate : undefined,
+    };
+  });
+}
+
+function responseMessage(error: unknown): string | undefined {
+  if (!isAxiosError(error)) return undefined;
+  const message: unknown = error.response?.data?.message;
+  return typeof message === 'string' ? message : undefined;
+}
+
+function formatDateISO(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(date: string, options?: Intl.DateTimeFormatOptions): string {
+  const value = new Date(`${date}T00:00:00`);
+  return value.toLocaleDateString('id-ID', options ?? {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function getDayStatus(date: string, slots: SlotItem[]): CalendarDay['status'] {
+  const daySlots = slots.filter((slot) => slot.slot_date === date);
   if (daySlots.length === 0) return 'none';
-  const availableCount = daySlots.filter((s) => s.booked_count < s.quota).length;
-  if (availableCount === 0) return 'full';
+  if (daySlots.every((slot) => slot.booked_count >= slot.quota)) return 'full';
+  if (daySlots.some((slot) => slot.booked_count > 0)) return 'partial';
   return 'available';
 }
 
-function formatDateISO(d: Date): string {
-  const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'pending': return 'Menunggu';
+    case 'confirmed': return 'Dikonfirmasi';
+    case 'cancelled': return 'Dibatalkan';
+    default: return status;
+  }
 }
 
-function getTodayISO(): string {
-  return formatDateISO(new Date());
+function bookingStatusStyle(status: string) {
+  if (status === 'confirmed') return styles.bookingStatusConfirmed;
+  if (status === 'cancelled') return styles.bookingStatusCancelled;
+  return styles.bookingStatusPending;
 }
 
-function isTodayDate(dateStr: string): boolean {
-  const todayStr = getTodayISO();
-  return dateStr === todayStr;
-}
-
-// ============ COMPONENT ===========
 export default function ManageCalendarScreen() {
-  // --- State utama ---
+  const insets = useSafeAreaInsets();
+  const today = new Date();
+  const todayISO = formatDateISO(today);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [workingHours, setWorkingHours] = useState<WorkingHour[]>(MOCK_WORKING_HOURS);
-  const [bookingLimitH1, setBookingLimitH1] = useState<number>(MOCK_BOOKING_LIMIT_H1);
-
-  // --- State calendar (dipilih user: bulan + tahun) ---
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth()); // 0-11
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayISO());
-  const [lastTapInfo, setLastTapInfo] = useState<{ date: string; time: number } | null>(null);
-
-  // --- State form edit ---
-  const [storeOpen, setStoreOpen] = useState(true);
-  const [loadingServices, setLoadingServices] = useState(true);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [savingWorkingHours, setSavingWorkingHours] = useState(false);
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [serviceLoading, setServiceLoading] = useState(true);
+  const [slotLoading, setSlotLoading] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [slotError, setSlotError] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(todayISO);
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+  const [multiDateMode, setMultiDateMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [slotFormDates, setSlotFormDates] = useState<string[]>([]);
+  const [showServicePicker, setShowServicePicker] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [datePicker, setDatePicker] = useState<'month' | 'year' | null>(null);
   const [showAddSlotModal, setShowAddSlotModal] = useState(false);
+  const slotsRequestId = useRef(0);
+  const bookingsRequestId = useRef(0);
+  const lastDateTap = useRef<{ date: string; time: number } | null>(null);
 
-  // --- Picker modals ---
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [showYearPicker, setShowYearPicker] = useState(false);
-
-  const loadServices = useCallback(async () => {
-    setLoadingServices(true);
+  const loadServices = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setServiceLoading(true);
+    setServiceError(null);
     try {
-      const res = await vendorApi.listMyServices();
-      const rawData = res.data?.data;
-      const list: ServiceItem[] = Array.isArray(rawData)
-        ? rawData
-        : Array.isArray(rawData?.data)
-        ? rawData.data
-        : [];
+      const response = await vendorApi.listMyServices();
+      const list = parseServices(response.data);
       setServices(list);
-      setSelectedServiceId((previousId) => {
-        if (previousId && list.some((service) => service.id === previousId)) return previousId;
-        return list.length > 0 ? list[0].id : null;
-      });
-    } catch (err) {
-      console.log('Gagal ambil layanan:', err);
+      setSelectedServiceId((previous) =>
+        previous !== null && list.some((service) => service.id === previous)
+          ? previous
+          : list[0]?.id ?? null,
+      );
+    } catch (error) {
+      setServiceError(responseMessage(error) ?? 'Gagal memuat layanan. Periksa koneksi lalu coba lagi.');
     } finally {
-      setLoadingServices(false);
+      if (isRefresh) setRefreshing(false);
+      else setServiceLoading(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadServices();
+      void loadServices();
     }, [loadServices]),
   );
 
-  // Load slot dari API tiap service berubah
-  useEffect(() => {
-    if (!selectedServiceId) return;
-    loadSlots(selectedServiceId);
-  }, [selectedServiceId]);
-
-  const loadSlots = async (serviceId: number) => {
-    setLoadingSlots(true);
+  const loadCategories = useCallback(async () => {
+    setCategoryLoading(true);
+    setCategoryError(null);
     try {
-      const res = await timeSlotApi.listByService(serviceId);
-      setSlots(res.data?.data ?? []);
-    } catch (err) {
-      console.log('Gagal ambil slot:', err);
+      const response = await categoryApi.getCategories();
+      setCategories(parseCategories(response.data));
+    } catch (error) {
+      setCategoryError(responseMessage(error) ?? 'Gagal memuat kategori layanan.');
     } finally {
-      setLoadingSlots(false);
+      setCategoryLoading(false);
     }
-  };
-
-  // Generate days grid berdasarkan bulan & tahun terpilih
-  const calendarDays = useMemo(() => {
-    const year = selectedYear;
-    const month = selectedMonth;
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    const startPad = firstDayOfMonth.getDay(); // 0=Sun ... 6=Sab
-
-    const days: CalendarDay[] = [];
-
-    // Padding awal (hari dari bulan sebelumnya)
-    for (let i = startPad - 1; i >= 0; i--) {
-      const d = new Date(year, month, -i);
-      const dateStr = formatDateISO(d);
-      days.push(createCalendarDay(dateStr, d, false));
-    }
-
-    // Hari dalam bulan ini
-    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-      const d = new Date(year, month, day);
-      const dateStr = formatDateISO(d);
-      days.push(createCalendarDay(dateStr, d, true));
-    }
-
-    // Padding akhir (sampai habis minggu)
-    const endPad = 6 - lastDayOfMonth.getDay();
-    for (let i = 1; i <= endPad; i++) {
-      const d = new Date(year, month + 1, i);
-      const dateStr = formatDateISO(d);
-      days.push(createCalendarDay(dateStr, d, false));
-    }
-
-    return days;
-  }, [selectedYear, selectedMonth, selectedDate, slots]);
-
-  function createCalendarDay(dateStr: string, d: Date, isCurrentMonth: boolean): CalendarDay {
-    const dayOfMonth = d.getDate();
-    const isToday = isTodayDate(dateStr);
-    const isSelected = dateStr === selectedDate;
-    const status = calculateDayStatus(dateStr, slots);
-
-    return {
-      date: dateStr,
-      dayOfMonth,
-      isCurrentMonth,
-      isSelected,
-      status,
-      isToday,
-    };
-  }
-
-  // Derived display strings
-  const monthName = MONTH_NAMES_ID[selectedMonth] ?? '';
-  const yearLabel = String(selectedYear);
-
-  const monthYearLabel = useMemo(() => {
-    return `${monthName} ${yearLabel}`;
-  }, [monthName, yearLabel]);
-
-  // Load working hours dari API (mock sekarang)
-  const loadWorkingHours = useCallback(async () => {
-    // TODO: panggil API endpoint untuk working hours
-    setWorkingHours(MOCK_WORKING_HOURS);
   }, []);
 
-  // Load booking limit H-1 dari API (mock sekarang)
-  const loadBookingLimit = useCallback(async () => {
-    // TODO: panggil API endpoint untuk booking limit H-1
-    setBookingLimitH1(MOCK_BOOKING_LIMIT_H1);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadCategories();
+    }, [loadCategories]),
+  );
 
-  // Load semua data saat mount
-  useEffect(() => {
-    loadWorkingHours();
-    loadBookingLimit();
-  }, [loadWorkingHours, loadBookingLimit]);
-
-  // Handle pilih tanggal
-  const handleSelectDate = (dateStr: string) => {
-    const now = Date.now();
-    const isDoubleTap = lastTapInfo?.date === dateStr && now - lastTapInfo.time < 300;
-
-    setSelectedDate(dateStr);
-    setLastTapInfo(isDoubleTap ? null : { date: dateStr, time: now });
-
-    if (isDoubleTap) {
-      if (!selectedServiceId) {
-        Toast.show({
-          type: 'info',
-          text1: 'Pilih layanan dulu',
-          text2: 'Pilih salah satu layanan di atas sebelum menambah slot.',
-          position: 'top',
-        });
-        return;
+  const loadSlots = useCallback(async (serviceId: number) => {
+    const requestId = ++slotsRequestId.current;
+    setSlotLoading(true);
+    setSlotError(null);
+    setSlots([]);
+    try {
+      const response = await timeSlotApi.listByService(serviceId);
+      const list = parseSlots(response.data);
+      if (requestId === slotsRequestId.current) setSlots(list);
+    } catch (error) {
+      if (requestId === slotsRequestId.current) {
+        setSlotError(responseMessage(error) ?? 'Gagal memuat slot layanan. Coba muat ulang.');
       }
-      setShowAddSlotModal(true);
-    }
-  };
-
-  // Handle previous/next month
-  const goToPreviousMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear((y) => y - 1);
-    } else {
-      setSelectedMonth((m) => m - 1);
-    }
-  };
-
-  const goToNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear((y) => y + 1);
-    } else {
-      setSelectedMonth((m) => m + 1);
-    }
-  };
-
-  // Handle save working hours
-  const handleSaveWorkingHours = async () => {
-    setSavingWorkingHours(true);
-    try {
-      Toast.show({
-        type: 'success',
-        text1: 'Jam kerja disimpan',
-        text2: 'Pengaturan jam kerja berhasil diperbarui.',
-      });
-    } catch (err) {
-      console.log('Gagal simpan jam kerja:', err);
-      Toast.show({ type: 'error', text1: 'Gagal menyimpan', text2: 'Coba lagi.' });
     } finally {
-      setSavingWorkingHours(false);
+      if (requestId === slotsRequestId.current) setSlotLoading(false);
     }
+  }, []);
+
+  const loadBookings = useCallback(async () => {
+    const requestId = ++bookingsRequestId.current;
+    setBookingLoading(true);
+    setBookingError(null);
+    try {
+      const firstResponse = await bookingApi.listIncomingBookings({ page: 1 });
+      const root = isRecord(firstResponse.data) ? firstResponse.data : {};
+      const meta = isRecord(root.meta) ? root.meta : {};
+      const lastPage = Number(meta.last_page);
+      if (!Number.isInteger(lastPage) || lastPage < 1) {
+        throw new Error('Informasi halaman booking dari API tidak valid.');
+      }
+      const allBookings = parseBookings(firstResponse.data);
+      for (let page = 2; page <= lastPage; page += 1) {
+        const response = await bookingApi.listIncomingBookings({ page });
+        allBookings.push(...parseBookings(response.data));
+      }
+      if (requestId === bookingsRequestId.current) setBookings(allBookings);
+    } catch (error) {
+      if (requestId === bookingsRequestId.current) {
+        setBookingError(responseMessage(error) ?? 'Gagal memuat daftar booking. Coba muat ulang.');
+      }
+    } finally {
+      if (requestId === bookingsRequestId.current) setBookingLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBookings();
+    }, [loadBookings]),
+  );
+
+  React.useEffect(() => {
+    if (selectedServiceId === null) {
+      slotsRequestId.current += 1;
+      setSlots([]);
+      setSlotError(null);
+      setSlotLoading(false);
+      return;
+    }
+    void loadSlots(selectedServiceId);
+  }, [selectedServiceId, loadSlots]);
+
+  const visibleServices = useMemo(() => {
+    const query = serviceSearch.trim().toLocaleLowerCase('id-ID');
+    if (!query) return services;
+    return services.filter((service) => service.name.toLocaleLowerCase('id-ID').includes(query));
+  }, [services, serviceSearch]);
+
+  const calendarDays = useMemo<CalendarDay[]>(() => {
+    const first = new Date(selectedYear, selectedMonth, 1);
+    const last = new Date(selectedYear, selectedMonth + 1, 0);
+    const days: CalendarDay[] = [];
+    const startPadding = first.getDay();
+    const endPadding = 6 - last.getDay();
+
+    for (let offset = -startPadding; offset <= last.getDate() + endPadding - 1; offset += 1) {
+      const date = new Date(selectedYear, selectedMonth, offset + 1);
+      const iso = formatDateISO(date);
+      days.push({
+        date: iso,
+        day: date.getDate(),
+        isCurrentMonth: date.getMonth() === selectedMonth,
+        isSelected: iso === selectedDate,
+        isToday: iso === todayISO,
+        isMultiSelected: multiDateMode && selectedDates.includes(iso),
+        status: slotLoading || slotError ? 'unknown' : getDayStatus(iso, slots),
+      });
+    }
+    return days;
+  }, [selectedDate, selectedMonth, selectedYear, selectedDates, multiDateMode, slots, todayISO, slotLoading, slotError]);
+
+  const selectedService = services.find((service) => service.id === selectedServiceId);
+  const selectedServiceCategory = selectedService
+    ? categories.find((category) => category.subcategories.some(
+      (subcategory) => subcategory.id === selectedService.subcategoryId,
+    ))
+    : undefined;
+  const isHotelService = selectedServiceCategory
+    ? selectedServiceCategory.name.trim().toLocaleLowerCase('id-ID') === HOTEL_CATEGORY_NAME
+    : null;
+  const slotsForDate = useMemo(
+    () => slots.filter((slot) => slot.slot_date === selectedDate).sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [slots, selectedDate],
+  );
+  const bookingsForDate = useMemo(
+    () => bookings.filter((booking) =>
+      booking.serviceId === String(selectedServiceId) && (
+        booking.slotDate === selectedDate ||
+        (booking.checkInDate !== undefined &&
+          booking.checkOutDate !== undefined &&
+          booking.checkInDate <= selectedDate &&
+          selectedDate < booking.checkOutDate)
+      ),
+    ),
+    [bookings, selectedDate, selectedServiceId],
+  );
+  const capacity = useMemo(() => slotsForDate.reduce(
+    (total, slot) => ({
+      total: total.total + slot.quota,
+      booked: total.booked + slot.booked_count,
+      remaining: total.remaining + Math.max(0, slot.quota - slot.booked_count),
+    }),
+    { total: 0, booked: 0, remaining: 0 },
+  ), [slotsForDate]);
+
+  const handleSelectDate = (date: string) => {
+    const now = Date.now();
+    const previousTap = lastDateTap.current;
+    if (previousTap?.date === date && now - previousTap.time < 300) {
+      lastDateTap.current = null;
+      setSelectedDate(date);
+      openAddSlot([date]);
+      return;
+    }
+
+    lastDateTap.current = { date, time: now };
+    const value = new Date(`${date}T00:00:00`);
+    setSelectedDate(date);
+    if (multiDateMode) {
+      setSelectedDates((current) =>
+        current.includes(date) ? current.filter((item) => item !== date) : [...current, date].sort(),
+      );
+    }
+    if (value.getMonth() !== selectedMonth || value.getFullYear() !== selectedYear) {
+      setSelectedMonth(value.getMonth());
+      setSelectedYear(value.getFullYear());
+    }
+  };
+
+  const openAddSlot = (dates: string[]) => {
+    if (categoryLoading || categoryError || isHotelService === null) {
+      Toast.show({
+        type: 'error',
+        text1: 'Kategori layanan belum tersedia',
+        text2: categoryError ?? 'Tunggu sampai data kategori selesai dimuat.',
+        position: 'top',
+      });
+      return;
+    }
+    setSlotFormDates(dates);
+    setShowAddSlotModal(true);
+  };
+
+  const handleToggleMultiDate = () => {
+    if (multiDateMode) {
+      setSelectedDates([]);
+      setMultiDateMode(false);
+      return;
+    }
+    setSelectedDates([selectedDate]);
+    setMultiDateMode(true);
+  };
+
+  const handleMonthChange = (offset: number) => {
+    const value = new Date(selectedYear, selectedMonth + offset, 1);
+    setSelectedMonth(value.getMonth());
+    setSelectedYear(value.getFullYear());
   };
 
   const handleDeleteSlot = async (slot: SlotItem) => {
+    if (slot.booked_count > 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Slot tidak dapat dihapus',
+        text2: 'Slot sudah memiliki booking.',
+        position: 'top',
+      });
+      return;
+    }
     try {
       await timeSlotApi.deleteSlot(slot.id);
       Toast.show({ type: 'success', text1: 'Slot dihapus', position: 'top' });
-      if (selectedServiceId) await loadSlots(selectedServiceId);
-    } catch (err: any) {
-      const message = err?.response?.data?.message;
+      if (selectedServiceId !== null) await loadSlots(selectedServiceId);
+      await loadBookings();
+    } catch (error) {
       Toast.show({
         type: 'error',
-        text1: message ?? 'Gagal menghapus slot',
-        text2: message ? undefined : 'Coba lagi dalam beberapa saat.',
+        text1: responseMessage(error) ?? 'Gagal menghapus slot',
+        text2: responseMessage(error) ? undefined : 'Coba lagi dalam beberapa saat.',
         position: 'top',
       });
     }
   };
 
-  const selectedServiceName = services.find((service) => service.id === selectedServiceId)?.name;
-  const slotsForSelectedDate = slots.filter((slot) => slot.slot_date === selectedDate);
+  const handleCreated = (createdDates: string[]) => {
+    if (selectedServiceId !== null) void loadSlots(selectedServiceId);
+    void loadBookings();
+    if (multiDateMode && createdDates.length > 0) {
+      setSelectedDates((current) => current.filter((date) => !createdDates.includes(date)));
+    }
+  };
 
-  // Get status hari ini
-  const todayStatus = calendarDays.find((d) => d.isToday);
+  const handleRefresh = async () => {
+    await Promise.all([
+      loadServices(true),
+      loadCategories(),
+      selectedServiceId !== null ? loadSlots(selectedServiceId) : Promise.resolve(),
+      loadBookings(),
+    ]);
+  };
+
+  const yearOptions = useMemo(() => {
+    const start = Math.min(new Date().getFullYear() - 1, selectedYear - 5);
+    const end = Math.max(new Date().getFullYear() + 10, selectedYear + 5);
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [selectedYear]);
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerDecorCircleLarge} />
-        <View style={styles.headerDecorCircleSmall} />
-        <View style={styles.titleRow}>
-          <View style={styles.titleIconWrap}>
-            <CalendarDays size={20} color={colors.primary} />
-          </View>
-          <View>
-            <Text style={styles.title}>Kelola Slot Booking</Text>
-            <Text style={styles.titleSubtitle}>{selectedServiceName ?? 'Pilih layanan'} · {monthYearLabel}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.servicePickerSection}>
-        <Text style={styles.sectionHeading}>Pilih layanan</Text>
-        {loadingServices ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : services.length === 0 ? (
-          <EmptyState message="Belum ada layanan. Tambahkan layanan dulu di menu Listing sebelum atur slot booking." />
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.servicePicker}>
-            {services.map((service) => {
-              const isActive = service.id === selectedServiceId;
-              return (
-                <Pressable
-                  key={service.id}
-                  style={[styles.filterChip, isActive && styles.filterChipActive]}
-                  onPress={() => setSelectedServiceId(service.id)}
-                >
-                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{service.name}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
-      </View>
-
-      {services.length > 0 && !loadingServices && <>
-      {/* ===== PICKER BULAN & TAHUN ===== */}
-      <View style={styles.pickerRow}>
-        <Pressable style={styles.pickerBtn} onPress={() => setShowMonthPicker(true)}>
-          <Text style={styles.pickerLabel}>Bulan</Text>
-          <Text style={styles.pickerValue}>{monthName}</Text>
-          <ChevronDown size={16} color={colors.onSurfaceVariant} />
-        </Pressable>
-        <Pressable style={styles.pickerBtn} onPress={() => setShowYearPicker(true)}>
-          <Text style={styles.pickerLabel}>Tahun</Text>
-          <Text style={styles.pickerValue}>{yearLabel}</Text>
-          <ChevronDown size={16} color={colors.onSurfaceVariant} />
-        </Pressable>
-      </View>
-
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-          <Text style={styles.legendLabel}>Tersedia</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.outline }]} />
-          <Text style={styles.legendLabel}>Penuh</Text>
-        </View>
-      </View>
-      <Text style={styles.calendarHint}>Tips: ketuk 2x tanggal untuk langsung tambah slot</Text>
-
-      {/* ===== SCROLL VIEW UTAMA ===== */}
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={false} tintColor={colors.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
       >
-        {/* Calendar Grid — border, scrollable (sekarang di dalam scrollView utama) */}
-        <View style={styles.calendarContainer}>
-          {/* Day names header */}
-          <View style={styles.dayNamesRow}>
-            {DAY_NAMES_SHORT.map((day, idx) => (
-              <Text key={idx} style={styles.dayName}>{day}</Text>
-            ))}
+        <View style={styles.header}>
+          <View style={styles.headerIcon}><CalendarDays size={22} color={colors.primary} /></View>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Kalender booking</Text>
+            <Text style={styles.subtitle}>Atur ketersediaan layanan dan pantau booking.</Text>
           </View>
+        </View>
 
-          {/* Day cells grid */}
-          <View style={styles.weekContainer}>
-            {calendarDays.map((day, idx) => (
-              <Pressable
-                key={idx}
-                onPress={() => handleSelectDate(day.date)}
-                style={[
-                  styles.dayCell,
-                  day.isCurrentMonth ? {} : styles.dayCellOtherMonth,
-                  day.isSelected && styles.dayCellSelected,
-                  day.status === 'full' && styles.dayCellFull,
-                  day.status === 'available' && styles.dayCellAvailable,
-                  day.isToday && styles.dayCellToday,
-                ]}
-              >
-                <View style={styles.dayNumberContainer}>
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      day.isCurrentMonth ? {} : styles.dayNumberOtherMonth,
-                      day.isSelected && styles.dayNumberSelected,
-                      day.isToday && styles.dayNumberToday,
-                    ]}
-                  >
-                    {day.dayOfMonth}
-                  </Text>
-                  {day.status !== 'none' && (
-                    <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[day.status] }]} />
-                  )}
-                </View>
-                {day.isSelected && day.status !== 'none' && (
-                  <Text style={styles.statusLabel}>{STATUS_LABELS[day.status]}</Text>
-                )}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>LAYANAN</Text>
+          {serviceLoading ? (
+            <View style={styles.loadingRow}><ActivityIndicator color={colors.primary} /><Text style={styles.helperText}>Memuat layanan...</Text></View>
+          ) : serviceError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{serviceError}</Text>
+              <Pressable onPress={() => void loadServices()} style={styles.retryButton} accessibilityRole="button">
+                <Text style={styles.retryText}>Coba lagi</Text>
               </Pressable>
-            ))}
-          </View>
-
-          {/* Month navigation bar di dalam calendar */}
-          <View style={styles.navRow}>
-            <Pressable onPress={goToPreviousMonth} style={styles.navBtn}>
-              <ChevronLeft size={22} color={colors.onSurface} />
-            </Pressable>
-            <Text style={styles.navMonthLabel}>{monthYearLabel}</Text>
-            <Pressable onPress={goToNextMonth} style={styles.navBtn}>
-              <ChevronRight size={22} color={colors.onSurface} />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Spacer kecil */}
-        <View style={{ height: spacing.stackMd }} />
-
-        {/* Detail Panel untuk tanggal yang dipilih */}
-        <View style={styles.detailContainer}>
-          {/* Judul detail */}
-          <View style={styles.detailHeader}>
-            <Text style={styles.detailTitle}>Pengaturan {formatSelectedDate(selectedDate)}</Text>
-          </View>
-
-          {/* Form pengaturan tanggal */}
-          <Card style={styles.settingCard}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingLabel}>
-                <SlidersHorizontal size={20} color={colors.onSurfaceVariant} />
-                <Text style={styles.settingLabelText}>Buka Toko</Text>
-              </View>
-              <View style={styles.comingSoonBadge}><Text style={styles.comingSoonText}>Segera Hadir</Text></View>
             </View>
-
-            <View style={styles.dayInfoCard}>
-              <View style={styles.dayInfoRow}>
-                <CalendarDays size={16} color={colors.onSurfaceVariant} />
-                <Text style={styles.dayInfoText}>
-                  {todayStatus?.status === 'available'
-                    ? 'Tersedia — Pelanggan bisa memesan'
-                    : todayStatus?.status === 'full'
-                    ? 'Penuh — Semua slot sudah terbooking'
-                    : 'Belum ada pengaturan'}
-                </Text>
-              </View>
+          ) : services.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>Belum ada layanan</Text>
+              <Text style={styles.helperText}>Tambahkan layanan di menu Listing untuk mulai mengatur slot.</Text>
             </View>
-          </Card>
-
-          <Card style={styles.slotsCard}>
-            <View style={styles.cardHeader}>
-              <Clock size={20} color={colors.primary} />
-              <Text style={styles.cardTitle}>Slot untuk {formatSelectedDate(selectedDate)}</Text>
-            </View>
-            {loadingSlots ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : slotsForSelectedDate.length === 0 ? (
-              <Text style={styles.emptySlotText}>Belum ada slot untuk tanggal ini.</Text>
-            ) : (
-              slotsForSelectedDate.map((slot) => (
-                <View key={slot.id} style={styles.slotRow}>
-                  <View style={styles.slotInfo}>
-                    <Text style={styles.slotTime}>{slot.start_time} - {slot.end_time}</Text>
-                    <Text style={styles.slotCapacity}>{slot.booked_count}/{slot.quota} terisi ({slot.quota - slot.booked_count} tersisa)</Text>
-                  </View>
-                  <Pressable onPress={() => handleDeleteSlot(slot)} style={styles.deleteSlotButton}>
-                    <Trash2 size={19} color={colors.error} />
-                  </Pressable>
-                </View>
-              ))
-            )}
-            <Pressable style={styles.addSlotButton} onPress={() => setShowAddSlotModal(true)}>
-              <Text style={styles.addSlotText}>+ Tambah Slot</Text>
-            </Pressable>
-          </Card>
-
-          {/* Jam Kerja */}
-          <Card style={styles.workingHoursCard}>
-            <View style={styles.cardHeader}>
-              <Clock size={20} color={colors.onSurfaceVariant} />
-              <Text style={styles.cardTitle}>Jam Kerja</Text>
-              <View style={styles.comingSoonBadge}><Text style={styles.comingSoonText}>Segera Hadir</Text></View>
-            </View>
-
-            {/* List sesi per hari */}
-            <View style={styles.sessionsList}>
-              {workingHours.map((wh) => (
-                <View key={wh.id} style={styles.sessionRow}>
-                  <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionLabel}>{wh.label}</Text>
-                    <Text style={styles.sessionTime}>
-                      {wh.start_time} - {wh.end_time}
-                    </Text>
-                  </View>
-                  <Pressable disabled style={[styles.editButton, styles.disabledOverlay]}>
-                    <Text style={styles.editText}>✎</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-
-            {/* Tambah Sesi */}
+          ) : (
             <Pressable
-              disabled
-              style={[styles.addSessionButton, styles.disabledOverlay]}
+              style={({ pressed }) => [styles.serviceSelect, pressed && styles.pressed]}
+              onPress={() => { setServiceSearch(''); setShowServicePicker(true); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Pilih layanan, layanan terpilih ${selectedService?.name ?? ''}`}
+              accessibilityState={{ expanded: showServicePicker }}
             >
-              <Text style={styles.addSessionText}>+ Tambah Sesi</Text>
+              <View style={styles.serviceSelectText}>
+                <Text style={styles.serviceSelectLabel}>Layanan dipilih</Text>
+                <Text style={styles.serviceSelectValue}>{selectedService?.name ?? 'Pilih layanan'}</Text>
+              </View>
+              <ChevronDown size={20} color={colors.onSurfaceVariant} />
             </Pressable>
-
-            {/* Save button */}
-            <Button
-              label={savingWorkingHours ? 'Menyimpan...' : 'Simpan Jam Kerja'}
-              onPress={handleSaveWorkingHours}
-              disabled
-              style={[styles.saveButton, styles.disabledOverlay]}
-            />
-          </Card>
-
-          {/* Blokir Tanggal Massal */}
-          <Pressable
-            style={[styles.blockDateCard, styles.disabledOverlay]}
-            disabled
-          >
-            <View style={styles.blockDateIcon}>
-              <Lock size={20} color={colors.primary} />
+          )}
+          {categoryError && (
+            <View style={styles.categoryWarning}>
+              <Text style={styles.categoryWarningText}>{categoryError} Pembuatan slot dinonaktifkan sampai tipe layanan dapat dipastikan.</Text>
+              <Pressable onPress={() => void loadCategories()} style={styles.retryButton} accessibilityRole="button">
+                <Text style={styles.retryText}>Muat ulang kategori</Text>
+              </Pressable>
             </View>
-            <View style={styles.blockDateInfo}>
-              <Text style={styles.blockDateTitle}>Blokir Tanggal Massal</Text>
-              <Text style={styles.comingSoonText}>Segera Hadir</Text>
-              <Text style={styles.blockDateDesc}>Tutup semua layanan untuk periode libur panjang.</Text>
+          )}
+          {!categoryLoading && !categoryError && selectedService && isHotelService === null && (
+            <View style={styles.categoryWarning}>
+              <Text style={styles.categoryWarningText}>Kategori untuk layanan ini tidak ditemukan. Pembuatan slot dinonaktifkan.</Text>
             </View>
-            <View style={styles.blockDateArrow}>
-              <ChevronRight size={20} color={colors.onSurfaceVariant} />
-            </View>
-          </Pressable>
-
-          {/* Batas Booking H-1 */}
-          <Pressable
-            style={[styles.bookingLimitCard, styles.disabledOverlay]}
-            disabled
-          >
-            <View style={styles.bookingLimitIcon}>
-              <CalendarDays size={20} color="#3B82F6" />
-            </View>
-            <View style={styles.bookingLimitInfo}>
-              <Text style={styles.bookingLimitTitle}>Batas Booking H-1</Text>
-              <Text style={styles.comingSoonText}>Segera Hadir</Text>
-              <Text style={styles.bookingLimitDesc}>
-                Cegah pelanggan memesan di hari yang sama (minimum {bookingLimitH1} jam pertama).
-              </Text>
-            </View>
-            <View style={styles.bookingLimitArrow}>
-              <ChevronRight size={20} color={colors.onSurfaceVariant} />
-            </View>
-          </Pressable>
+          )}
         </View>
 
-        {/* Spacer bawah untuk padding */}
-        <View style={{ height: spacing.sectionGap }} />
+        {!serviceLoading && !serviceError && services.length > 0 && (
+          <>
+            <View style={styles.monthControls}>
+              <Pressable
+                onPress={() => handleMonthChange(-1)}
+                style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Bulan sebelumnya"
+              >
+                <ChevronLeft size={22} color={colors.onSurface} />
+              </Pressable>
+              <View style={styles.monthTitleContainer}>
+                <Pressable
+                  onPress={() => setDatePicker('month')}
+                  style={styles.monthPickerButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pilih bulan"
+                >
+                  <Text style={styles.monthTitle}>{MONTH_NAMES[selectedMonth]}</Text>
+                  <ChevronDown size={16} color={colors.onSurfaceVariant} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setDatePicker('year')}
+                  style={styles.yearPickerButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pilih tahun"
+                >
+                  <Text style={styles.yearTitle}>{selectedYear}</Text>
+                  <ChevronDown size={16} color={colors.onSurfaceVariant} />
+                </Pressable>
+              </View>
+              <Pressable
+                onPress={() => handleMonthChange(1)}
+                style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Bulan berikutnya"
+              >
+                <ChevronRight size={22} color={colors.onSurface} />
+              </Pressable>
+            </View>
+
+            <View style={styles.calendarCard}>
+              <View style={styles.weekRow}>
+                {DAY_NAMES.map((day) => <Text key={day} style={styles.weekDay}>{day}</Text>)}
+              </View>
+              <View style={styles.daysGrid}>
+                {calendarDays.map((day) => (
+                  <Pressable
+                    key={day.date}
+                    onPress={() => handleSelectDate(day.date)}
+                    style={[
+                      styles.dayCell,
+                      day.isSelected && styles.dayCellSelected,
+                      day.isMultiSelected && !day.isSelected && styles.dayCellMultiSelected,
+                      day.isToday && !day.isSelected && styles.dayCellToday,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${formatDate(day.date)}, ${day.status === 'unknown' ? 'status belum tersedia' : day.status === 'none' ? 'tanpa slot' : day.status === 'available' ? 'tersedia' : day.status === 'partial' ? 'terisi sebagian' : 'penuh'}${day.isMultiSelected ? ', dipilih untuk pengaturan slot' : ''}`}
+                    accessibilityState={{ selected: day.isSelected || day.isMultiSelected }}
+                  >
+                    <Text style={[
+                      styles.dayNumber,
+                      !day.isCurrentMonth && styles.dayNumberOutside,
+                      day.isSelected && styles.dayNumberSelected,
+                    ]}>
+                      {day.day}
+                    </Text>
+                    <View style={styles.dayStatusArea}>
+                      <View style={[styles.statusDot, styles[`status_${day.status}`]]} />
+                      {day.isMultiSelected && <Check size={10} color={day.isSelected ? colors.onPrimary : colors.primary} />}
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.legend}>
+                <LegendItem label="Tersedia" status="available" />
+                <LegendItem label="Sebagian" status="partial" />
+                <LegendItem label="Penuh" status="full" />
+                {slotLoading || slotError
+                  ? <LegendItem label="Data belum tersedia" status="unknown" />
+                  : <LegendItem label="Tanpa slot" status="none" />}
+              </View>
+            </View>
+            <Text style={styles.calendarHint}>Ketuk tanggal untuk melihat ringkasan. Ketuk dua kali untuk menambah slot.</Text>
+
+            <View style={styles.actionsRow}>
+              <Pressable
+                onPress={handleToggleMultiDate}
+                style={({ pressed }) => [styles.secondaryButton, multiDateMode && styles.secondaryButtonActive, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: multiDateMode }}
+              >
+                <CalendarDays size={17} color={multiDateMode ? colors.onPrimary : colors.primary} />
+                <Text style={[styles.secondaryButtonText, multiDateMode && styles.secondaryButtonTextActive]}>
+                  {multiDateMode ? 'Mode beberapa tanggal aktif' : 'Pilih beberapa tanggal'}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => openAddSlot(multiDateMode ? selectedDates : [selectedDate])}
+                disabled={!selectedServiceId || (multiDateMode && selectedDates.length === 0) || categoryLoading || Boolean(categoryError) || isHotelService === null}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  (!selectedServiceId || (multiDateMode && selectedDates.length === 0) || categoryLoading || Boolean(categoryError) || isHotelService === null) && styles.buttonDisabled,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={multiDateMode ? `Tambah slot di ${selectedDates.length} tanggal` : 'Tambah slot'}
+              >
+                <Plus size={18} color={colors.onPrimary} />
+                <Text style={styles.primaryButtonText}>Tambah slot</Text>
+              </Pressable>
+            </View>
+
+            {multiDateMode && (
+              <View style={styles.selectionSummary}>
+                <Text style={styles.selectionSummaryTitle}>Tanggal untuk slot baru ({selectedDates.length})</Text>
+                {selectedDates.length === 0 ? (
+                  <Text style={styles.helperText}>Pilih satu atau beberapa tanggal pada kalender.</Text>
+                ) : (
+                  <View style={styles.selectedDateList}>
+                    {[...selectedDates].sort().map((date) => (
+                      <View key={date} style={styles.selectedDateChip}>
+                        <Text style={styles.selectedDateText}>{formatDate(date, { day: 'numeric', month: 'short' })}</Text>
+                        <Pressable
+                          onPress={() => setSelectedDates((current) => current.filter((item) => item !== date))}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Hapus ${formatDate(date)} dari tanggal terpilih`}
+                          style={styles.chipRemoveButton}
+                        >
+                          <X size={14} color={colors.primary} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            <View style={styles.detailHeading}>
+              <Text style={styles.detailDate}>{formatDate(selectedDate)}</Text>
+              {selectedDate === todayISO && <Text style={styles.todayPill}>HARI INI</Text>}
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardTitleRow}>
+                <View style={styles.cardIcon}><Clock3 size={18} color={colors.primary} /></View>
+                <Text style={styles.cardTitle}>Kapasitas slot</Text>
+              </View>
+              {slotLoading ? (
+                <View style={styles.loadingRow}><ActivityIndicator color={colors.primary} /><Text style={styles.helperText}>Memuat slot...</Text></View>
+              ) : slotError ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{slotError}</Text>
+                  <Pressable onPress={() => selectedServiceId !== null && void loadSlots(selectedServiceId)} style={styles.retryButton} accessibilityRole="button">
+                    <Text style={styles.retryText}>Coba lagi</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.capacityRow}>
+                    <CapacityValue label="Total" value={capacity.total} />
+                    <CapacityValue label="Terisi" value={capacity.booked} />
+                    <CapacityValue label="Tersisa" value={capacity.remaining} />
+                  </View>
+                  {slotsForDate.length === 0 ? (
+                    <Text style={styles.emptyMessage}>Belum ada slot pada tanggal ini.</Text>
+                  ) : (
+                    <View style={styles.slotList}>
+                      {slotsForDate.map((slot) => (
+                        <View key={slot.id} style={styles.slotRow}>
+                          <View style={styles.slotTimeIcon}><Clock3 size={16} color={colors.onSurfaceVariant} /></View>
+                          <View style={styles.slotDetails}>
+                            <Text style={styles.slotTime}>{slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}</Text>
+                            <Text style={styles.slotCapacity}>{slot.booked_count} dari {slot.quota} terisi · {Math.max(0, slot.quota - slot.booked_count)} tersisa</Text>
+                          </View>
+                          <Pressable
+                            onPress={() => void handleDeleteSlot(slot)}
+                            disabled={slot.booked_count > 0}
+                            style={({ pressed }) => [styles.deleteButton, slot.booked_count > 0 && styles.buttonDisabled, pressed && slot.booked_count === 0 && styles.pressed]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Hapus slot ${slot.start_time} sampai ${slot.end_time}`}
+                            accessibilityState={{ disabled: slot.booked_count > 0 }}
+                          >
+                            <Trash2 size={18} color={slot.booked_count > 0 ? colors.outline : colors.error} />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardTitleRow}>
+                <View style={styles.cardIcon}><Users size={18} color={colors.primary} /></View>
+                <Text style={styles.cardTitle}>Booking masuk</Text>
+                {!bookingLoading && !bookingError && (
+                  <Text style={styles.bookingCount}>{bookingsForDate.length}</Text>
+                )}
+              </View>
+              {bookingLoading ? (
+                <View style={styles.loadingRow}><ActivityIndicator color={colors.primary} /><Text style={styles.helperText}>Memuat booking...</Text></View>
+              ) : bookingError ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{bookingError}</Text>
+                  <Pressable onPress={() => void loadBookings()} style={styles.retryButton} accessibilityRole="button">
+                    <Text style={styles.retryText}>Coba lagi</Text>
+                  </Pressable>
+                </View>
+              ) : bookingsForDate.length === 0 ? (
+                <Text style={styles.emptyMessage}>Belum ada booking pada tanggal ini.</Text>
+              ) : (
+                <View style={styles.bookingList}>
+                  {bookingsForDate.map((booking) => (
+                    <View key={booking.id} style={styles.bookingRow}>
+                      <View style={styles.bookingAvatar}><Text style={styles.bookingInitial}>{booking.customerName.slice(0, 1).toUpperCase()}</Text></View>
+                      <View style={styles.bookingDetails}>
+                        <Text style={styles.bookingName}>{booking.customerName}</Text>
+                        <Text style={styles.bookingTime}>
+                          {booking.checkInDate && booking.checkOutDate
+                            ? `Check-in ${formatDate(booking.checkInDate, { day: 'numeric', month: 'short', year: 'numeric' })} · Check-out ${formatDate(booking.checkOutDate, { day: 'numeric', month: 'short', year: 'numeric' })}`
+                            : booking.startTime && booking.endTime
+                            ? `${booking.startTime.slice(0, 5)}–${booking.endTime.slice(0, 5)}`
+                            : booking.serviceName ?? selectedService?.name}
+                        </Text>
+                      </View>
+                      <View style={[styles.bookingStatus, bookingStatusStyle(booking.status)]}>
+                        <Text style={styles.bookingStatusText}>{statusLabel(booking.status)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
-      </>}
+
+      <Modal visible={showServicePicker} transparent animationType="fade" onRequestClose={() => setShowServicePicker(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.pickerModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih layanan</Text>
+              <Pressable
+                onPress={() => setShowServicePicker(false)}
+                style={styles.modalClose}
+                accessibilityRole="button"
+                accessibilityLabel="Tutup pilihan layanan"
+              >
+                <X size={21} color={colors.onSurfaceVariant} />
+              </Pressable>
+            </View>
+            <View style={styles.searchBox}>
+              <Search size={18} color={colors.onSurfaceVariant} />
+              <TextInput
+                value={serviceSearch}
+                onChangeText={setServiceSearch}
+                placeholder="Cari nama layanan"
+                placeholderTextColor={colors.onSurfaceVariant}
+                style={styles.searchInput}
+                autoCorrect={false}
+                accessibilityLabel="Cari nama layanan"
+              />
+            </View>
+            <FlatList
+              data={visibleServices}
+              keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={<Text style={styles.emptyMessage}>Layanan tidak ditemukan.</Text>}
+              renderItem={({ item }) => {
+                const isSelected = item.id === selectedServiceId;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      setSelectedServiceId(item.id);
+                      setShowServicePicker(false);
+                    }}
+                    style={({ pressed }) => [styles.serviceOption, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text style={[styles.serviceOptionText, isSelected && styles.serviceOptionTextSelected]}>{item.name}</Text>
+                    {isSelected && <Check size={18} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={datePicker !== null} transparent animationType="fade" onRequestClose={() => setDatePicker(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.pickerModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{datePicker === 'month' ? 'Pilih bulan' : 'Pilih tahun'}</Text>
+              <Pressable onPress={() => setDatePicker(null)} style={styles.modalClose} accessibilityRole="button" accessibilityLabel="Tutup pemilih tanggal">
+                <X size={21} color={colors.onSurfaceVariant} />
+              </Pressable>
+            </View>
+            <FlatList
+              key={datePicker}
+              data={datePicker === 'month' ? MONTH_NAMES : yearOptions.map(String)}
+              keyExtractor={(item) => String(item)}
+              initialScrollIndex={datePicker === 'month' ? selectedMonth : yearOptions.indexOf(selectedYear)}
+              getItemLayout={(_, index) => ({ length: 52, offset: 52 * index, index })}
+              renderItem={({ item, index }) => {
+                const isSelected = datePicker === 'month' ? index === selectedMonth : Number(item) === selectedYear;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      if (datePicker === 'month') setSelectedMonth(index);
+                      else setSelectedYear(Number(item));
+                      setDatePicker(null);
+                    }}
+                    style={({ pressed }) => [styles.serviceOption, isSelected && styles.pickerOptionSelected, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <Text style={[styles.serviceOptionText, isSelected && styles.serviceOptionTextSelected]}>{item}</Text>
+                    {isSelected && <Check size={18} color={colors.primary} />}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       <AddSlotModal
         visible={showAddSlotModal}
         onClose={() => setShowAddSlotModal(false)}
         serviceId={selectedServiceId}
-        defaultDate={selectedDate}
-        onCreated={() => selectedServiceId && loadSlots(selectedServiceId)}
+        selectedDates={slotFormDates}
+        isHotel={isHotelService}
+        existingSlots={slots}
+        onCreated={handleCreated}
       />
-
-      {/* Month Picker Modal */}
-      <Modal visible={showMonthPicker} transparent animationType="fade" onRequestClose={() => setShowMonthPicker(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Pilih Bulan</Text>
-            <FlatList
-              data={MONTH_NAMES_ID}
-              keyExtractor={(_, i) => String(i)}
-              renderItem={({ item, index }) => (
-                <Pressable
-                  style={[styles.modalItem, index === selectedMonth && styles.modalItemSelected]}
-                  onPress={() => { setSelectedMonth(index); setShowMonthPicker(false); }}
-                >
-                  <Text style={[styles.modalItemText, index === selectedMonth && styles.modalItemTextSelected]}>
-                    {item}
-                  </Text>
-                </Pressable>
-              )}
-            />
-            <Pressable style={styles.modalCancel} onPress={() => setShowMonthPicker(false)}>
-              <Text style={styles.modalCancelText}>Batal</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Year Picker Modal */}
-      <Modal visible={showYearPicker} transparent animationType="fade" onRequestClose={() => setShowYearPicker(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Pilih Tahun</Text>
-            <FlatList
-              data={Array.from({ length: YEAR_RANGE[1] - YEAR_RANGE[0] + 1 }, (_, i) => YEAR_RANGE[0] + i)}
-              keyExtractor={(y) => String(y)}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={[styles.modalItem, item === selectedYear && styles.modalItemSelected]}
-                  onPress={() => { setSelectedYear(item); setShowYearPicker(false); }}
-                >
-                  <Text style={[styles.modalItemText, item === selectedYear && styles.modalItemTextSelected]}>
-                    {item}
-                  </Text>
-                </Pressable>
-              )}
-            />
-            <Pressable style={styles.modalCancel} onPress={() => setShowYearPicker(false)}>
-              <Text style={styles.modalCancelText}>Batal</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-// ============ HELPER FUNCS ===========
-function formatSelectedDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = MONTH_NAMES_ID[d.getMonth()] ?? '';
-  return `${day} ${month}`;
+function LegendItem({ label, status }: { label: string; status: CalendarDay['status'] }) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, styles[`status_${status}`]]} />
+      <Text style={styles.legendText}>{label}</Text>
+    </View>
+  );
 }
 
-// ============ STYLES ===========
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const DAY_CELL_WIDTH = (SCREEN_WIDTH - spacing.containerMargin * 2 - spacing.stackSm * 6) / 7;
+function CapacityValue({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.capacityValue}>
+      <Text style={styles.capacityNumber}>{value}</Text>
+      <Text style={styles.capacityLabel}>{label}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.sectionGap,
-  },
-  // ---- Header ----
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.containerMargin,
-    paddingTop: 60,
-    paddingBottom: spacing.stackMd,
-    backgroundColor: colors.primaryContainer,
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
-    overflow: 'hidden',
-    minHeight: 130,
-  },
-  headerDecorCircleLarge: {
-    position: 'absolute', width: 180, height: 180, borderRadius: 90,
-    backgroundColor: colors.primary, opacity: 0.08, right: -70, top: -90,
-  },
-  headerDecorCircleSmall: {
-    position: 'absolute', width: 90, height: 90, borderRadius: 45,
-    backgroundColor: colors.secondary, opacity: 0.08, right: 50, bottom: -45,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackMd },
-  titleIconWrap: {
-    width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title: {
-    fontFamily: typography.headlineLg.fontFamily, fontSize: 22,
-    fontWeight: typography.headlineLg.fontWeight, color: colors.onSurface,
-  },
-  titleSubtitle: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginTop: 4 },
-  servicePickerSection: { paddingHorizontal: spacing.containerMargin, paddingTop: spacing.stackMd },
-  sectionHeading: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginBottom: spacing.stackSm },
-  servicePicker: { gap: spacing.stackSm, paddingBottom: spacing.stackSm },
-  filterChip: { paddingHorizontal: spacing.stackMd, paddingVertical: spacing.stackSm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
-  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { fontFamily: typography.labelMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant },
-  filterChipTextActive: { color: colors.onPrimary, fontWeight: '700' },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logoBox: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.onPrimary,
-  },
-  brandTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.onSurface,
-  },
-  openBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.stackMd,
-    paddingVertical: spacing.stackSm,
-    borderRadius: radius.full,
-  },
-  openBtnText: {
-    fontFamily: typography.button.fontFamily,
-    fontSize: typography.button.fontSize,
-    fontWeight: typography.button.fontWeight,
-    color: colors.onPrimary,
-  },
-  // ---- Title Section ----
-  titleSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.containerMargin,
-    paddingTop: spacing.stackMd,
-    paddingBottom: spacing.stackSm,
-  },
-  titleLeft: {
-    flex: 1,
-  },
-  monthYear: {
-    fontFamily: typography.headlineLg.fontFamily,
-    fontSize: typography.headlineLg.fontSize,
-    fontWeight: typography.headlineLg.fontWeight,
-    color: colors.onSurface,
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 14,
-    color: colors.onSurfaceVariant,
-    marginTop: 4,
-  },
-  navArrowRow: {
-    flexDirection: 'row',
-    gap: spacing.stackMd,
-  },
-  navArrowBtn: {
-    padding: spacing.stackSm,
-  },
-  // ---- Picker Row ----
-  pickerRow: {
-    flexDirection: 'row',
-    gap: spacing.stackMd,
-    paddingHorizontal: spacing.containerMargin,
-    paddingTop: spacing.stackSm,
-    paddingBottom: spacing.stackMd,
-  },
-  pickerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.stackMd,
-    paddingVertical: spacing.stackSm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    backgroundColor: colors.surfaceContainerLowest,
-  },
-  pickerLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-  },
-  pickerValue: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
-    color: colors.onSurface,
-    fontWeight: '600',
-    minWidth: 50,
-  },
-  // ---- Legend ----
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.containerMargin,
-    paddingBottom: spacing.stackMd,
-    gap: spacing.stackMd,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-  },
-  calendarHint: {
-    paddingHorizontal: spacing.containerMargin,
-    paddingBottom: spacing.stackSm,
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  // ---- Calendar Container ----
-  calendarContainer: {
-    marginHorizontal: spacing.containerMargin,
-    marginBottom: spacing.stackMd,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    backgroundColor: colors.surfaceContainerLowest,
-  },
-  dayNamesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.stackSm,
-  },
-  dayName: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-    textAlign: 'center',
-    width: DAY_CELL_WIDTH,
-  },
-  weekContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-  },
-  dayCell: {
-    width: DAY_CELL_WIDTH,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.stackSm,
-    borderRadius: radius.sm,
-    marginBottom: spacing.stackSm,
-  },
-  dayCellOtherMonth: {
-    opacity: 0.4,
-  },
-  dayCellSelected: {
-    backgroundColor: colors.primaryContainer,
-    borderRadius: radius.sm,
-  },
-  dayCellFull: {
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radius.sm,
-  },
-  dayCellAvailable: {
-    backgroundColor: colors.accentGreenContainer,
-    borderRadius: radius.sm,
-  },
-  dayCellToday: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  dayNumberContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayNumber: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.onSurface,
-  },
-  dayNumberOtherMonth: {
-    color: colors.outline,
-  },
-  dayNumberSelected: {
-    color: colors.onPrimary,
-    fontWeight: '700',
-  },
-  dayNumberToday: {
-    color: colors.primary,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    position: 'absolute',
-    bottom: 2,
-  },
-  statusLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 9,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
-    textAlign: 'center',
-    maxWidth: DAY_CELL_WIDTH,
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.stackMd,
-    marginTop: spacing.stackMd,
-  },
-  navBtn: {
-    padding: spacing.stackSm,
-  },
-  navMonthLabel: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.onSurface,
-    minWidth: 120,
-    textAlign: 'center',
-  },
-  // ---- Detail Container ----
-  detailContainer: {
-    paddingHorizontal: spacing.containerMargin,
-  },
-  detailHeader: {
-    marginBottom: spacing.stackMd,
-  },
-  detailTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-  },
-  settingCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-  },
-  slotsCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-  },
-  emptySlotText: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, marginBottom: spacing.stackMd },
-  slotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceContainer, borderRadius: radius.sm, padding: spacing.stackMd, marginBottom: spacing.stackSm },
-  slotInfo: { flex: 1 },
-  slotTime: { fontFamily: typography.titleMd.fontFamily, fontSize: 14, fontWeight: '600', color: colors.onSurface },
-  slotCapacity: { fontFamily: typography.bodyMd.fontFamily, fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 },
-  deleteSlotButton: { padding: spacing.stackSm },
-  addSlotButton: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.full, padding: spacing.stackMd, alignItems: 'center', marginTop: spacing.stackSm },
-  addSlotText: { fontFamily: typography.button.fontFamily, fontSize: typography.button.fontSize, color: colors.primary, fontWeight: typography.button.fontWeight },
-  comingSoonBadge: { marginLeft: 'auto', backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, paddingHorizontal: spacing.stackSm, paddingVertical: 4 },
-  comingSoonText: { fontFamily: typography.labelMd.fontFamily, fontSize: 10, color: colors.onSurfaceVariant },
-  disabledOverlay: { opacity: 0.5 },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.stackMd,
-  },
-  settingLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
-  },
-  settingLabelText: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 14,
-    color: colors.onSurface,
-  },
-  toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.outlineVariant,
-    padding: 3,
-    justifyContent: 'center',
-  },
-  toggleActive: {
-    backgroundColor: colors.primary,
-  },
-  toggleKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.onSurface,
-  },
-  toggleKnobActive: {
-    alignSelf: 'flex-end',
-  },
-  slotsSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.outlineVariant,
-    paddingTop: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-  },
-  sectionText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 13,
-    color: colors.onSurfaceVariant,
-    marginBottom: spacing.stackSm,
-  },
-  slotsCounter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.stackMd,
-  },
-  slotsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  slotsButtonText: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 20,
-    color: colors.onSurface,
-    fontWeight: '600',
-  },
-  slotsCount: {
-    fontFamily: typography.headlineLgMobile.fontFamily,
-    fontSize: typography.headlineLgMobile.fontSize,
-    fontWeight: typography.headlineLgMobile.fontWeight,
-    color: colors.onSurface,
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  dayInfoCard: {
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radius.sm,
-    padding: spacing.stackSm,
-    marginTop: spacing.stackMd,
-  },
-  dayInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
-  },
-  dayInfoText: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-  },
-  workingHoursCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.stackSm,
-    marginBottom: spacing.stackMd,
-  },
-  cardTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-  },
-  sessionsList: {
-    gap: spacing.stackSm,
-  },
-  sessionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radius.sm,
-    padding: spacing.stackSm,
-    marginBottom: spacing.stackSm,
-  },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurface,
-    fontWeight: '500',
-  },
-  sessionTime: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 13,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  editButton: {
-    padding: spacing.stackSm,
-  },
-  editText: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: 16,
-    color: colors.primary,
-  },
-  addSessionButton: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    borderRadius: radius.sm,
-    padding: spacing.stackMd,
-    alignItems: 'center',
-    marginTop: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-  },
-  addSessionText: {
-    fontFamily: typography.button.fontFamily,
-    fontSize: typography.button.fontSize,
-    color: colors.primary,
-    fontWeight: typography.button.fontWeight,
-  },
-  saveButton: {
-    marginTop: spacing.stackSm,
-  },
-  blockDateCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    marginBottom: spacing.stackMd,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  blockDateIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: colors.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.stackMd,
-  },
-  blockDateInfo: {
-    flex: 1,
-  },
-  blockDateTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-  },
-  blockDateDesc: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  blockDateArrow: {
-    padding: spacing.stackSm,
-  },
-  bookingLimitCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-  },
-  bookingLimitIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.stackMd,
-  },
-  bookingLimitInfo: {
-    flex: 1,
-  },
-  bookingLimitTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-  },
-  bookingLimitDesc: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
-  },
-  bookingLimitArrow: {
-    padding: spacing.stackSm,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.containerMargin,
-  },
-  modalCard: {
-    backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.lg,
-    padding: spacing.stackMd,
-    width: SCREEN_WIDTH - spacing.containerMargin * 2,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontFamily: typography.titleMd.fontFamily,
-    fontSize: typography.titleMd.fontSize,
-    fontWeight: typography.titleMd.fontWeight,
-    color: colors.onSurface,
-    marginBottom: spacing.stackMd,
-    textAlign: 'center',
-  },
-  modalItem: {
-    paddingVertical: spacing.stackMd,
-    paddingHorizontal: spacing.stackMd,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
-  },
-  modalItemSelected: {
-    backgroundColor: colors.primaryContainer,
-    borderRadius: radius.sm,
-  },
-  modalItemText: {
-    fontFamily: typography.bodyMd.fontFamily,
-    fontSize: 16,
-    color: colors.onSurface,
-  },
-  modalItemTextSelected: {
-    color: colors.onPrimary,
-    fontWeight: '700',
-  },
-  modalCancel: {
-    marginTop: spacing.stackMd,
-    paddingVertical: spacing.stackMd,
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    fontFamily: typography.button.fontFamily,
-    fontSize: typography.button.fontSize,
-    color: colors.error,
-    fontWeight: typography.button.fontWeight,
-  },
+  screen: { flex: 1, backgroundColor: colors.surface },
+  content: { paddingBottom: spacing.sectionGap, paddingHorizontal: spacing.containerMargin },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackMd, paddingHorizontal: spacing.stackMd, paddingTop: spacing.stackLg, paddingBottom: spacing.stackMd, marginBottom: spacing.stackMd, borderRadius: radius.lg, backgroundColor: colors.primary },
+  headerIcon: { width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.onPrimary, alignItems: 'center', justifyContent: 'center' },
+  headerText: { flex: 1 },
+  title: { fontFamily: typography.headlineLgMobile.fontFamily, fontSize: typography.headlineLgMobile.fontSize, fontWeight: typography.headlineLgMobile.fontWeight, color: colors.onPrimary },
+  subtitle: { fontFamily: typography.bodySm.fontFamily, fontSize: typography.bodySm.fontSize, color: colors.primaryFixed, marginTop: 3 },
+  section: { marginTop: spacing.stackSm },
+  sectionLabel: { fontFamily: typography.labelMd.fontFamily, fontSize: 11, letterSpacing: 0.8, color: colors.onSurfaceVariant, marginBottom: spacing.stackSm },
+  serviceSelect: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.stackMd, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
+  serviceSelectText: { flex: 1, marginRight: spacing.stackMd },
+  serviceSelectLabel: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant },
+  serviceSelectValue: { fontFamily: typography.labelLg.fontFamily, fontSize: 15, fontWeight: '600', color: colors.onSurface, marginTop: 2 },
+  monthControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.stackLg, marginBottom: spacing.stackMd },
+  iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, backgroundColor: colors.surfaceContainerLow },
+  monthTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm },
+  monthPickerButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.stackSm },
+  monthTitle: { fontFamily: typography.titleMd.fontFamily, fontSize: typography.titleMd.fontSize, fontWeight: typography.titleMd.fontWeight, color: colors.onSurface },
+  yearPickerButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.stackSm },
+  yearTitle: { fontFamily: typography.labelLg.fontFamily, fontSize: typography.labelLg.fontSize, color: colors.onSurfaceVariant },
+  calendarCard: { paddingHorizontal: spacing.stackSm, paddingTop: spacing.stackMd, paddingBottom: spacing.stackMd, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.outlineVariant },
+  calendarHint: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.stackSm },
+  weekRow: { flexDirection: 'row', marginBottom: spacing.stackSm },
+  weekDay: { flex: 1, textAlign: 'center', fontFamily: typography.labelSm.fontFamily, fontSize: 10, color: colors.onSurfaceVariant, paddingVertical: spacing.stackSm },
+  daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  dayCell: { width: '14.2857%', minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, marginVertical: 2 },
+  dayCellSelected: { backgroundColor: colors.primary },
+  dayCellMultiSelected: { backgroundColor: colors.primaryFixed, borderWidth: 1, borderColor: colors.primary },
+  dayCellToday: { borderWidth: 1, borderColor: colors.primary },
+  dayNumber: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, fontWeight: '500', color: colors.onSurface },
+  dayNumberOutside: { color: colors.outline },
+  dayNumberSelected: { color: colors.onPrimary, fontWeight: '700' },
+  dayStatusArea: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 10, marginTop: 2 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  status_available: { backgroundColor: colors.accentGreen },
+  status_partial: { backgroundColor: colors.tertiary },
+  status_full: { backgroundColor: colors.error },
+  status_none: { backgroundColor: colors.outlineVariant },
+  status_unknown: { backgroundColor: colors.outline },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.stackMd, marginTop: spacing.stackMd },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant },
+  actionsRow: { gap: spacing.stackSm, marginTop: spacing.stackMd },
+  secondaryButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.stackSm, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.full, backgroundColor: colors.surfaceContainerLowest, paddingHorizontal: spacing.stackMd },
+  secondaryButtonActive: { backgroundColor: colors.primary },
+  secondaryButtonText: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, color: colors.primary },
+  secondaryButtonTextActive: { color: colors.onPrimary },
+  primaryButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.stackSm, borderRadius: radius.full, backgroundColor: colors.primary, paddingHorizontal: spacing.stackMd },
+  primaryButtonText: { fontFamily: typography.button.fontFamily, fontSize: 14, fontWeight: typography.button.fontWeight, color: colors.onPrimary },
+  buttonDisabled: { opacity: 0.45 },
+  pressed: { opacity: 0.8 },
+  selectionSummary: { padding: spacing.stackMd, marginTop: spacing.stackMd, borderRadius: radius.md, backgroundColor: colors.surfaceContainerLow },
+  selectionSummaryTitle: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, color: colors.onSurface, marginBottom: spacing.stackSm },
+  selectedDateList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.stackSm },
+  selectedDateChip: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: spacing.stackSm, paddingRight: 4, borderRadius: radius.full, backgroundColor: colors.surfaceContainerLowest },
+  selectedDateText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onSurface },
+  chipRemoveButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  detailHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm, marginTop: spacing.stackLg, marginBottom: spacing.stackSm },
+  detailDate: { fontFamily: typography.titleMd.fontFamily, fontSize: 17, fontWeight: typography.titleMd.fontWeight, color: colors.onSurface },
+  todayPill: { overflow: 'hidden', borderRadius: radius.full, backgroundColor: colors.primaryFixed, paddingHorizontal: spacing.stackSm, paddingVertical: 4, fontFamily: typography.labelSm.fontFamily, fontSize: 9, color: colors.onPrimaryFixedVariant },
+  card: { padding: spacing.stackMd, marginBottom: spacing.stackMd, borderRadius: radius.lg, backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: colors.outlineVariant },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm, marginBottom: spacing.stackMd },
+  cardIcon: { width: 34, height: 34, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryFixed },
+  cardTitle: { flex: 1, fontFamily: typography.labelLg.fontFamily, fontSize: 14, fontWeight: '600', color: colors.onSurface },
+  bookingCount: { minWidth: 28, textAlign: 'center', overflow: 'hidden', borderRadius: radius.full, paddingHorizontal: spacing.stackSm, paddingVertical: 3, backgroundColor: colors.surfaceContainerLow, fontFamily: typography.labelMd.fontFamily, fontSize: 12, color: colors.onSurfaceVariant },
+  capacityRow: { flexDirection: 'row', borderRadius: radius.md, backgroundColor: colors.surfaceContainerLow, paddingVertical: spacing.stackMd, marginBottom: spacing.stackMd },
+  capacityValue: { flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: colors.outlineVariant },
+  capacityNumber: { fontFamily: typography.titleMd.fontFamily, fontSize: 20, fontWeight: typography.titleMd.fontWeight, color: colors.onSurface },
+  capacityLabel: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
+  emptyMessage: { fontFamily: typography.bodyMd.fontFamily, fontSize: 13, color: colors.onSurfaceVariant, paddingVertical: spacing.stackMd },
+  slotList: { gap: spacing.stackSm },
+  slotRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm, paddingVertical: spacing.stackSm, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
+  slotTimeIcon: { width: 36, height: 36, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceContainerLow },
+  slotDetails: { flex: 1 },
+  slotTime: { fontFamily: typography.labelLg.fontFamily, fontSize: 14, fontWeight: '600', color: colors.onSurface },
+  slotCapacity: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 },
+  deleteButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
+  bookingList: { gap: spacing.stackSm },
+  bookingRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm, paddingVertical: spacing.stackSm, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
+  bookingAvatar: { width: 38, height: 38, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondaryContainer },
+  bookingInitial: { fontFamily: typography.labelLg.fontFamily, fontSize: 14, color: colors.onSecondaryContainer },
+  bookingDetails: { flex: 1 },
+  bookingName: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, fontWeight: '600', color: colors.onSurface },
+  bookingTime: { fontFamily: typography.bodySm.fontFamily, fontSize: 11, color: colors.onSurfaceVariant, marginTop: 3 },
+  bookingStatus: { borderRadius: radius.full, paddingHorizontal: spacing.stackSm, paddingVertical: 5 },
+  bookingStatusPending: { backgroundColor: colors.primaryFixed },
+  bookingStatusConfirmed: { backgroundColor: colors.accentGreenContainer },
+  bookingStatusCancelled: { backgroundColor: colors.surfaceContainerHigh },
+  bookingStatusText: { fontFamily: typography.labelSm.fontFamily, fontSize: 10, color: colors.onSurface },
+  loadingRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.stackSm },
+  helperText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onSurfaceVariant, lineHeight: 18 },
+  emptyBox: { padding: spacing.stackMd, borderRadius: radius.md, backgroundColor: colors.surfaceContainerLow },
+  emptyTitle: { fontFamily: typography.labelLg.fontFamily, fontSize: 14, color: colors.onSurface, marginBottom: 4 },
+  errorBox: { padding: spacing.stackMd, borderRadius: radius.md, backgroundColor: colors.errorContainer },
+  categoryWarning: { padding: spacing.stackMd, marginTop: spacing.stackSm, borderRadius: radius.md, backgroundColor: colors.primaryFixed },
+  categoryWarningText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onPrimaryFixedVariant, lineHeight: 18 },
+  errorText: { fontFamily: typography.bodySm.fontFamily, fontSize: 12, color: colors.onErrorContainer, lineHeight: 18 },
+  retryButton: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.stackSm },
+  retryText: { fontFamily: typography.labelLg.fontFamily, fontSize: 13, color: colors.onErrorContainer, textDecorationLine: 'underline' },
+  modalBackdrop: { flex: 1, justifyContent: 'center', padding: spacing.containerMargin, backgroundColor: 'rgba(0,0,0,0.45)' },
+  pickerModal: { maxHeight: '80%', padding: spacing.stackMd, borderRadius: radius.lg, backgroundColor: colors.surfaceContainerLowest },
+  modalHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.stackSm },
+  modalTitle: { fontFamily: typography.titleMd.fontFamily, fontSize: 17, fontWeight: typography.titleMd.fontWeight, color: colors.onSurface },
+  modalClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  searchBox: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm, paddingHorizontal: spacing.stackMd, borderWidth: 1, borderColor: colors.outlineVariant, borderRadius: radius.md, marginBottom: spacing.stackSm },
+  searchInput: { flex: 1, minHeight: 44, fontFamily: typography.bodyMd.fontFamily, fontSize: 14, color: colors.onSurface },
+  serviceOption: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.stackSm, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant },
+  serviceOptionText: { flex: 1, fontFamily: typography.bodyMd.fontFamily, fontSize: 14, color: colors.onSurface },
+  serviceOptionTextSelected: { color: colors.primary, fontWeight: '600' },
+  pickerOptionSelected: { backgroundColor: colors.surfaceContainerLow },
 });
