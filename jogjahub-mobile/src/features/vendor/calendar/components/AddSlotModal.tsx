@@ -68,16 +68,16 @@ export default function AddSlotModal({
   existingSlots,
   onCreated,
 }: Props) {
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState(' ');
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
   const [quota, setQuota] = useState('1');
   const [saving, setSaving] = useState(false);
   const submitLock = useRef(false);
 
   useEffect(() => {
     if (visible) {
-      setStartTime(' ');
-      setEndTime(' ');
+      setStartTime('08:00');
+      setEndTime('09:00');
       setQuota('1');
     }
   }, [visible]);

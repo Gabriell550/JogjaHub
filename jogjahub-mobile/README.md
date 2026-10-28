@@ -90,6 +90,12 @@ Endpoint tenant memerlukan autentikasi, role tenant, dan tenant yang disetujui. 
 
 Perubahan backend minimum yang disarankan sebelum menjamin konsistensi multi-perangkat: endpoint batch yang membuat slot untuk `dates[]` dalam satu transaksi dengan validasi duplikasi/konflik di server, serta filter layanan dan tanggal pada daftar booking. Dokumentasi ini mencatat gap; kontrak API backend tidak diubah oleh implementasi mobile ini.
 
+## Form layanan tenant
+
+Form tambah/edit layanan memakai `POST /tenant/services` dan `POST /tenant/services/{id}`. Create mengirim `name`, `subcategory_id`, `price`, `description`, dan `photos[]`; edit memakai method spoofing `_method=PUT` yang ditangani `vendorApi.updateService`, serta mendukung `remove_photos[]` untuk menghapus foto yang sudah tersimpan. Foto dibatasi maksimal 10 file JPG/PNG/WebP, masing-masing 5 MB.
+
+Pemilihan kategori menampilkan kategori beserta subkategori dari `GET /categories`. Harga dikirim sebagai angka Rupiah (integer lebih dari 0); format ribuan hanya untuk tampilan. Status aktif belum tersedia pada kontrak API, sehingga form menampilkannya sebagai informasi read-only dan tidak mengirim nilai status yang tidak didukung.
+
 ## Verifikasi
 
 ```bash
