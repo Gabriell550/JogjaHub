@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Services\BookingService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -18,6 +19,10 @@ use Illuminate\Support\Facades\Log;
  * Tugasnya: cek apakah pembayaran sudah dilakukan.
  * - Jika SUDAH bayar   → tidak lakukan apa-apa (webhook Xendit sudah handle)
  * - Jika BELUM bayar   → lepas slot + batalkan booking
+ *
+ * Mendukung dua mode booking:
+ *  - Single-slot (salon/barbershop): release slot via booking_slots pivot atau fallback slot_id
+ *  - Multi-slot hotel: release semua slot dari pivot booking_slots
  *
  * Ini adalah safety net: pastikan slot tidak terkunci selamanya
  * karena user abandon di halaman pembayaran.
@@ -35,9 +40,9 @@ class ReleaseExpiredBookingJob implements ShouldQueue
         private readonly int $bookingId
     ) {}
 
-    public function handle(): void
+    public function handle(BookingService $bookingService): void
     {
-        DB::transaction(function () {
+        DB::transaction(function () use ($bookingService) {
             // Lock booking row supaya tidak ada race condition
             // dengan webhook Xendit yang mungkin tiba bersamaan
             $booking = Booking::where('id', $this->bookingId)
@@ -67,17 +72,12 @@ class ReleaseExpiredBookingJob implements ShouldQueue
             // Update payment menjadi expired
             $payment?->update(['status' => 'expired']);
 
-            // Kembalikan kuota slot jika booking ini pakai slot
-            if ($booking->slot_id) {
-                $slot = \App\Models\TimeSlot::where('id', $booking->slot_id)
-                    ->lockForUpdate()
-                    ->first();
+            // Kembalikan kuota slot (single-slot maupun multi-slot hotel)
+            // Menggunakan BookingService::releaseBookingSlots() supaya logika release
+            // tidak duplikat antara Job dan cancelBooking().
+            $bookingService->releaseBookingSlots($booking);
 
-                if ($slot && $slot->booked_count > 0) {
-                    $slot->decrement('booked_count');
-                    Log::info("ReleaseExpiredBookingJob: slot #{$slot->id} dilepas (+1 kuota).");
-                }
-            }
+            Log::info("ReleaseExpiredBookingJob: slot booking #{$this->bookingId} dilepas.");
 
             // Batalkan booking
             $booking->update(['status' => BookingStatus::CANCELLED->value]);

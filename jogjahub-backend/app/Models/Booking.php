@@ -55,6 +55,23 @@ class Booking extends Model
         return $this->belongsTo(TimeSlot::class, 'slot_id');
     }
 
+    /**
+     * Relasi many-to-many ke TimeSlot via pivot booking_slots.
+     *
+     * Dipakai untuk multi-slot booking (hotel): semua malam/slot yang dikunci
+     * oleh satu booking tersimpan di sini. Untuk single-slot (salon, dll),
+     * juga ada 1 record di pivot ini demi konsistensi release saat cancel/expired.
+     */
+    public function slots()
+    {
+        return $this->belongsToMany(
+            TimeSlot::class,
+            'booking_slots',
+            'booking_id',
+            'time_slot_id'
+        )->withTimestamps();
+    }
+
     public function review()
     {
         return $this->hasOne(Review::class);
