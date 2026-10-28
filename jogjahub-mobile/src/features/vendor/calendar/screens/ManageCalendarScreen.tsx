@@ -54,6 +54,8 @@ type BookingItem = {
   slotDate?: string;
   startTime?: string;
   endTime?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
 };
 type CalendarDay = {
   date: string;
@@ -145,18 +147,30 @@ function parseSlots(payload: unknown): SlotItem[] {
   });
 }
 
+function isDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
 function parseBookings(payload: unknown): BookingItem[] {
   return resourceRows(payload).map((item) => {
     const service = isRecord(item.service) ? item.service : undefined;
     const customer = isRecord(item.customer) ? item.customer : undefined;
     const slot = isRecord(item.slot) ? item.slot : undefined;
+    const details = isRecord(item.details) ? item.details : undefined;
+    const checkInDate = details?.check_in_date;
+    const checkOutDate = details?.check_out_date;
     if (
       item.id === undefined ||
       item.id === null ||
       typeof item.status !== 'string' ||
       service?.id === undefined ||
       typeof customer?.name !== 'string' ||
-      (slot !== undefined && typeof slot.slot_date !== 'string')
+      (slot !== undefined && typeof slot.slot_date !== 'string') ||
+      ((checkInDate !== undefined || checkOutDate !== undefined) &&
+        (!isDateOnly(checkInDate) || !isDateOnly(checkOutDate) || checkOutDate <= checkInDate))
     ) {
       throw new Error('Data booking dari API tidak valid.');
     }
@@ -169,6 +183,8 @@ function parseBookings(payload: unknown): BookingItem[] {
       slotDate: typeof slot?.slot_date === 'string' ? slot.slot_date : undefined,
       startTime: typeof slot?.start_time === 'string' ? slot.start_time : undefined,
       endTime: typeof slot?.end_time === 'string' ? slot.end_time : undefined,
+      checkInDate: isDateOnly(checkInDate) ? checkInDate : undefined,
+      checkOutDate: isDateOnly(checkOutDate) ? checkOutDate : undefined,
     };
   });
 }
@@ -402,7 +418,13 @@ export default function ManageCalendarScreen() {
   );
   const bookingsForDate = useMemo(
     () => bookings.filter((booking) =>
-      booking.serviceId === String(selectedServiceId) && booking.slotDate === selectedDate,
+      booking.serviceId === String(selectedServiceId) && (
+        booking.slotDate === selectedDate ||
+        (booking.checkInDate !== undefined &&
+          booking.checkOutDate !== undefined &&
+          booking.checkInDate <= selectedDate &&
+          selectedDate < booking.checkOutDate)
+      ),
     ),
     [bookings, selectedDate, selectedServiceId],
   );
@@ -799,7 +821,9 @@ export default function ManageCalendarScreen() {
                       <View style={styles.bookingDetails}>
                         <Text style={styles.bookingName}>{booking.customerName}</Text>
                         <Text style={styles.bookingTime}>
-                          {booking.startTime && booking.endTime
+                          {booking.checkInDate && booking.checkOutDate
+                            ? `Check-in ${formatDate(booking.checkInDate, { day: 'numeric', month: 'short', year: 'numeric' })} · Check-out ${formatDate(booking.checkOutDate, { day: 'numeric', month: 'short', year: 'numeric' })}`
+                            : booking.startTime && booking.endTime
                             ? `${booking.startTime.slice(0, 5)}–${booking.endTime.slice(0, 5)}`
                             : booking.serviceName ?? selectedService?.name}
                         </Text>

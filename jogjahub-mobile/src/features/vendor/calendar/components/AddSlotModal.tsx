@@ -35,6 +35,8 @@ type Props = {
 };
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const DEFAULT_START_TIME = '08:00';
+const DEFAULT_END_TIME = '09:00';
 
 function getErrorMessage(error: unknown): string | undefined {
   if (!isAxiosError(error)) return undefined;
@@ -76,11 +78,18 @@ export default function AddSlotModal({
 
   useEffect(() => {
     if (visible) {
-      setStartTime('08:00');
-      setEndTime('09:00');
+      setStartTime(DEFAULT_START_TIME);
+      setEndTime(DEFAULT_END_TIME);
       setQuota('1');
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (!isHotel) {
+      setStartTime(DEFAULT_START_TIME);
+      setEndTime(DEFAULT_END_TIME);
+    }
+  }, [isHotel]);
 
   const sortedDates = useMemo(
     () => [...new Set(selectedDates)].sort(),
@@ -145,8 +154,8 @@ export default function AddSlotModal({
           await timeSlotApi.createSlot({
             service_id: serviceId,
             slot_date: date,
-            start_time: startTime,
-            end_time: endTime,
+            start_time: isHotel ? startTime : DEFAULT_START_TIME,
+            end_time: isHotel ? endTime : DEFAULT_END_TIME,
             quota: quotaNumber,
           });
           createdDates.push(date);
