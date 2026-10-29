@@ -23,7 +23,9 @@ class RegisterTenantRequest extends FormRequest
             'categories.*'   => 'nullable|string',
             'latitude'       => 'nullable|required_with:longitude|numeric|between:-90,90',
             'longitude'      => 'nullable|required_with:latitude|numeric|between:-180,180',
+            'ktp'            => 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'nib'            => 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'portfolio'      => 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:5020',
         ];
     }
 }
-

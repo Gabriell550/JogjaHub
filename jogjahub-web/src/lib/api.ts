@@ -38,10 +38,11 @@ export async function apiGetBlob(endpoint: string): Promise<Blob> {
 }
 
 async function sendWithBody<T>(method: "POST" | "PATCH", endpoint: string, payload?: unknown): Promise<T> {
+  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeaders() },
-    body: payload !== undefined ? JSON.stringify(payload) : undefined,
+    headers: { ...(isFormData ? {} : { "Content-Type": "application/json" }), Accept: "application/json", ...authHeaders() },
+    body: payload !== undefined ? (isFormData ? payload : JSON.stringify(payload)) : undefined,
   });
   const result: unknown = await response.json().catch(() => null);
 

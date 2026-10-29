@@ -22,8 +22,8 @@ export function Footer() {
         <div>
           <h2 className="font-display text-sm font-semibold text-white">Bergabung</h2>
           <ul className="mt-4 space-y-3 text-sm text-slate-300">
-            <li><Link href={`${ROUTES.register}?role=tenant`} className="hover:text-white">Untuk tenant</Link></li>
-            <li><Link href={ROUTES.register} className="hover:text-white">Buat akun</Link></li>
+            <li><Link href={ROUTES.registerTenant} className="hover:text-white">Untuk tenant</Link></li>
+            <li><Link href={ROUTES.registerCustomer} className="hover:text-white">Buat akun</Link></li>
           </ul>
         </div>
         <div>

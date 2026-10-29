@@ -189,7 +189,7 @@ function LoginForm() {
 
           <p className="mt-7 text-center text-xs leading-5 text-[#606B79]">
             Belum punya akun?{" "}
-            <Link href={`${ROUTES.register}?role=${role}`} className="font-semibold text-[#D95000] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
+            <Link href={role === "tenant" ? ROUTES.registerTenant : ROUTES.registerCustomer} className="font-semibold text-[#D95000] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
               Daftar Sekarang
             </Link>
           </p>

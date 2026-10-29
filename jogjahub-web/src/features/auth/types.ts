@@ -30,7 +30,12 @@ export interface RegisterTenantPayload {
   password_confirmation: string;
   address?: string;
   phone?: string;
-  categories?: string[];
+  categories: string[];
+  latitude: number;
+  longitude: number;
+  ktp?: File;
+  nib?: File;
+  portfolio?: File;
 }
 
 export interface AuthSession {

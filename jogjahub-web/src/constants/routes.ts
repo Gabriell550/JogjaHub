@@ -2,6 +2,8 @@ export const ROUTES = {
   home: "/",
   login: "/login",
   register: "/register",
+  registerCustomer: "/register/customer",
+  registerTenant: "/register/tenant",
   dashboard: "/dashboard",
   vendor: "/vendor",
   vendorServices: "/vendor/services",
