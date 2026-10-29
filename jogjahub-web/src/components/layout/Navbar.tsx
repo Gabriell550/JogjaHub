@@ -29,7 +29,7 @@ export function Navbar() {
           <Link href={ROUTES.login} className="inline-flex min-h-10 items-center rounded-md border border-[#8E7164]/50 px-4 text-sm font-semibold text-[#121C2A] transition hover:border-[#A04100] hover:bg-[#FFF8F2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
             Masuk
           </Link>
-          <Link href={ROUTES.register} className="inline-flex min-h-10 items-center rounded-md bg-[#FF6B00] px-4 text-sm font-semibold text-[#121C2A] transition hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
+          <Link href={ROUTES.registerCustomer} className="inline-flex min-h-10 items-center rounded-md bg-[#FF6B00] px-4 text-sm font-semibold text-[#121C2A] transition hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
             Daftar
           </Link>
         </div>
@@ -46,7 +46,7 @@ export function Navbar() {
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#E6EEFF] pt-3">
               <Link href={ROUTES.login} className="inline-flex min-h-10 items-center justify-center rounded-md border border-[#8E7164]/50 px-3 text-sm font-semibold text-[#121C2A]">Masuk</Link>
-              <Link href={ROUTES.register} className="inline-flex min-h-10 items-center justify-center rounded-md bg-[#FF6B00] px-3 text-sm font-semibold text-[#121C2A]">Daftar</Link>
+              <Link href={ROUTES.registerCustomer} className="inline-flex min-h-10 items-center justify-center rounded-md bg-[#FF6B00] px-3 text-sm font-semibold text-[#121C2A]">Daftar</Link>
             </div>
           </nav>
         </details>

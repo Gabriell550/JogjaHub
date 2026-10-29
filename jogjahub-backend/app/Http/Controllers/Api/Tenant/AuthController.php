@@ -9,6 +9,7 @@ use App\Models\TenantProfile;
 use App\Models\User;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\TenantProfileResource;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -74,6 +75,25 @@ class AuthController extends Controller
 
     public function register(RegisterTenantRequest $request)
     {
+        $documentPaths = [];
+        foreach (['ktp' => 'ktp_url', 'nib' => 'nib_url', 'portfolio' => 'portfolio_url'] as $input => $column) {
+            if ($request->hasFile($input)) {
+                $path = $request->file($input)->store('tenant_documents', 'local');
+                if (!$path) {
+                    if ($documentPaths) {
+                        Storage::disk('local')->delete(array_values($documentPaths));
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Dokumen verifikasi tidak dapat disimpan. Silakan coba kembali.',
+                    ], 500);
+                }
+
+                $documentPaths[$column] = $path;
+            }
+        }
+
         $user = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
@@ -94,6 +114,7 @@ class AuthController extends Controller
             'longitude'       => $request->input('longitude'),
             'whatsapp_number' => $request->phone ?? '',
             'status'          => 'pending',
+            ...$documentPaths,
         ]);
 
         $categoryIds = $this->resolveCategoryIds((array) $request->input('categories', []));

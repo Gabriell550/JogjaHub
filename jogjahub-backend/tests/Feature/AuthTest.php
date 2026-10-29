@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -66,6 +68,43 @@ class AuthTest extends TestCase
             'email' => 'sari@test.com',
             'role'  => 'tenant',
         ]);
+    }
+
+    public function test_tenant_register_menyimpan_dokumen_verifikasi()
+    {
+        Storage::fake('local');
+
+        $response = $this->post('/api/v1/auth/register/tenant', [
+            'name'                  => 'Sari Salon',
+            'email'                 => 'sari-docs@test.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+            'ktp'                   => UploadedFile::fake()->create('ktp.pdf', 100, 'application/pdf'),
+            'nib'                   => UploadedFile::fake()->create('nib.pdf', 100, 'application/pdf'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertCreated()
+                 ->assertJsonPath('success', true);
+
+        $profile = \App\Models\TenantProfile::whereHas('user', fn ($query) => $query->where('email', 'sari-docs@test.com'))->firstOrFail();
+        $this->assertNotNull($profile->ktp_url);
+        $this->assertNotNull($profile->nib_url);
+        Storage::disk('local')->assertExists($profile->ktp_url);
+        Storage::disk('local')->assertExists($profile->nib_url);
+    }
+
+    public function test_tenant_register_menolak_dokumen_di_atas_batas_ukuran()
+    {
+        $response = $this->post('/api/v1/auth/register/tenant', [
+            'name'                  => 'Sari Salon',
+            'email'                 => 'sari-large-doc@test.com',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+            'ktp'                   => UploadedFile::fake()->create('ktp.pdf', 2049, 'application/pdf'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertUnprocessable()
+                 ->assertJsonValidationErrors(['ktp']);
     }
 
     // ─── Login ────────────────────────────────────────────────────────────────

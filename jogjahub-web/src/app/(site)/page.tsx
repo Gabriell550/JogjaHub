@@ -124,7 +124,7 @@ export default async function HomePage() {
               <Link href="#layanan" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
                 Cari Layanan <span aria-hidden="true">-&gt;</span>
               </Link>
-              <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 px-6 py-3 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
+              <Link href={ROUTES.registerTenant} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 px-6 py-3 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
                 Daftar sebagai Tenant
               </Link>
             </div>
@@ -344,7 +344,7 @@ export default async function HomePage() {
             </ul>
           </RevealOnScroll>
           <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-            <Link href={`${ROUTES.register}?role=tenant`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
+            <Link href={ROUTES.registerTenant} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#FF6B00] px-6 py-3 font-semibold text-[#121C2A] shadow-lg transition duration-200 hover:-translate-y-0.5 hover:bg-[#E85F00] hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FBBF24] motion-reduce:transform-none">
               Daftar sebagai Tenant
             </Link>
             <p className="text-sm text-slate-300">Verifikasi maksimal 1x24 jam</p>
