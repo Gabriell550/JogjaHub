@@ -7,9 +7,10 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function apiGet<T>(endpoint: string): Promise<T> {
+export async function apiGet<T>(endpoint: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     headers: { Accept: "application/json", ...authHeaders() },
+    signal,
   });
 
   if (!response.ok) {

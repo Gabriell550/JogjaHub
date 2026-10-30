@@ -1,30 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ROUTES } from "@/src/constants/routes";
 import { RevealOnScroll } from "@/src/components/shared/RevealOnScroll";
-import { QuickSearchWidget } from "@/src/components/shared/QuickSearchWidget";
-import { apiGet } from "@/src/lib/api";
-import type { Service, PaginatedServices } from "@/src/types/service";
-
-const categories = [
-  {
-    title: "Beauty & Style",
-    description: "MUA, salon, tata rambut, dan butik untuk hari wisudamu.",
-    detail: "Tampil percaya diri",
-    icon: "beauty",
-  },
-  {
-    title: "Penginapan",
-    description: "Temukan tempat menginap nyaman dan dekat dengan kampus.",
-    detail: "Lebih dekat ke kampus",
-    icon: "stay",
-  },
-  {
-    title: "Gifting",
-    description: "Buket, selempang, plakat, dan hadiah penuh makna.",
-    detail: "Rayakan pencapaian",
-    icon: "gift",
-  },
-] as const;
+import { ServiceDiscovery } from "@/src/components/landing/ServiceDiscovery";
 
 const steps = [
   { number: "01", title: "Pilih layanan", description: "Jelajahi vendor dan layanan sesuai kebutuhan wisudamu." },
@@ -33,10 +11,10 @@ const steps = [
 ];
 
 const proofPoints = [
-  { value: "3", label: "Kategori layanan" },
-  { value: "Rp0", label: "Biaya untuk customer" },
-  { value: "1", label: "Platform persiapan" },
-  { value: "Jogja", label: "Vendor lokal" },
+  { value: "Layanan", label: "untuk persiapan wisuda" },
+  { value: "Vendor", label: "lokal Yogyakarta" },
+  { value: "Jadwal", label: "yang dapat dipilih" },
+  { value: "Harga", label: "ditampilkan transparan" },
 ];
 
 const valueProps = [
@@ -53,32 +31,6 @@ const whyChooseUs = [
   { title: "Dukungan Responsif", description: "Informasi layanan dan jadwal membantu persiapanmu berjalan lebih terarah." },
 ];
 
-function CategoryIcon({ type }: { type: (typeof categories)[number]["icon"] }) {
-  if (type === "beauty") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M24 7v34M18 7v9a6 6 0 0 0 12 0V7M18 41h12M11 11l5 5m21-5-5 5" />
-        <circle cx="24" cy="26" r="4" />
-      </svg>
-    );
-  }
-
-  if (type === "stay") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 41V10h32v31M5 41h38M17 18h4m6 0h4M17 25h4m6 0h4M20 41V32h8v9" />
-        <path d="M19 10V6h10v4" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 20h34l-3 22H10L7 20ZM5 14h38v6H5zM24 14v28M24 14c-9 0-12-7-7-9 4-2 7 4 7 9Zm0 0c9 0 12-7 7-9-4-2-7 4-7 9Z" />
-    </svg>
-  );
-}
-
 function ValuePropIcon({ type }: { type: (typeof valueProps)[number]["icon"] }) {
   const iconPaths = {
     verified: <><path d="M12 3 4.5 6v5c0 5 3.2 8.2 7.5 10 4.3-1.8 7.5-5 7.5-10V6L12 3Z" /><path d="m8.5 12 2.2 2.2 4.8-4.8" /></>,
@@ -94,15 +46,7 @@ function ValuePropIcon({ type }: { type: (typeof valueProps)[number]["icon"] }) 
   );
 }
 
-export default async function HomePage() {
-  let featuredServices: Service[] = [];
-  try {
-    const res = await apiGet<{ success: boolean; data: PaginatedServices }>("/services");
-    featuredServices = res.data.data.slice(0, 6);
-  } catch {
-    featuredServices = []; // gagal fetch (mis. backend belum jalan) -> seksi disembunyikan, landing page tetap jalan
-  }
-
+export default function HomePage() {
   return (
     <div className="-mt-8">
       <section id="beranda" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#0F172A] text-white">
@@ -131,56 +75,22 @@ export default async function HomePage() {
             <p className="mt-5 text-sm text-slate-300">Gratis untuk customer. Mulai persiapan wisuda tanpa ribet.</p>
           </div>
 
-          <div className="relative mx-auto w-full max-w-xl">
-            <div
-              role="img"
-              aria-label="Ilustrasi wisudawan mengenakan toga dengan topi wisuda dan selempang"
-              className="relative min-h-[310px] overflow-hidden rounded-lg border border-white/20 bg-[#1E293B] shadow-2xl sm:min-h-[410px] lg:min-h-[480px]"
-            >
-              <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(135deg,#FBBF24_0%,#FF6B00_45%,#1E293B_45%,#0F172A_100%)]" />
-              <div aria-hidden="true" className="absolute inset-x-[10%] top-[9%] bottom-[13%] flex items-center justify-center border border-white/20 bg-[#1E293B]/35">
-                <svg viewBox="0 0 360 320" className="h-[82%] max-h-[340px] w-[82%] max-w-[380px]" fill="none">
-                  <path d="M180 134c-53 0-86 30-96 91h192c-10-61-43-91-96-91Z" fill="#0F172A" />
-                  <path d="M125 177 91 225h178l-34-48" fill="#1E293B" />
-                  <path d="M151 134h58l21 92h-100l21-92Z" fill="#FFFFFF" />
-                  <path d="m151 134 29 38 29-38" fill="#FF6B00" />
-                  <path d="M180 67 79 111l101 44 101-44-101-44Z" fill="#FBBF24" />
-                  <path d="M111 125v37c18 16 40 24 69 24s51-8 69-24v-37l-69 30-69-30Z" fill="#FFFFFF" />
-                  <path d="M280 111v65" stroke="#FBBF24" strokeWidth="6" strokeLinecap="round" />
-                  <circle cx="280" cy="182" r="9" fill="#FBBF24" />
-                </svg>
-              </div>
-              <div className="absolute left-5 top-5 rounded-md bg-white px-3 py-2 text-[#121C2A] shadow-lg sm:left-7 sm:top-7">
-                <p className="text-[10px] font-bold uppercase text-[#A04100]">Momen spesial</p>
-                <p className="font-display text-sm font-semibold">Wisuda di Jogja</p>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0F172A]/85 to-transparent p-6 pt-24 sm:p-8 sm:pt-28">
-                <p className="font-display text-xl font-semibold sm:text-2xl">Hari spesial, lebih siap.</p>
-                <p className="mt-1 text-sm text-white/85">Semua persiapan wisuda, tersusun rapi.</p>
-              </div>
+          <div className="relative mx-auto w-full max-w-2xl">
+            <div className="overflow-hidden rounded-2xl border border-white/20 bg-[#1E293B] shadow-2xl">
+              <Image
+                src="/images/hero-wisuda.png"
+                alt="Promosi JogjaHub untuk persiapan wisuda: layanan MUA, fotografer, kebaya, dan pemesanan"
+                width={609}
+                height={352}
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="h-auto w-full"
+              />
             </div>
-            <div className="absolute -bottom-5 left-3 max-w-[16rem] rounded-lg border border-[#E6EEFF] bg-white p-4 text-[#121C2A] shadow-xl sm:-left-7 sm:bottom-8">
-              <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#FFF0E5] text-[#A04100]" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3m8-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1Z"/><path d="m8 14 2.5 2.5L16 11"/></svg>
-                </span>
-                <div>
-                  <p className="text-xs font-medium text-[#5A4136]">Jadwal wisuda</p>
-                  <p className="font-display text-sm font-semibold">Semua siap tepat waktu</p>
-                </div>
-              </div>
-            </div>
-            <div aria-hidden="true" className="absolute -right-3 -top-3 grid h-24 w-24 place-items-center rounded-full bg-[#FBBF24] text-center text-[#121C2A] shadow-lg sm:-right-5 sm:-top-5 sm:h-28 sm:w-28">
-              <div>
-                <p className="font-display text-lg font-bold leading-none sm:text-xl">100%</p>
-                <p className="text-[10px] font-semibold uppercase leading-tight sm:text-xs">Gratis Customer</p>
-              </div>
-            </div>
+            <p className="mt-3 text-center text-xs text-white/70">Persiapan wisuda jadi lebih mudah bersama vendor lokal Jogja.</p>
           </div>
         </div>
       </section>
-
-      <QuickSearchWidget />
 
       <section aria-label="Keunggulan JogjaHub" className="relative left-1/2 w-screen -translate-x-1/2 bg-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:grid-cols-2 sm:px-8 sm:py-16 lg:grid-cols-4 lg:px-12">
@@ -212,75 +122,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="layanan" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#F8F9FF]">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-[#FF6B00]/10 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-[#1E293B]/5 blur-3xl" />
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
-          <span id="kategori" className="scroll-mt-24" />
-          <div className="mb-10 max-w-2xl">
-            <p className="text-sm font-semibold uppercase text-[#A04100]">Layanan JogjaHub</p>
-            <h2 className="font-display mt-3 text-3xl font-semibold text-[#121C2A] sm:text-4xl">Pilih kebutuhan wisudamu</h2>
-            <p className="mt-4 leading-7 text-[#5A4136]">Temukan vendor lokal tepercaya untuk setiap bagian dari hari istimewamu.</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3 md:gap-5">
-            {categories.map((category, index) => (
-              <RevealOnScroll key={category.title} delayMs={index * 120}>
-                <article className="group flex min-h-[260px] flex-col border border-[#D3E2ED] bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-lg motion-reduce:transform-none sm:p-7">
-                  <div className="mb-6 grid h-14 w-14 place-items-center rounded-lg bg-[#FFF0E5] text-[#A04100] transition duration-200 group-hover:scale-105 motion-reduce:transform-none">
-                    <CategoryIcon type={category.icon} />
-                  </div>
-                  <p className="text-xs font-semibold uppercase text-[#A04100]">{category.detail}</p>
-                  <h3 className="font-display mt-2 text-xl font-semibold text-[#121C2A]">{category.title}</h3>
-                  <p className="mt-2 flex-1 text-sm leading-6 text-[#5A4136]">{category.description}</p>
-                  <Link href={`${ROUTES.login}?role=customer`} className="mt-6 inline-flex min-h-11 items-center gap-2 self-start font-semibold text-[#A04100] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100]">
-                    Jelajahi <span aria-hidden="true">-&gt;</span>
-                  </Link>
-                </article>
-              </RevealOnScroll>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {featuredServices.length > 0 ? (
-        <section aria-label="Layanan pilihan" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-white">
-          <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
-            <div className="mb-10 max-w-2xl">
-              <p className="text-sm font-semibold uppercase text-[#A04100]">Baru saja bergabung</p>
-              <h2 className="font-display mt-3 text-3xl font-semibold text-[#121C2A] sm:text-4xl">Layanan pilihan dari vendor lokal</h2>
-              <p className="mt-4 leading-7 text-[#5A4136]">Beberapa layanan yang sudah tersedia di JogjaHub saat ini.</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
-              {featuredServices.map((service, index) => (
-                <RevealOnScroll key={service.id} delayMs={index * 100}>
-                  <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#D3E2ED] bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-[#FF6B00]/50 hover:shadow-md motion-reduce:transform-none">
-                    <div className="relative h-40 w-full overflow-hidden bg-[#EFF4FF]">
-                      {service.photos?.[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={service.photos[0]} alt={service.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#FFF0E5_0%,#EFF4FF_100%)] text-sm font-semibold text-[#A04100]">{service.subcategory?.name ?? "JogjaHub"}</div>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col p-5">
-                      {service.subcategory ? <p className="text-xs font-semibold uppercase text-[#A04100]">{service.subcategory.name}</p> : null}
-                      <h3 className="font-display mt-1 text-lg font-semibold text-[#121C2A]">{service.name}</h3>
-                      {service.tenant ? <p className="mt-1 text-sm text-[#5A4136]">{service.tenant.business_name}</p> : null}
-                      <p className="mt-3 flex-1 text-sm leading-6 text-[#5A4136]">{service.description}</p>
-                      <p className="font-display mt-4 text-lg font-bold text-[#121C2A]">Rp{service.price.toLocaleString("id-ID")}</p>
-                    </div>
-                  </article>
-                </RevealOnScroll>
-              ))}
-            </div>
-            <div className="mt-10 text-center">
-              <Link href={`${ROUTES.login}?role=customer`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#FF6B00] px-6 py-3 font-semibold text-[#A04100] transition duration-200 hover:-translate-y-0.5 hover:bg-[#FFF0E5] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100] motion-reduce:transform-none">
-                Lihat semua layanan <span aria-hidden="true">-&gt;</span>
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <ServiceDiscovery />
 
       <section id="cara-kerja" className="relative left-1/2 w-screen -translate-x-1/2 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
