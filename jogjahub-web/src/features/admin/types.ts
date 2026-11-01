@@ -1,3 +1,5 @@
+import type { TenantAddress } from "@/src/types/address";
+
 export interface DashboardSummary {
   customers_total: number;
   tenants_total: number;
@@ -7,10 +9,6 @@ export interface DashboardSummary {
   bookings_pending: number;
   bookings_confirmed: number;
   bookings_cancelled: number;
-}
-
-export interface TenantAddress {
-  street: string;
 }
 
 export interface PendingTenant {
