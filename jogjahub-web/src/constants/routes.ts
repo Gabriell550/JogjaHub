@@ -7,6 +7,8 @@ export const ROUTES = {
   registerTenant: "/register/tenant",
   dashboard: "/dashboard",
   dashboardOrders: "/dashboard/orders",
+  dashboardHistory: "/dashboard/history",
+  dashboardProfile: "/dashboard/profile",
   vendor: "/vendor",
   vendorServices: "/vendor/services",
   vendorOrders: "/vendor/orders",
