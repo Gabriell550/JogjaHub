@@ -12,7 +12,7 @@ const steps = [
 
 const proofPoints = [
   { value: "Layanan", label: "untuk persiapan wisuda" },
-  { value: "Vendor", label: "lokal Yogyakarta" },
+  { value: "Tenant", label: "lokal Yogyakarta" },
   { value: "Jadwal", label: "yang dapat dipilih" },
   { value: "Harga", label: "ditampilkan transparan" },
 ];
@@ -21,7 +21,7 @@ const valueProps = [
   { title: "Vendor Terverifikasi", description: "Setiap tenant melalui proses approval sebelum tampil ke customer.", icon: "verified" },
   { title: "Booking Real-time", description: "Lihat slot yang benar-benar tersedia, tanpa bentrok jadwal.", icon: "schedule" },
   { title: "Harga Transparan", description: "Harga layanan ditampilkan jelas sebelum kamu booking.", icon: "price" },
-  { title: "Dukungan Lokal Jogja", description: "Semua vendor adalah usaha lokal Yogyakarta.", icon: "local" },
+  { title: "Dukungan Lokal Jogja", description: "Semua Tenant adalah usaha lokal Yogyakarta.", icon: "local" },
 ] as const;
 
 const whyChooseUs = [

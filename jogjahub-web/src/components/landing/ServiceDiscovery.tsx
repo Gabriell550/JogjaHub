@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ROUTES } from "@/src/constants/routes";
+import { formatAddress } from "@/src/lib/formatAddress";
 import { apiGet } from "@/src/lib/api";
 import type { PaginatedServices, Service, ServiceCategory } from "@/src/types/service";
 
@@ -144,7 +145,7 @@ export function ServiceDiscovery() {
         <div className="mb-8 max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-wide text-[#A04100]">Katalog JogjaHub</p>
           <h2 className="font-display mt-2 text-3xl font-semibold text-[#121C2A] sm:text-4xl">Temukan layanan wisuda</h2>
-          <p className="mt-3 leading-7 text-[#5A4136]">Cari layanan dari vendor lokal Yogyakarta dan pilih kategori yang sesuai kebutuhanmu.</p>
+          <p className="mt-3 leading-7 text-[#5A4136]">Cari layanan dari Tenant lokal Yogyakarta dan pilih kategori yang sesuai kebutuhanmu.</p>
         </div>
 
         <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
@@ -246,7 +247,7 @@ export function ServiceDiscovery() {
                         <div className="flex flex-1 flex-col p-4">
                           <h4 className="font-display line-clamp-2 text-base font-semibold text-[#121C2A]">{service.name}</h4>
                           <p className="mt-1 text-sm text-[#4B596B]">{service.tenant?.business_name ?? "Vendor JogjaHub"}</p>
-                          {service.tenant?.address ? <p className="mt-2 line-clamp-1 text-xs text-[#4B596B]">{service.tenant.address}</p> : null}
+                          {service.tenant ? <p className="mt-2 line-clamp-1 text-xs text-[#4B596B]">{formatAddress(service.tenant.address)}</p> : null}
                           <p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-[#4B596B]">{service.description}</p>
                           <div className="mt-4 flex items-end justify-between gap-2 border-t border-[#E6EEFF] pt-3">
                             <p>

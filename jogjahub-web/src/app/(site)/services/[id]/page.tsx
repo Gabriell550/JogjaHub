@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ROUTES } from "@/src/constants/routes";
 import { apiGet } from "@/src/lib/api";
+import { formatAddress } from "@/src/lib/formatAddress";
 import type { Service } from "@/src/types/service";
 import { ServiceBookingPanel } from "@/src/components/customer/ServiceBookingPanel";
 
@@ -46,7 +47,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           {service.subcategory ? <p className="text-sm font-semibold uppercase text-[#A04100]">{service.subcategory.name}</p> : null}
           <h1 className="font-display mt-3 text-3xl font-bold text-[#121C2A] sm:text-4xl">{service.name}</h1>
           {service.tenant?.business_name ? <p className="mt-3 text-base font-medium text-[#5A4136]">{service.tenant.business_name}</p> : null}
-          {service.tenant?.address ? <p className="mt-2 text-sm text-[#4B596B]">{service.tenant.address}</p> : null}
+          {service.tenant ? <p className="mt-2 text-sm text-[#4B596B]">{formatAddress(service.tenant.address)}</p> : null}
           {service.reviews_avg_rating != null ? (
             <p className="mt-3 text-sm font-semibold text-[#263449]" aria-label={`Rating ${service.reviews_avg_rating} dari 5 berdasarkan ${service.reviews_count ?? 0} ulasan`}>
               <span aria-hidden="true">★</span> {Number(service.reviews_avg_rating).toFixed(1)} dari 5

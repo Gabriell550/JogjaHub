@@ -1,3 +1,5 @@
+import type { TenantAddress } from "@/src/types/address";
+
 export interface ServiceSubcategory {
   id: number;
   name: string;
@@ -7,7 +9,7 @@ export interface ServiceSubcategory {
 
 export interface ServiceTenant {
   business_name: string;
-  address?: string | null;
+  address?: TenantAddress | string | null;
   location?: { latitude: number; longitude: number } | null;
 }
 
