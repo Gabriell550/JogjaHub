@@ -6,6 +6,7 @@ export const ROUTES = {
   registerCustomer: "/register/customer",
   registerTenant: "/register/tenant",
   dashboard: "/dashboard",
+  dashboardOrders: "/dashboard/orders",
   vendor: "/vendor",
   vendorServices: "/vendor/services",
   vendorOrders: "/vendor/orders",
