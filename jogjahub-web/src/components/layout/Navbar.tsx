@@ -4,7 +4,7 @@ import { ROUTES } from "@/src/constants/routes";
 const navItems = [
   { href: `${ROUTES.home}#beranda`, label: "Beranda" },
   { href: `${ROUTES.home}#layanan`, label: "Layanan" },
-  { href: `${ROUTES.home}#kategori`, label: "Kategori" },
+  { href: `${ROUTES.home}#layanan`, label: "Kategori" },
   { href: `${ROUTES.home}#cara-kerja`, label: "Cara Kerja" },
   { href: `${ROUTES.home}#untuk-tenant`, label: "Untuk Tenant" },
 ];
@@ -19,7 +19,7 @@ export function Navbar() {
 
         <nav aria-label="Navigasi utama" className="hidden items-center gap-5 lg:flex">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="whitespace-nowrap text-sm font-medium text-[#5A4136] transition hover:text-[#A04100] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100]">
+            <Link key={item.label} href={item.href} className="whitespace-nowrap text-sm font-medium text-[#5A4136] transition hover:text-[#A04100] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#A04100]">
               {item.label}
             </Link>
           ))}
@@ -40,7 +40,7 @@ export function Navbar() {
           </summary>
           <nav aria-label="Navigasi utama" className="absolute right-0 top-14 z-50 flex w-64 flex-col gap-1 border border-[#D3E2ED] bg-white p-3 shadow-xl lg:hidden">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="rounded-md px-3 py-2.5 text-sm font-medium text-[#121C2A] hover:bg-[#F8F9FF] focus-visible:outline-2 focus-visible:outline-[#A04100]">
+              <Link key={item.label} href={item.href} className="rounded-md px-3 py-2.5 text-sm font-medium text-[#121C2A] hover:bg-[#F8F9FF] focus-visible:outline-2 focus-visible:outline-[#A04100]">
                 {item.label}
               </Link>
             ))}

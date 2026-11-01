@@ -122,7 +122,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ServiceDiscovery />
+      <ServiceDiscovery fullBleed />
 
       <section id="cara-kerja" className="relative left-1/2 w-screen -translate-x-1/2 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12">

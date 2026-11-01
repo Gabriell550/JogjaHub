@@ -14,7 +14,7 @@ export function Footer() {
         <div>
           <h2 className="font-display text-sm font-semibold text-white">Produk</h2>
           <ul className="mt-4 space-y-3 text-sm text-slate-300">
-            <li><Link href={`${ROUTES.home}#kategori`} className="hover:text-white">Kategori layanan</Link></li>
+            <li><Link href={`${ROUTES.home}#layanan`} className="hover:text-white">Kategori layanan</Link></li>
             <li><Link href={`${ROUTES.home}#cara-kerja`} className="hover:text-white">Cara kerja</Link></li>
             <li><Link href={ROUTES.login} className="hover:text-white">Masuk customer</Link></li>
           </ul>

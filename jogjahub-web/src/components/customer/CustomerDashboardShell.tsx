@@ -33,14 +33,14 @@ export function CustomerDashboardShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!drawerOpen) return;
 
-    firstLinkRef.current?.focus();
+    drawerRef.current?.querySelector<HTMLElement>("nav a[href]")?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setDrawerOpen(false);
@@ -80,18 +80,36 @@ export function CustomerDashboardShell({ children }: { children: ReactNode }) {
     logout();
     router.replace(ROUTES.home);
   };
+  const compact = isCollapsed && !drawerOpen;
 
   const sidebar = (
     <>
-      <div className="flex min-h-16 items-center justify-between border-b border-[#DFE6F3] px-5 lg:px-6">
+      <div className={`flex min-h-16 items-center border-b border-[#DFE6F3] ${
+        compact ? "justify-center px-1" : "justify-between px-4 lg:px-6"
+      }`}>
         <Link
           href={ROUTES.dashboard}
           onClick={closeDrawer}
-          className="font-display flex items-center gap-2 text-xl font-bold tracking-tight text-[#121C2A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]"
+          aria-label="JogjaHub - Dashboard customer"
+          title={compact ? "JogjaHub" : undefined}
+          className={`font-display flex items-center gap-2 text-xl font-bold tracking-tight text-[#121C2A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] ${compact ? "hidden md:flex" : ""}`}
         >
-          <span className="text-[#FF6B00] md:sr-only lg:not-sr-only">Jogja</span><span className="md:sr-only lg:not-sr-only">Hub</span>
-          <span className="hidden text-[#FF6B00] md:block lg:hidden">J</span>
+          <span className="text-[#FF6B00]">{compact ? "J" : "Jogja"}</span>
+          {!compact ? <span>Hub</span> : null}
         </Link>
+        <button
+          type="button"
+          aria-label={isCollapsed ? "Buka sidebar" : "Tutup sidebar"}
+          aria-expanded={!isCollapsed}
+          onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+          className="hidden h-10 w-10 items-center justify-center rounded-lg text-[#5A6472] hover:bg-[#F4F6FA] hover:text-[#121C2A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] md:inline-flex"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {isCollapsed
+              ? <path d="m13 5 7 7-7 7M5 5l7 7-7 7" />
+              : <path d="m11 5-7 7 7 7m2-14 7 7-7 7" />}
+          </svg>
+        </button>
         <button
           type="button"
           aria-label="Tutup navigasi customer"
@@ -103,42 +121,47 @@ export function CustomerDashboardShell({ children }: { children: ReactNode }) {
           </svg>
         </button>
       </div>
-      <nav aria-label="Navigasi customer" className="flex-1 space-y-1 px-3 py-5">
-        {navItems.map((item, index) => {
+      <nav aria-label="Navigasi customer" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {navItems.map((item) => {
           const active = item.href === ROUTES.dashboard
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}
-              ref={index === 0 ? firstLinkRef : undefined}
               href={item.href}
               onClick={closeDrawer}
               aria-current={active ? "page" : undefined}
               title={item.label}
-              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] md:justify-center md:px-0 lg:justify-start lg:px-3 ${
+              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] ${
+                compact ? "justify-center px-0" : "justify-start"
+              } ${
                 active
                   ? "bg-[#FFF0E5] text-[#A04100]"
                   : "text-[#344054] hover:bg-[#F4F6FA] hover:text-[#121C2A]"
               }`}
             >
               <NavigationIcon icon={item.icon} />
-              <span className="md:sr-only lg:not-sr-only">{item.label}</span>
+              {!compact ? <span>{item.label}</span> : null}
             </Link>
           );
         })}
       </nav>
-      <div className="border-t border-[#DFE6F3] p-3 lg:p-4">
-        <p className="hidden truncate px-2 pb-3 text-sm font-semibold text-[#263449] lg:block">{session.user.name}</p>
+      <div className="shrink-0 border-t border-[#DFE6F3] p-3 lg:p-4">
+        {!compact ? <p className="truncate px-2 pb-3 text-sm font-semibold text-[#263449]">{session.user.name}</p> : null}
         <button
           type="button"
           onClick={handleLogout}
-          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#344054] hover:bg-[#F4F6FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] md:justify-center md:px-0 lg:justify-start lg:px-3"
+          aria-label={compact ? `Keluar dari akun ${session.user.name}` : "Keluar"}
+          title={compact ? "Keluar" : undefined}
+          className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#344054] hover:bg-[#F4F6FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100] ${
+            compact ? "justify-center px-0" : "justify-start"
+          }`}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
           </svg>
-          <span className="md:sr-only lg:not-sr-only">Keluar</span>
+          {!compact ? <span>Keluar</span> : null}
         </button>
       </div>
     </>
@@ -146,7 +169,9 @@ export function CustomerDashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh bg-[#F0F4FF]">
-      <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-[#DFE6F3] bg-white md:flex md:w-20 lg:w-64">
+      <aside className={`sticky top-0 z-30 hidden h-dvh shrink-0 flex-col overflow-hidden border-r border-[#DFE6F3] bg-white transition-[width] duration-300 motion-reduce:transition-none md:flex ${
+        isCollapsed ? "md:w-20" : "md:w-64"
+      }`}>
         {sidebar}
       </aside>
 
@@ -183,7 +208,7 @@ export function CustomerDashboardShell({ children }: { children: ReactNode }) {
         <main className="mx-auto w-full max-w-[1440px] px-0 sm:px-2 lg:px-4">{children}</main>
         <footer className="mt-12 border-t border-[#DFE6F3] bg-white">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-5 py-6 text-sm text-[#4B596B] sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <Link href={ROUTES.home} className="font-display font-semibold text-[#121C2A] hover:text-[#A04100]">JogjaHub</Link>
+            <Link href={ROUTES.dashboard} className="font-display font-semibold text-[#121C2A] hover:text-[#A04100]">JogjaHub</Link>
             <p>Temukan layanan lokal untuk persiapan wisudamu.</p>
           </div>
         </footer>

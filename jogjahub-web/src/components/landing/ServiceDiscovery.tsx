@@ -62,7 +62,7 @@ function CategoryFilters({
   );
 }
 
-export function ServiceDiscovery() {
+export function ServiceDiscovery({ fullBleed = false }: { fullBleed?: boolean }) {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [categoryError, setCategoryError] = useState("");
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -140,7 +140,7 @@ export function ServiceDiscovery() {
   }
 
   return (
-    <section id="layanan" className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-[#F0F4FF]">
+    <section id="layanan" className={`${fullBleed ? "relative left-1/2 w-screen -translate-x-1/2" : "w-full"} overflow-hidden bg-[#F0F4FF]`}>
       <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         <div className="mb-8 max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-wide text-[#A04100]">Katalog JogjaHub</p>

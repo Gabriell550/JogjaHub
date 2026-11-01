@@ -1,10 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ROUTES } from "@/src/constants/routes";
 import { apiGet } from "@/src/lib/api";
 import { formatAddress } from "@/src/lib/formatAddress";
 import type { Service } from "@/src/types/service";
+import { ServiceBackLink } from "@/src/components/customer/ServiceBackLink";
 import { ServiceBookingPanel } from "@/src/components/customer/ServiceBookingPanel";
 
 interface ServiceResponse {
@@ -22,9 +21,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
 
   return (
     <article className="mx-auto max-w-5xl py-8 sm:py-12">
-      <Link href={`${ROUTES.home}#layanan`} className="inline-flex min-h-11 items-center gap-2 font-semibold text-[#A04100] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
-        <span aria-hidden="true">&larr;</span> Kembali ke layanan
-      </Link>
+      <ServiceBackLink />
       <div className="mt-6 grid overflow-hidden rounded-3xl border border-[#D3E2ED] bg-white shadow-sm lg:grid-cols-2">
         <div className="relative min-h-72 bg-[#EFF4FF] sm:min-h-96">
           {photo ? (
