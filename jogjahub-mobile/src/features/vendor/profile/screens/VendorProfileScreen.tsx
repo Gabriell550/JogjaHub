@@ -174,11 +174,13 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
   };
 
   const handleOpenMaps = () => {
-    if (!profile?.latitude || !profile?.longitude) {
+    const latitude = profile?.location?.latitude ?? profile?.latitude;
+    const longitude = profile?.location?.longitude ?? profile?.longitude;
+    if (!latitude || !longitude) {
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress || 'Malioboro Yogyakarta')}`);
       return;
     }
-    Linking.openURL(`https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`);
+    Linking.openURL(`https://www.google.com/maps?q=${latitude},${longitude}`);
   };
 
   const handleLogout = () => {

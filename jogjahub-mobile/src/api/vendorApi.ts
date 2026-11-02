@@ -3,6 +3,7 @@
 // Endpoint publik (dilihat customer): GET /tenants/map
 // Endpoint role tenant (perlu login + approved): PUT /tenant/profile, GET/POST/PUT/DELETE /tenant/services
 import { apiClient } from './client';
+import type { TenantProfileUpdatePayload } from '../types/vendor';
 
 export const vendorApi = {
   // ─── CUSTOMER (public) ────────────────────────────────────────────────────
@@ -15,15 +16,8 @@ listTenantsOnMap: () => apiClient.get('/tenants/map'),
 
   // ─── TENANT (butuh login + approved) ─────────────────────────────────────
 
-  updateMyProfile: (payload: {
-    business_name: string;
-    description?: string;
-    address: { street: string; city: string; province: string; postal_code?: string };
-    latitude: number;
-    longitude: number;
-    whatsapp_number: string;
-    category_ids: number[];
-  }) => apiClient.put('/tenant/profile', payload),
+  updateMyProfile: (payload: TenantProfileUpdatePayload) =>
+    apiClient.put('/tenant/profile', payload),
 
   listMyServices: () => apiClient.get('/tenant/services'),
 
