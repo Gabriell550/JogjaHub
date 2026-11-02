@@ -8,9 +8,9 @@ export interface TenantProfile {
     province: string;
     postal_code: string | null;
   };
-  latitude: number;
-  longitude: number;
-  // Dihitung di backend (TenantProfileResource.getLocationAttribute).
+  // TenantProfileResource mengembalikan koordinat di dalam `location`.
+  latitude?: number;
+  longitude?: number;
   location?: { latitude: number; longitude: number } | null;
   whatsapp_number: string;
   status: 'pending' | 'approved' | 'rejected';

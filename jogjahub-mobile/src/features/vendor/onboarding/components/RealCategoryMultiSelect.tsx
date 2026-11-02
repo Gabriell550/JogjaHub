@@ -28,7 +28,14 @@ export function RealCategoryMultiSelect({ categories, selected, onChange }: Prop
       {categories.map((cat) => {
         const active = selected.includes(cat.id);
         return (
-          <Pressable key={cat.id} onPress={() => toggle(cat.id)} style={[styles.chip, active && styles.chipActive]}>
+          <Pressable
+            key={cat.id}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: active }}
+            accessibilityLabel={cat.name}
+            onPress={() => toggle(cat.id)}
+            style={[styles.chip, active && styles.chipActive]}
+          >
             <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{cat.name}</Text>
           </Pressable>
         );
@@ -40,6 +47,9 @@ export function RealCategoryMultiSelect({ categories, selected, onChange }: Prop
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: radius.full,
