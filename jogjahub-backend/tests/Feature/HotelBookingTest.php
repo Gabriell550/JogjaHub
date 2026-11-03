@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PriceType;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Service;
@@ -26,6 +27,8 @@ use Tests\Traits\MocksXendit;
  *  5. Webhook EXPIRED melepas semua slot hotel
  *  6. Validasi request: check_out harus setelah check_in
  *  7. Tidak boleh kirim slot_id dan check_in_date sekaligus
+ *  8. [Step 2] Kalkulasi harga per_night: total = price × jumlah malam
+ *  9. [Step 2] Service per_session: total = price tetap (tidak dikalikan malam)
  */
 class HotelBookingTest extends TestCase
 {
@@ -317,6 +320,83 @@ class HotelBookingTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['slot_id']);
+    }
+
+    // ─── Test 8: Kalkulasi harga per_night = price × jumlah malam ────────────
+
+    public function test_harga_hotel_dikalikan_jumlah_malam_saat_price_type_per_night()
+    {
+        $customer    = User::factory()->customer()->create();
+        $tenant      = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+
+        // Service hotel: harga Rp 300.000/malam, price_type = per_night
+        $service = Service::factory()->perNight()->create([
+            'tenant_id'      => $tenant->id,
+            'subcategory_id' => $subcategory->id,
+            'price'          => 300000,
+        ]);
+
+        // 3 malam: 1, 2, 3 Agustus
+        $this->createSlotsForDates($service, '2027-08-01', '2027-08-03');
+
+        $response = $this->actingAs($customer)
+            ->postJson('/api/v1/customer/bookings', [
+                'service_id'     => $service->id,
+                'check_in_date'  => '2027-08-01',
+                'check_out_date' => '2027-08-04', // 3 malam
+            ]);
+
+        $response->assertStatus(201);
+
+        // Total harus 300.000 × 3 malam = 900.000
+        $booking = Booking::latest()->first();
+        $this->assertDatabaseHas('payments', [
+            'booking_id' => $booking->id,
+            'amount'     => 900000, // 300.000 × 3
+            'currency'   => 'IDR',
+        ]);
+
+        // Details harus mencatat 3 malam
+        $this->assertEquals(3, $booking->details['nights']);
+    }
+
+    // ─── Test 9: Service per_session tetap pakai harga flat ──────────────────
+
+    public function test_harga_per_session_tidak_dikalikan_malam()
+    {
+        $customer    = User::factory()->customer()->create();
+        $tenant      = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+
+        // Service dengan price_type per_session (default) — misal kursus/studio
+        $service = Service::factory()->create([
+            'tenant_id'      => $tenant->id,
+            'subcategory_id' => $subcategory->id,
+            'price'          => 150000,
+            // price_type default = per_session (tidak perlu di-set eksplisit)
+        ]);
+
+        $slot = TimeSlot::factory()->create([
+            'service_id'   => $service->id,
+            'quota'        => 5,
+            'booked_count' => 0,
+        ]);
+
+        $response = $this->actingAs($customer)
+            ->postJson('/api/v1/customer/bookings', [
+                'service_id' => $service->id,
+                'slot_id'    => $slot->id,
+            ]);
+
+        $response->assertStatus(201);
+
+        // Total harus tetap 150.000 (tidak dikalikan apapun)
+        $booking = Booking::latest()->first();
+        $this->assertDatabaseHas('payments', [
+            'booking_id' => $booking->id,
+            'amount'     => 150000,
+        ]);
     }
 }
 

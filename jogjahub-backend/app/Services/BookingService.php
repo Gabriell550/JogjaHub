@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\PriceType;
 use App\Jobs\ReleaseExpiredBookingJob;
 use App\Models\Booking;
 use App\Models\Payment;
@@ -23,13 +24,14 @@ class BookingService
      *  1. Validasi service & slot
      *  2. Kunci slot dalam DB transaction (booked_count++)
      *  3. Buat record Booking (status: pending)
-     *  4. Buat record Payment (status: pending, amount dari service.price)
+     *  4. Buat record Payment (status: pending, amount dikalkulasi dari price_type)
      *  5. Buat invoice di Xendit → dapat payment_url
      *  6. Jadwalkan job ReleaseExpiredBookingJob (jalan 1 jam lagi)
      *
      * Mendukung dua mode:
-     *  - Single-slot (salon/barbershop/dll): kirim slot_id
+     *  - Single-slot (salon/barbershop/dll): kirim slot_id → amount = service.price
      *  - Multi-slot hotel: kirim check_in_date + check_out_date
+     *    → amount = service.price × jumlah malam (jika price_type = per_night)
      *
      * @return array { booking: Booking, payment_url: string, expires_at: Carbon }
      * @throws ValidationException
@@ -76,10 +78,19 @@ class BookingService
                 $booking = $this->createSingleSlotBooking($customerId, $data, $requiresSlot, $service);
             }
 
-            // Buat record payment — status pending, amount dari harga service
+            // ── Kalkulasi total harga berdasarkan price_type service ──────────
+            // - per_session (default): harga tetap = service.price
+            // - per_night (hotel)    : harga = service.price × jumlah malam
+            //   Jumlah malam sudah disimpan di booking.details['nights'] oleh createMultiSlotBooking()
+            $nights = $booking->details['nights'] ?? 1;
+            $amount = $service->price_type === PriceType::PER_NIGHT
+                ? (int) $service->price * $nights
+                : (int) $service->price;
+
+            // Buat record payment — amount sudah dikalkulasi sesuai tipe harga
             Payment::create([
                 'booking_id'  => $booking->id,
-                'amount'      => (int) $service->price,
+                'amount'      => $amount,
                 'currency'    => 'IDR',
                 'status'      => 'pending',
                 'expires_at'  => now()->addHour(),

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\BookingStatus;
 use App\Models\Payment;
+use App\Services\BookingService;
 use App\Services\XenditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\Log;
 class XenditWebhookController extends \App\Http\Controllers\Controller
 {
     public function __construct(
-        private readonly XenditService $xendit
+        private readonly XenditService $xendit,
+        private readonly BookingService $bookingService,
     ) {}
 
     public function handle(Request $request): \Illuminate\Http\JsonResponse
@@ -87,32 +89,15 @@ class XenditWebhookController extends \App\Http\Controllers\Controller
                 Log::info("Xendit webhook: booking #{$booking->uuid} CONFIRMED.");
 
             } elseif (in_array($data['status'], ['expired', 'failed'])) {
-                // Pembayaran gagal/expired → batalkan booking + lepas slot
-                $this->releaseSlot($booking);
+                // Pembayaran gagal/expired → batalkan booking + lepas SEMUA slot
+                // (mendukung single-slot maupun multi-slot hotel via pivot booking_slots)
+                $this->bookingService->releaseBookingSlots($booking);
                 $booking->update(['status' => BookingStatus::CANCELLED->value]);
                 Log::info("Xendit webhook: booking #{$booking->uuid} CANCELLED ({$data['status']}).");
             }
         });
 
         return response()->json(['message' => 'OK']);
-    }
-
-    /**
-     * Lepaskan kuota slot ketika booking dibatalkan via webhook.
-     */
-    private function releaseSlot(\App\Models\Booking $booking): void
-    {
-        if (!$booking->slot_id) {
-            return;
-        }
-
-        $slot = \App\Models\TimeSlot::where('id', $booking->slot_id)
-            ->lockForUpdate()
-            ->first();
-
-        if ($slot && $slot->booked_count > 0) {
-            $slot->decrement('booked_count');
-        }
     }
 }
 
