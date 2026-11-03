@@ -14,6 +14,11 @@ class ServiceResource extends JsonResource
             'name'        => $this->name,
             'description' => $this->description,
             'price'       => $this->price,
+            // price_type: cara harga dihitung saat booking
+            // - per_session: harga flat 1 sesi (salon, barbershop, dll)
+            // - per_night  : harga per malam × jumlah malam (hotel)
+            'price_type'       => $this->price_type?->value,
+            'price_type_label' => $this->price_type?->label(),
             'photos'      => collect($this->photos ?? [])->map(fn (array $photo) => [
                 'url'        => $photo['url'],
                 'full_url'   => asset('storage/' . ltrim($photo['url'], '/')),

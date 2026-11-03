@@ -21,7 +21,8 @@ class BookingController extends Controller
         $tenantId = $request->user()->tenantProfile->id;
 
         $bookings = Booking::whereHas('service', fn($q) => $q->where('tenant_id', $tenantId))
-            ->with(['customer:id,name,email', 'service:id,name', 'slot'])
+            // Load slot (single-slot) DAN slots (multi-slot hotel) + payment untuk total_amount
+            ->with(['customer:id,name,email', 'service:id,name', 'slot', 'slots', 'payment'])
             ->latest()
             ->paginate(15);
 
@@ -36,7 +37,7 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
-        $booking->load(['customer:id,name,email,phone', 'service:id,name', 'slot', 'review']);
+        $booking->load(['customer:id,name,email,phone', 'service:id,name', 'slot', 'slots', 'review', 'payment']);
 
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
     }

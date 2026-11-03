@@ -300,4 +300,77 @@ class BookingTest extends TestCase
 
         $this->assertEquals(3, $total);
     }
+
+    // ─── BookingResource Structure ────────────────────────────────────────────
+
+    /**
+     * Verifikasi struktur response BookingResource (Step 3):
+     * - Tidak ada payment_method / payment_proof_url (deprecated)
+     * - Ada total_amount dari relasi payment
+     * - Ada check_in_date / check_out_date / nights (null untuk single-slot)
+     * - Ada relasi slots (array, kosong untuk single-slot yang tidak pakai pivot)
+     */
+    public function test_booking_resource_memiliki_struktur_yang_benar()
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant   = TenantProfile::factory()->approved()->create();
+        $service  = Service::factory()->create(['tenant_id' => $tenant->id]);
+        $booking  = Booking::factory()->pending()->create([
+            'customer_id' => $customer->id,
+            'service_id'  => $service->id,
+        ]);
+        Payment::factory()->create([
+            'booking_id' => $booking->id,
+            'amount'     => 150000,
+            'status'     => 'pending',
+        ]);
+
+        $response = $this->actingAs($customer)
+            ->getJson("/api/v1/customer/bookings/{$booking->uuid}");
+
+        $response->assertStatus(200)
+                 // Struktur wajib ada
+                 ->assertJsonStructure([
+                     'data' => [
+                         'uuid', 'status', 'created_at',
+                         'total_amount',
+                         'check_in_date', 'check_out_date', 'nights',
+                         'service', 'slot', 'slots', 'payment',
+                     ],
+                 ])
+                 // payment_method & payment_proof_url TIDAK boleh ada lagi (deprecated)
+                 ->assertJsonMissingPath('data.payment_method')
+                 ->assertJsonMissingPath('data.payment_proof_url')
+                 // total_amount harus sesuai dengan amount di payment
+                 ->assertJsonPath('data.total_amount', 150000)
+                 // single-slot: check_in_date null
+                 ->assertJsonPath('data.check_in_date', null)
+                 ->assertJsonPath('data.check_out_date', null)
+                 ->assertJsonPath('data.nights', null);
+    }
+
+    /**
+     * Verifikasi ServiceResource menyertakan price_type dan price_type_label.
+     */
+    public function test_service_resource_memiliki_price_type()
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant   = TenantProfile::factory()->approved()->create();
+        $service  = Service::factory()->create([
+            'tenant_id'  => $tenant->id,
+            'price_type' => 'per_session',
+        ]);
+        $booking = Booking::factory()->pending()->create([
+            'customer_id' => $customer->id,
+            'service_id'  => $service->id,
+        ]);
+        Payment::factory()->create(['booking_id' => $booking->id]);
+
+        $response = $this->actingAs($customer)
+            ->getJson("/api/v1/customer/bookings/{$booking->uuid}");
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.service.price_type', 'per_session')
+                 ->assertJsonPath('data.service.price_type_label', 'Per Sesi');
+    }
 }

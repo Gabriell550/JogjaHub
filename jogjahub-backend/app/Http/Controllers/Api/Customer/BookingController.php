@@ -16,7 +16,8 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $bookings = Booking::where('customer_id', $request->user()->id)
-            ->with(['service.tenant', 'slot'])
+            // Load relasi slot (single-slot) DAN slots (multi-slot hotel) + payment untuk total_amount
+            ->with(['service.tenant', 'slot', 'slots', 'payment'])
             ->latest()
             ->paginate(15);
 
@@ -42,7 +43,7 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
-        $booking->load(['service.tenant', 'slot', 'review', 'payment']);
+        $booking->load(['service.tenant', 'slot', 'slots', 'review', 'payment']);
 
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
     }
