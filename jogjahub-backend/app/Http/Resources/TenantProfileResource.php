@@ -25,6 +25,10 @@ class TenantProfileResource extends JsonResource
             'location'         => $this->location, // computed: {latitude, longitude}
             'whatsapp_number'  => $this->whatsapp_number,
             'status'           => $this->status,
+            // logo_url: foto/logo bisnis tenant — tampil publik (bukan dokumen privat)
+            'logo_url'         => $this->logo_url
+                ? asset('storage/' . $this->logo_url)
+                : null,
             'rejection_reason' => $this->when($canSeePrivate, $this->rejection_reason),
             'ktp_url'          => $this->when($canSeePrivate, $this->ktp_url),
             'nib_url'          => $this->when($canSeePrivate, $this->nib_url),

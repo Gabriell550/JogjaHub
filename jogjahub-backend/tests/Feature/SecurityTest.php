@@ -104,6 +104,9 @@ class SecurityTest extends TestCase
             'whatsapp_number' => '081234567890',
             'category_ids'    => [$category->id],
             'maps_embed_url'  => 'https://www.google.com/maps/embed?pb=!1m18FAKE',
+            // logo → public disk (boleh tampil publik)
+            'logo'            => UploadedFile::fake()->image('logo.jpg'),
+            // ktp/nib → local disk (dokumen privat)
             'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
             'nib'             => UploadedFile::fake()->image('nib.jpg'),
         ], ['Accept' => 'application/json']);
@@ -112,9 +115,16 @@ class SecurityTest extends TestCase
 
         $profile = TenantProfile::where('user_id', $tenantUser->id)->first();
 
+        // Dokumen pribadi HARUS ada di disk local (private)
         $localDisk->assertExists($profile->ktp_url);
         $localDisk->assertExists($profile->nib_url);
+        // Dokumen pribadi TIDAK boleh ada di disk public
         $publicDisk->assertMissing($profile->ktp_url);
+
+        // Logo HARUS ada di disk public (tampil di halaman publik)
+        $publicDisk->assertExists($profile->logo_url);
+        // Logo TIDAK boleh ada di disk local
+        $localDisk->assertMissing($profile->logo_url);
     }
 
     public function test_upload_ulang_ktp_menghapus_file_lama()
@@ -394,6 +404,8 @@ class SecurityTest extends TestCase
             'longitude'       => 110.36,
             'whatsapp_number' => '081234567890',
             'category_ids'    => [$category->id],
+            // logo wajib untuk tenant baru — disertakan di payload default
+            'logo'            => UploadedFile::fake()->image('logo.jpg'),
             'ktp'             => UploadedFile::fake()->image('ktp.jpg'),
             'nib'             => UploadedFile::fake()->image('nib.jpg'),
         ], $override);
@@ -402,6 +414,7 @@ class SecurityTest extends TestCase
     public function test_profil_tenant_baru_wajib_isi_maps_embed_url()
     {
         Storage::fake('local');
+        Storage::fake('public');
         $tenant = User::factory()->tenant()->create();
 
         // Tidak kirim maps_embed_url sama sekali → harus 422
@@ -414,6 +427,7 @@ class SecurityTest extends TestCase
     public function test_maps_link_biasa_bukan_embed_ditolak()
     {
         Storage::fake('local');
+        Storage::fake('public');
         $tenant = User::factory()->tenant()->create();
 
         $this->actingAs($tenant)
@@ -428,6 +442,7 @@ class SecurityTest extends TestCase
     public function test_maps_dari_domain_bukan_google_ditolak()
     {
         Storage::fake('local');
+        Storage::fake('public');
         $tenant = User::factory()->tenant()->create();
 
         $this->actingAs($tenant)
@@ -441,6 +456,7 @@ class SecurityTest extends TestCase
     public function test_tenant_baru_bisa_simpan_profil_dengan_url_embed_valid()
     {
         Storage::fake('local');
+        Storage::fake('public'); // logo disimpan di public disk
         $tenant = User::factory()->tenant()->create();
 
         $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';
@@ -457,6 +473,7 @@ class SecurityTest extends TestCase
     public function test_tenant_baru_bisa_simpan_profil_dengan_paste_html_iframe()
     {
         Storage::fake('local');
+        Storage::fake('public'); // logo disimpan di public disk
         $tenant = User::factory()->tenant()->create();
 
         $embedUrl = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1dFAKE!2d110.36!3d-7.79';

@@ -15,6 +15,8 @@ class UpdateProfileRequest extends FormRequest
     public function rules(): array
     {
         $profile     = $this->user()->tenantProfile;
+        // isFirstTime = true jika belum pernah upload KTP dan belum punya logo
+        // Keduanya wajib di submit pertama, jadi cukup cek salah satu saja
         $isFirstTime = !$profile || !$profile->ktp_url;
 
         // Skenario B: maps_embed_url wajib HANYA untuk pendaftaran pertama kali
@@ -40,6 +42,12 @@ class UpdateProfileRequest extends FormRequest
             'maps_embed_url'      => $mapsRequired
                 ? ['required', 'string', new \App\Rules\GoogleMapsEmbed]
                 : ['sometimes', 'nullable', 'string', new \App\Rules\GoogleMapsEmbed],
+
+            // Logo bisnis: wajib saat pertama kali daftar, opsional saat update
+            // Disimpan di disk 'public' agar bisa ditampilkan di halaman publik tenant
+            'logo'      => $isFirstTime
+                ? 'required|file|image|max:2048'
+                : 'sometimes|nullable|file|image|max:2048',
 
             // Wajib saat pertama kali, opsional saat update
             'ktp'       => $isFirstTime ? 'required|file|mimes:jpg,jpeg,png,pdf|max:2048' : 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:2048',

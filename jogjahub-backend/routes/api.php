@@ -40,6 +40,10 @@ Route::prefix('v1')->group(function () {
 
     // ===== Customer =====
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
+        // Profil customer: lihat dan update (termasuk upload avatar)
+        Route::get('profile', [\App\Http\Controllers\Api\Customer\ProfileController::class, 'show']);
+        Route::post('profile', [\App\Http\Controllers\Api\Customer\ProfileController::class, 'update']);
+
         // BookingController: index (daftar), store (buat), show (detail) — update & destroy tidak diimplementasikan
         Route::apiResource('bookings', \App\Http\Controllers\Api\Customer\BookingController::class)
             ->only(['index', 'store', 'show']);

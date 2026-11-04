@@ -25,6 +25,9 @@ class TenantProfile extends Model
         'ktp_url',
         'nib_url',
         'portfolio_url',
+        // logo_url: foto/logo bisnis tenant — wajib saat submit profil baru,
+        // disimpan di disk 'public' agar bisa ditampilkan di halaman publik
+        'logo_url',
         'rejection_reason',
     ];
 

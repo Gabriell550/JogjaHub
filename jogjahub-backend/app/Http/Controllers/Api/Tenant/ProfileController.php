@@ -28,8 +28,17 @@ class ProfileController extends Controller
                 $documentPaths[$column] = $request->file($input)->store('tenant_documents', 'local');
 
                 if ($existing && $existing->{$column}) {
-                    $oldFiles[] = $existing->{$column};
+                    $oldFiles[] = ['disk' => 'local', 'path' => $existing->{$column}];
                 }
+            }
+        }
+
+        // Logo bisnis disimpan di disk 'public' — boleh tampil di halaman publik tenant
+        if ($request->hasFile('logo')) {
+            $documentPaths['logo_url'] = $request->file('logo')->store('tenant_logos', 'public');
+
+            if ($existing && $existing->logo_url) {
+                $oldFiles[] = ['disk' => 'public', 'path' => $existing->logo_url];
             }
         }
 
@@ -58,8 +67,8 @@ class ProfileController extends Controller
 
         // Hapus file lama SETELAH data tersimpan, supaya tidak menumpuk
         // (dan tidak hilang duluan kalau penyimpanan gagal)
-        if ($oldFiles) {
-            Storage::disk('local')->delete($oldFiles);
+        foreach ($oldFiles as $old) {
+            Storage::disk($old['disk'])->delete($old['path']);
         }
 
         return response()->json([

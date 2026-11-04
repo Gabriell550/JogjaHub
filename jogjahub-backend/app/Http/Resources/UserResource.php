@@ -15,7 +15,11 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'role'  => $this->role,
+            // avatar_url: path disimpan relatif, full URL digenerate di sini
+            // null jika customer belum upload foto profil
+            'avatar_url' => $this->avatar_url
+                ? asset('storage/' . $this->avatar_url)
+                : null,
         ];
     }
 }
-
