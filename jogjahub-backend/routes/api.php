@@ -49,6 +49,13 @@ Route::prefix('v1')->group(function () {
             ->only(['index', 'store', 'show']);
         Route::post('bookings/{booking}/cancel', [\App\Http\Controllers\Api\Customer\BookingController::class, 'cancel']);
         Route::post('bookings/{booking}/review', [\App\Http\Controllers\Api\Customer\ReviewController::class, 'store']);
+
+        // Chat — conversation customer dengan tenant
+        Route::get('conversations', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'index']);
+        Route::post('conversations', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'store']);
+        Route::get('conversations/{conversation}/messages', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'messages']);
+        Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'sendMessage']);
+        Route::patch('conversations/{conversation}/read', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'markAsRead']);
     });
 
     // ===== Tenant =====
@@ -76,6 +83,12 @@ Route::prefix('v1')->group(function () {
             Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
             Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
         });
+
+        // Chat — inbox percakapan masuk dari customer (tidak butuh tenant.approved)
+        Route::get('conversations', [\App\Http\Controllers\Api\Tenant\ConversationController::class, 'index']);
+        Route::get('conversations/{conversation}/messages', [\App\Http\Controllers\Api\Tenant\ConversationController::class, 'messages']);
+        Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\Api\Tenant\ConversationController::class, 'sendMessage']);
+        Route::patch('conversations/{conversation}/read', [\App\Http\Controllers\Api\Tenant\ConversationController::class, 'markAsRead']);
     });
 
     // ===== Admin =====

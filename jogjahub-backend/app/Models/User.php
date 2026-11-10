@@ -35,4 +35,22 @@ class User extends Authenticatable
     {
         return $this->hasOne(TenantProfile::class);
     }
+
+    // ─── Chat Relations ───────────────────────────────────────────────────────
+
+    /**
+     * Semua conversation di mana user ini adalah customer.
+     */
+    public function conversationsAsCustomer()
+    {
+        return $this->hasMany(Conversation::class, 'customer_id');
+    }
+
+    /**
+     * Semua conversation di mana user ini adalah tenant.
+     */
+    public function conversationsAsTenant()
+    {
+        return $this->hasMany(Conversation::class, 'tenant_id');
+    }
 }
