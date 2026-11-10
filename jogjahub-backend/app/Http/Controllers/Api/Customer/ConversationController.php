@@ -65,6 +65,16 @@ class ConversationController extends Controller
             ], 422);
         }
 
+        // Pastikan tenant sudah approved — tenant pending/rejected tidak bisa dihubungi.
+        // Ini mencegah customer chat ke tenant yang belum terverifikasi admin.
+        $tenantProfile = $tenant->tenantProfile;
+        if (!$tenantProfile || $tenantProfile->status !== 'approved') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tenant tidak tersedia untuk dihubungi.',
+            ], 422);
+        }
+
         // Buat conversation baru atau ambil yang sudah ada
         $conversation = Conversation::firstOrCreate([
             'customer_id' => $request->user()->id,
