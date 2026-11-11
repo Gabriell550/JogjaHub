@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { CUSTOMER_THEMES, useCustomerTheme, type CustomerTheme } from "@/src/components/customer/CustomerThemeProvider";
 import { useAuth } from "@/src/hooks/useAuth";
 import { apiGet, apiPost } from "@/src/lib/api";
+import { resolveAvatarUrl } from "@/src/lib/avatar";
 import type { AuthUser } from "@/src/features/auth/types";
 
 interface CustomerProfileResponse {
@@ -23,7 +24,20 @@ interface ProfileErrors {
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Terjadi kesalahan. Silakan coba lagi.";
+  const message = error instanceof Error ? error.message : "";
+  const status = message.match(/(?:Request failed: |Permintaan gagal \()(\d{3})/);
+
+  if (status) {
+    const messages: Record<string, string> = {
+      "401": "Sesi login tidak valid atau sudah berakhir. Silakan login kembali.",
+      "403": "Akun ini tidak memiliki akses ke profil customer.",
+      "404": "Endpoint profil tidak ditemukan. Periksa konfigurasi API backend.",
+      "500": "Server sedang mengalami gangguan. Coba lagi beberapa saat.",
+    };
+    return messages[status[1]] ?? `Permintaan gagal (${status[1]}). Silakan coba lagi.`;
+  }
+
+  return message || "Terjadi kesalahan. Silakan coba lagi.";
 }
 
 function getInitials(name: string) {
@@ -48,6 +62,7 @@ export default function CustomerProfilePage() {
   const [phone, setPhone] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarLoadErrorUrl, setAvatarLoadErrorUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<ProfileErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -89,7 +104,16 @@ export default function CustomerProfilePage() {
     return () => URL.revokeObjectURL(avatarPreview);
   }, [avatarPreview]);
 
-  const avatarUrl = avatarPreview ?? profile?.avatar_url ?? null;
+  let profileAvatarUrl: string | null = null;
+  let avatarUrlResolutionFailed = false;
+  try {
+    profileAvatarUrl = resolveAvatarUrl(profile?.avatar_url);
+  } catch {
+    avatarUrlResolutionFailed = Boolean(profile?.avatar_url);
+  }
+  const avatarUrl = avatarPreview ?? profileAvatarUrl;
+  const avatarLoadFailed = Boolean(avatarUrl && avatarLoadErrorUrl === avatarUrl);
+  const showAvatarImage = Boolean(avatarUrl && !avatarLoadFailed);
   const selectedTheme = draftTheme ?? theme;
 
   if (!session || session.user.role !== "customer") return null;
@@ -198,6 +222,9 @@ export default function CustomerProfilePage() {
       setErrors({});
       setNotice("Profil berhasil diperbarui.");
     } catch (error: unknown) {
+      setSelectedAvatar(null);
+      setAvatarPreview(null);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
       setFormError(getErrorMessage(error));
     } finally {
       setIsSaving(false);
@@ -205,8 +232,6 @@ export default function CustomerProfilePage() {
   };
 
   const errorEntries = Object.entries(errors).filter((entry): entry is [keyof ProfileErrors, string] => Boolean(entry[1]));
-  const displayedAvatar = Boolean(avatarUrl);
-
   return (
     <section className="space-y-7 px-4 py-8 sm:px-6 lg:px-8">
       <header className="max-w-3xl">
@@ -245,8 +270,10 @@ export default function CustomerProfilePage() {
           <section aria-labelledby="profile-details-title" className="overflow-hidden rounded-3xl border border-[var(--customer-border)] bg-[var(--customer-surface)] shadow-sm">
             <div className="flex flex-col gap-5 border-b border-[var(--customer-border)] bg-[var(--customer-primary-soft)]/60 p-5 sm:flex-row sm:items-center sm:p-7">
               <div className="relative grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-[var(--customer-surface)] bg-[var(--customer-primary-soft)] text-2xl font-bold text-[var(--customer-primary)] shadow-sm">
-                <span aria-label={`Avatar ${profile.name}`} role="img">{getInitials(profile.name)}</span>
-                {displayedAvatar ? (
+                {!showAvatarImage ? (
+                  <span aria-label={`Avatar ${profile.name}`} role="img">{getInitials(profile.name)}</span>
+                ) : null}
+                {showAvatarImage ? (
                   <Image
                     key={avatarUrl}
                     src={avatarUrl!}
@@ -254,7 +281,7 @@ export default function CustomerProfilePage() {
                     width={96}
                     height={96}
                     unoptimized
-                    onError={(event) => { event.currentTarget.style.display = "none"; }}
+                    onError={() => setAvatarLoadErrorUrl(avatarUrl)}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : null}
@@ -263,6 +290,11 @@ export default function CustomerProfilePage() {
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--customer-primary)]">Akun JogjaHub</p>
                 <h2 className="font-display mt-1 break-words text-2xl font-bold text-[var(--customer-text)]">{profile.name}</h2>
                 <p className="mt-1 break-all text-sm text-[var(--customer-muted)]">{profile.email}</p>
+                {avatarUrlResolutionFailed ? (
+                  <p role="status" className="mt-2 text-xs font-medium text-amber-800">URL foto profil dari server tidak valid.</p>
+                ) : avatarLoadFailed ? (
+                  <p role="status" className="mt-2 text-xs font-medium text-amber-800">Foto profil gagal dimuat. Periksa host, port, dan akses storage Laravel.</p>
+                ) : null}
               </div>
               {!isEditing ? (
                 <button
