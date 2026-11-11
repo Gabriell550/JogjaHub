@@ -18,6 +18,7 @@ interface AuthContextValue {
   login: (payload: LoginPayload) => Promise<AuthSession>;
   registerCustomer: (payload: RegisterCustomerPayload) => Promise<AuthSession>;
   registerTenant: (payload: RegisterTenantPayload) => Promise<{ message: string }>;
+  updateUser: (user: AuthSession["user"]) => void;
   logout: () => void;
 }
 
@@ -83,9 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionState(null);
   }, []);
 
+  const updateUser = useCallback((user: AuthSession["user"]) => {
+    const currentSession = getSession();
+    if (!currentSession) return;
+
+    const updatedSession = { ...currentSession, user };
+    setSession(updatedSession);
+    setSessionState(updatedSession);
+  }, []);
+
   return createElement(
     AuthContext.Provider,
-    { value: { session, isAuthenticated: session !== null, isLoading, isHydrated, login, registerCustomer, registerTenant, logout } },
+    { value: { session, isAuthenticated: session !== null, isLoading, isHydrated, login, registerCustomer, registerTenant, updateUser, logout } },
     children,
   );
 }

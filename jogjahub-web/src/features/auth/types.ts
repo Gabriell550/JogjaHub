@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   phone?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface LoginPayload {
