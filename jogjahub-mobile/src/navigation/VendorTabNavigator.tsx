@@ -1,157 +1,82 @@
-import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { LayoutDashboard, Store, ClipboardList, User, Calendar } from "lucide-react-native";
-import { View, Text, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, typography } from "../constants/theme";
-import { VendorDashboardStackNavigator } from "./VendorDashboardStackNavigator";
-import { VendorServicesStackNavigator } from "./VendorServicesStackNavigator";
-import ManageCalendarScreen from "../features/vendor/calendar/screens/ManageCalendarScreen";
-import { VendorOrdersStackNavigator } from "./VendorOrdersStackNavigator";
-import { VendorProfileStackNavigator } from "./VendorProfileStackNavigator";
-import { VendorTabParamList } from "./types";
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Calendar, ClipboardList, LayoutDashboard, Store, User } from 'lucide-react-native';
+import ManageCalendarScreen from '../features/vendor/calendar/screens/ManageCalendarScreen';
+import { RubberDockTabBar, type RubberDockPanel } from './RubberDockTabBar';
+import { VendorDashboardStackNavigator } from './VendorDashboardStackNavigator';
+import { VendorOrdersStackNavigator } from './VendorOrdersStackNavigator';
+import { VendorProfileStackNavigator } from './VendorProfileStackNavigator';
+import { VendorServicesStackNavigator } from './VendorServicesStackNavigator';
+import type { VendorTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<VendorTabParamList>();
 
-const ICONS: Record<keyof VendorTabParamList, any> = {
-  Dashboard: LayoutDashboard,
-  Listing: Store,
-  Calendar: Calendar,
-  Orders: ClipboardList,
-  Profile: User,
-};
-
-const TAB_LABELS: Record<keyof VendorTabParamList, string> = {
-  Dashboard: "Dashboard",
-  Listing: "Listing",
-  Calendar: "Kalender",
-  Orders: "Pesanan",
-  Profile: "Profil",
-};
-
-function TabIcon({ icon: Icon, focused, label }: { icon: any; focused: boolean; label: string }) {
-  return (
-    <View style={styles.tabButton}>
-      <View style={[styles.iconPill, focused && styles.iconPillActive]}>
-        <Icon size={18} color={focused ? colors.onPrimary : colors.onSurfaceVariant} />
-      </View>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
-    </View>
-  );
-}
+const panels = {
+  Dashboard: {
+    description: 'Pantau aktivitas dan kinerja bisnis Anda.',
+    actions: [
+      { label: 'Aktivitas terbaru', run: navigation => navigation.navigate('Dashboard', { screen: 'RecentActivity' }) },
+      { label: 'Statistik bisnis', run: navigation => navigation.navigate('Dashboard', { screen: 'Statistics' }) },
+    ],
+  },
+  Listing: {
+    description: 'Kelola layanan yang tersedia untuk pelanggan.',
+    actions: [
+      { label: 'Tambah layanan', run: navigation => navigation.navigate('Listing', { screen: 'ServiceForm', params: { mode: 'create' } }) },
+    ],
+  },
+  Calendar: {
+    description: 'Atur tanggal, jam, dan kuota pemesanan untuk tiap layanan.',
+    actions: [
+      { label: 'Kelola layanan', run: navigation => navigation.navigate('Listing', { screen: 'ServicesList' }) },
+    ],
+  },
+  Orders: {
+    description: 'Tinjau pesanan masuk dan perbarui statusnya.',
+    actions: [
+      { label: 'Buka kalender', run: navigation => navigation.navigate('Calendar') },
+    ],
+  },
+  Profile: {
+    description: 'Perbarui profil bisnis dan balas pesan pelanggan.',
+    actions: [
+      { label: 'Edit profil bisnis', run: navigation => navigation.navigate('Profile', { screen: 'EditBusinessProfile' }) },
+      { label: 'Pesan pelanggan', run: navigation => navigation.navigate('Profile', { screen: 'VendorChatInbox' }) },
+    ],
+  },
+} satisfies Record<keyof VendorTabParamList, RubberDockPanel>;
 
 export function VendorTabNavigator() {
-  const insets = useSafeAreaInsets();
-
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            height: 68 + insets.bottom,
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
-          },
-        ],
-      }}
+      tabBar={props => <RubberDockTabBar {...props} panels={panels} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen
         name="Dashboard"
         component={VendorDashboardStackNavigator}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={ICONS.Dashboard} focused={focused} label="Dashboard" />,
-        }}
+        options={{ tabBarLabel: 'Dasbor', tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Listing"
         component={VendorServicesStackNavigator}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={ICONS.Listing} focused={focused} label="Listing" />,
-        }}
+        options={{ tabBarLabel: 'Layanan', tabBarIcon: ({ color, size }) => <Store color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Calendar"
         component={ManageCalendarScreen}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={ICONS.Calendar} focused={focused} label="Kalender" />,
-        }}
+        options={{ tabBarLabel: 'Kalender', tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Orders"
         component={VendorOrdersStackNavigator}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.ordersTab}>
-              <TabIcon icon={ICONS.Orders} focused={focused} label="Pesanan" />
-              {focused && <View style={styles.notifDot} />}
-            </View>
-          ),
-        }}
+        options={{ tabBarLabel: 'Pesanan', tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Profile"
         component={VendorProfileStackNavigator}
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon icon={ICONS.Profile} focused={focused} label="Profil" />,
-          headerShown: false,
-        }}
+        options={{ tabBarLabel: 'Profil', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
       />
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: colors.outlineVariant,
-    borderTopWidth: 1,
-    paddingTop: 8,
-  },
-  tabButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    gap: 4,
-  },
-  iconPill: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceContainerHigh,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconPillActive: {
-    backgroundColor: colors.primary,
-  },
-  tabLabel: {
-    fontFamily: typography.labelMd.fontFamily,
-    fontSize: 11,
-    fontWeight: "500",
-    color: colors.onSurfaceVariant,
-  },
-  tabLabelActive: {
-    color: colors.primary,
-    fontWeight: "700",
-  },
-  ordersTab: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    gap: 4,
-    position: "relative",
-  },
-  notifDot: {
-    position: "absolute",
-    top: 4,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.notificationRed,
-    borderWidth: 2,
-    borderColor: colors.surfaceContainerLowest,
-  },
-});
