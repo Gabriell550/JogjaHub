@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -25,6 +25,7 @@ import {
   UserRound,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TenantDockLayoutContext } from '../../../../navigation/TenantDockLayoutContext';
 import { categoryApi } from '../../../../api/categoryApi';
 import { vendorApi } from '../../../../api/vendorApi';
 import { Button } from '../../../../components/Button/Button';
@@ -121,6 +122,7 @@ export default function EditTenantProfileScreen() {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const hasTenantDock = useContext(TenantDockLayoutContext) !== null;
   const user = useSelector((state: RootState) => state.auth.user);
 
   const [profile, setProfile] = useState<TenantProfile | null>(null);
@@ -611,7 +613,7 @@ export default function EditTenantProfileScreen() {
             </View>
           </ScrollView>
 
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.gutter) }]}>
+          <View style={[styles.footer, { paddingBottom: hasTenantDock ? spacing.gutter : Math.max(insets.bottom, spacing.gutter) }]}>
             <Pressable
               accessibilityRole="button"
               disabled={saving}

@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Calendar, ClipboardList, LayoutDashboard, Store, User } from 'lucide-react-native';
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ManageCalendarScreen from '../features/vendor/calendar/screens/ManageCalendarScreen';
 import { RubberDockTabBar, type RubberDockPanel } from './RubberDockTabBar';
+import { TenantDockLayoutContext } from './TenantDockLayoutContext';
+import { closedDockHeight } from './tenantDockGeometry';
 import { VendorDashboardStackNavigator } from './VendorDashboardStackNavigator';
 import { VendorOrdersStackNavigator } from './VendorOrdersStackNavigator';
 import { VendorProfileStackNavigator } from './VendorProfileStackNavigator';
@@ -10,6 +14,7 @@ import { VendorServicesStackNavigator } from './VendorServicesStackNavigator';
 import type { VendorTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<VendorTabParamList>();
+const nativeTenantDock = Platform.OS === 'ios' || Platform.OS === 'android';
 
 const panels = {
   Dashboard: {
@@ -47,9 +52,21 @@ const panels = {
 } satisfies Record<keyof VendorTabParamList, RubberDockPanel>;
 
 export function VendorTabNavigator() {
-  return (
+  const window = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [hostHeight, setHostHeight] = useState<number | null>(null);
+  const [closedFooterHeight, setClosedFooterHeight] = useState<number | null>(null);
+  const usableHeight = hostHeight ?? window.height;
+  const closedSceneHeight = usableHeight - (closedFooterHeight ?? closedDockHeight + insets.bottom);
+  const navigator = (
     <Tab.Navigator
-      tabBar={props => <RubberDockTabBar {...props} panels={panels} />}
+      tabBar={props => (
+        <RubberDockTabBar
+          {...props}
+          panels={panels}
+          tenantLayout={nativeTenantDock ? { usableHeight, onClosedHeightChange: setClosedFooterHeight } : undefined}
+        />
+      )}
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen
@@ -79,4 +96,18 @@ export function VendorTabNavigator() {
       />
     </Tab.Navigator>
   );
+
+  if (!nativeTenantDock) return navigator;
+
+  return (
+    <TenantDockLayoutContext.Provider value={closedSceneHeight}>
+      <View style={styles.host} onLayout={event => setHostHeight(event.nativeEvent.layout.height)}>
+        {navigator}
+      </View>
+    </TenantDockLayoutContext.Provider>
+  );
 }
+
+const styles = StyleSheet.create({
+  host: { flex: 1 },
+});

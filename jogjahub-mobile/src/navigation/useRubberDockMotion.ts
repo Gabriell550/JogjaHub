@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
-
-type Tuning = readonly [stiffness: number, damping: number];
+import { advanceSpring, spring, type SpringTuning } from '../utils/spring';
 
 // Rubber Dock values from DesignBookmark's shared/tokens.css.
 const springs = {
@@ -13,31 +12,9 @@ const springs = {
   openHeight: [230, 21],
   close: [420, 30],
   pop: [520, 16],
-} as const satisfies Record<string, Tuning>;
+} as const satisfies Record<string, SpringTuning>;
 
-function spring(position: number, tuning: Tuning = [600, 44]) {
-  return { position, target: position, velocity: 0, tuning };
-}
-
-type Spring = ReturnType<typeof spring>;
-
-function advance(spring: Spring, dt: number, reduceMotion: boolean) {
-  if (reduceMotion || (Math.abs(spring.position - spring.target) < 0.0005 && Math.abs(spring.velocity) < 0.01)) {
-    spring.position = spring.target;
-    spring.velocity = 0;
-    return false;
-  }
-
-  const [stiffness, damping] = spring.tuning;
-  for (let step = 0; step < 4; step += 1) {
-    const acceleration = -stiffness * (spring.position - spring.target) - damping * spring.velocity;
-    spring.velocity += acceleration * dt / 4;
-    spring.position += spring.velocity * dt / 4;
-  }
-  return true;
-}
-
-export function useRubberDockMotion(initialIndex: number, tabCount: number) {
+export function useRubberDockMotion(initialIndex: number, tabCount: number, instantReducedMotion = false) {
   const [motion] = useState(() => ({
     left: spring(initialIndex),
     right: spring(initialIndex),
@@ -61,24 +38,32 @@ export function useRubberDockMotion(initialIndex: number, tabCount: number) {
   const reduceMotion = useRef(false);
 
   const animate = useCallback(() => {
+    const values = [motion.left, motion.right, motion.nudge, motion.width, motion.height, ...motion.icons];
+    if (instantReducedMotion && reduceMotion.current) {
+      if (request.current !== null) cancelAnimationFrame(request.current);
+      request.current = null;
+      motion.nudge.target = 0;
+      for (const value of values) advanceSpring(value, 0, true);
+      setFrame(readFrame());
+      return;
+    }
     if (request.current !== null) {
       return;
     }
 
-    const values = [motion.left, motion.right, motion.nudge, motion.width, motion.height, ...motion.icons];
     lastTime.current = performance.now();
     const tick = (now: number) => {
       const dt = Math.max(0, Math.min((now - lastTime.current) / 1000, 1 / 30));
       lastTime.current = now;
       let moving = false;
       for (const value of values) {
-        moving = advance(value, dt, reduceMotion.current) || moving;
+        moving = advanceSpring(value, dt, reduceMotion.current) || moving;
       }
       setFrame(readFrame());
       request.current = moving ? requestAnimationFrame(tick) : null;
     };
     request.current = requestAnimationFrame(tick);
-  }, [motion, readFrame]);
+  }, [instantReducedMotion, motion, readFrame]);
 
   useEffect(() => {
     let receivedChange = false;
@@ -86,9 +71,13 @@ export function useRubberDockMotion(initialIndex: number, tabCount: number) {
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', enabled => {
       receivedChange = true;
       reduceMotion.current = enabled;
+      if (instantReducedMotion && enabled) animate();
     });
     AccessibilityInfo.isReduceMotionEnabled().then(enabled => {
-      if (mounted && !receivedChange) reduceMotion.current = enabled;
+      if (mounted && !receivedChange) {
+        reduceMotion.current = enabled;
+        if (instantReducedMotion && enabled) animate();
+      }
     }).catch(() => {});
     return () => {
       mounted = false;
@@ -96,24 +85,25 @@ export function useRubberDockMotion(initialIndex: number, tabCount: number) {
       if (request.current !== null) cancelAnimationFrame(request.current);
       request.current = null;
     };
-  }, []);
+  }, [animate, instantReducedMotion]);
 
   const movePill = useCallback((center: number, direction: number, drag = false, overshoot = 0) => {
     const lead = drag ? springs.dragLead : springs.lead;
     const trail = drag ? springs.dragTrail : springs.trail;
-    const still: Tuning = [600, 44];
+    const still: SpringTuning = [600, 44];
     motion.left.tuning = direction === 0 ? still : direction > 0 ? trail : lead;
     motion.right.tuning = direction === 0 ? still : direction > 0 ? lead : trail;
-    motion.left.target = center;
-    motion.right.target = center;
-    motion.nudge.target = overshoot * 0.35;
+    const reduced = instantReducedMotion && reduceMotion.current;
+    motion.left.target = reduced ? center - overshoot : center;
+    motion.right.target = motion.left.target;
+    motion.nudge.target = reduced ? 0 : overshoot * 0.35;
     animate();
-  }, [animate, motion]);
+  }, [animate, instantReducedMotion, motion]);
 
   const select = useCallback((index: number, direction?: number) => {
     movePill(index, direction ?? Math.sign(index - (motion.left.position + motion.right.position) / 2));
-    motion.icons[index].velocity -= 3.2;
-  }, [motion, movePill]);
+    if (!instantReducedMotion || !reduceMotion.current) motion.icons[index].velocity -= 3.2;
+  }, [instantReducedMotion, motion, movePill]);
 
   const resize = useCallback((expanded: boolean, panelHeight: number, index: number) => {
     const changed = expanded !== (motion.width.target === 1);
@@ -124,9 +114,9 @@ export function useRubberDockMotion(initialIndex: number, tabCount: number) {
       : springs.close;
     motion.width.target = Number(expanded);
     motion.height.target = expanded ? panelHeight : 0;
-    if (changed) motion.icons[index].velocity -= 2.4;
+    if (changed && (!instantReducedMotion || !reduceMotion.current)) motion.icons[index].velocity -= 2.4;
     animate();
-  }, [animate, motion]);
+  }, [animate, instantReducedMotion, motion]);
 
   return { frame, movePill, select, resize };
 }

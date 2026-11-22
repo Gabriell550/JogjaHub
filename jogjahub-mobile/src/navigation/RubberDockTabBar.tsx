@@ -1,9 +1,12 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { CommonActions } from '@react-navigation/native';
 import { ChevronRight, X } from 'lucide-react-native';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { AccessibilityInfo, BackHandler, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { colors, radius, spacing, typography } from '../constants/theme';
+import { tenantColors, tenantLayout as tenantMetrics } from '../constants/theme/tenant';
+import { TenantPressable } from '../features/vendor/components/TenantPressable';
+import { dockFooterPadding, dockGap as tabGap, dockPadding as dockInset, dockRowMinHeight as tabHeight, getTenantDockGeometry } from './tenantDockGeometry';
 import { useRubberDockMotion } from './useRubberDockMotion';
 
 export type RubberDockPanel = {
@@ -14,11 +17,11 @@ export type RubberDockPanel = {
   }[];
 };
 
-type Props = BottomTabBarProps & { panels: Record<string, RubberDockPanel> };
+type Props = BottomTabBarProps & {
+  panels: Record<string, RubberDockPanel>;
+  tenantLayout?: { usableHeight: number; onClosedHeightChange: (height: number) => void };
+};
 
-const tabHeight = 56;
-const tabGap = 4;
-const dockInset = 6;
 const dockHeight = tabHeight + dockInset * 2;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -31,16 +34,31 @@ function rubberBand(distance: number) {
   return Math.sign(distance) * (1 - 1 / (Math.abs(distance) * 0.55 / limit + 1)) * limit;
 }
 
-export function RubberDockTabBar({ state, descriptors, navigation, insets, panels }: Props) {
+export function RubberDockTabBar({ state, descriptors, navigation, insets, panels, tenantLayout }: Props) {
   const window = useWindowDimensions();
+  const isTenant = tenantLayout !== undefined;
+  const [footerWidth, setFooterWidth] = useState<number | null>(null);
+  const [rowHeight, setRowHeight] = useState(tabHeight);
+  const rowRef = useRef<ComponentRef<typeof View>>(null);
+  const rowLeft = useRef<number | null>(null);
+  const activeTabRef = useRef<ComponentRef<typeof Pressable>>(null);
+  const [focusedTab, setFocusedTab] = useState<number | null>(null);
+  const [pressedTab, setPressedTab] = useState<number | null>(null);
+  const panelControlFocused = useRef(false);
+  const restoreFocus = useRef<{ keyboard: boolean; accessibility: boolean } | null>(null);
   const count = state.routes.length;
-  const availableWidth = window.width - insets.left - insets.right;
-  const collapsedWidth = Math.min(count * tabHeight + (count - 1) * tabGap + dockInset * 2, availableWidth - 24);
-  const expandedWidth = Math.min(340, availableWidth - 24);
-  const rowWidth = collapsedWidth - dockInset * 2;
-  const tabWidth = (rowWidth - (count - 1) * tabGap) / count;
-  const pitch = tabWidth + tabGap;
+  const availableWidth = (footerWidth ?? window.width) - insets.left - insets.right;
+  const tenantGeometry = isTenant ? getTenantDockGeometry(availableWidth, count) : null;
+  const collapsedWidth = tenantGeometry?.width
+    ?? Math.min(count * tabHeight + (count - 1) * tabGap + dockInset * 2, availableWidth - 24);
+  const expandedWidth = tenantGeometry?.width ?? Math.min(340, availableWidth - 24);
+  const rowWidth = tenantGeometry?.rowWidth ?? collapsedWidth - dockInset * 2;
+  const gap = tenantGeometry?.gap ?? tabGap;
+  const tabWidth = tenantGeometry?.slot ?? (rowWidth - (count - 1) * gap) / count;
+  const pitch = tabWidth + gap;
   const firstCenter = insets.left + (availableWidth - rowWidth + tabWidth) / 2;
+  const closedFooterHeight = rowHeight + 2 * (dockInset + dockFooterPadding) + insets.bottom;
+  const reportClosedHeight = tenantLayout?.onClosedHeightChange;
 
   const [expanded, setExpanded] = useState(false);
   const [panelSizes, setPanelSizes] = useState<Record<string, number>>({});
@@ -48,12 +66,28 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
   const activeOptions = descriptors[activeRoute.key].options;
   const panel = panels[activeRoute.name];
   const panelKey = `${activeRoute.key}:${expandedWidth}:${window.fontScale}`;
-  const maxPanelHeight = Math.min(300, window.height * 0.4);
-  const panelHeight = Math.min(maxPanelHeight, panelSizes[panelKey] ?? 0);
-  const { frame, movePill, select, resize } = useRubberDockMotion(state.index, count);
+  const maxPanelHeight = Math.min(
+    300, window.height * 0.4,
+    tenantLayout ? Math.max(0, tenantLayout.usableHeight - closedFooterHeight - tenantMetrics.minTarget) : Infinity,
+  );
+  const measuredPanelHeight = panelSizes[panelKey];
+  const panelHeight = Math.min(maxPanelHeight, measuredPanelHeight ?? 0);
+  const { frame, movePill, select, resize } = useRubberDockMotion(state.index, count, isTenant);
   const lastIndex = useRef(state.index);
   const drag = useRef({ center: state.index, direction: 0 });
   const releasedDirection = useRef<number | undefined>(undefined);
+
+  const measureRow = useCallback(() => {
+    rowRef.current?.measureInWindow(x => { rowLeft.current = x; });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isTenant) measureRow();
+  }, [isTenant, measureRow, footerWidth, rowWidth, window.width, window.height, window.fontScale, insets.left, insets.right]);
+
+  useLayoutEffect(() => {
+    reportClosedHeight?.(closedFooterHeight);
+  }, [closedFooterHeight, reportClosedHeight]);
 
   useLayoutEffect(() => {
     if (lastIndex.current === state.index) return;
@@ -63,39 +97,76 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
   }, [select, state.index]);
 
   useLayoutEffect(() => {
+    if (isTenant && expanded && measuredPanelHeight === undefined && maxPanelHeight > 0) return;
     resize(expanded, panelHeight, state.index);
-  }, [expanded, panelHeight, resize, state.index]);
+  }, [expanded, isTenant, maxPanelHeight, measuredPanelHeight, panelHeight, resize, state.index]);
+
+  const tenantPanelHeight = clamp(frame.height, 0, maxPanelHeight);
+  const tenantPanelVisible = expanded && panelHeight > 0 && tenantPanelHeight >= panelHeight - 0.5;
+
+  const closePanel = useCallback((returnAccessibilityFocus = false) => {
+    if (isTenant) {
+      restoreFocus.current = {
+        keyboard: panelControlFocused.current,
+        accessibility: returnAccessibilityFocus,
+      };
+      panelControlFocused.current = false;
+    }
+    setExpanded(false);
+  }, [isTenant]);
+
+  useEffect(() => {
+    if (expanded || !restoreFocus.current) return;
+    const { keyboard, accessibility } = restoreFocus.current;
+    restoreFocus.current = null;
+    let cancelled = false;
+    const tab = activeTabRef.current;
+    if (keyboard) tab?.focus();
+    if (accessibility && tab) {
+      AccessibilityInfo.isScreenReaderEnabled().then(enabled => {
+        if (enabled && !cancelled && activeTabRef.current === tab && navigation.isFocused()) {
+          AccessibilityInfo.sendAccessibilityEvent(tab, 'focus');
+        }
+      }).catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [expanded, navigation, activeRoute.key]);
 
   useEffect(() => {
     if (!expanded) return;
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!navigation.isFocused()) return false;
-      setExpanded(false);
+      closePanel(isTenant && tenantPanelVisible);
       return true;
     });
     return () => back.remove();
-  }, [expanded, navigation]);
+  }, [closePanel, expanded, isTenant, navigation, tenantPanelVisible]);
 
   const pressTab = useCallback((index: number, allowExpand: boolean, direction?: number) => {
     const route = state.routes[index];
     const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
     if (event.defaultPrevented) return false;
     if (index !== state.index) {
+      panelControlFocused.current = false;
       releasedDirection.current = direction;
       navigation.dispatch({ ...CommonActions.navigate({ name: route.name, merge: true }), target: state.key });
     } else if (allowExpand && panels[route.name]) {
-      setExpanded(previous => !previous);
+      if (isTenant && expanded) closePanel();
+      else setExpanded(previous => !previous);
     }
     return true;
-  }, [navigation, panels, state.index, state.key, state.routes]);
+  }, [closePanel, expanded, isTenant, navigation, panels, state.index, state.key, state.routes]);
 
   const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onMoveShouldSetPanResponderCapture: (_, gesture) => (!isTenant || rowLeft.current !== null)
+      && Math.abs(gesture.dx) > 4 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
     onPanResponderGrant: (_, gesture) => {
-      drag.current = { center: (gesture.x0 - firstCenter) / pitch, direction: 0 };
+      const center = isTenant ? (rowLeft.current ?? 0) + tabWidth / 2 : firstCenter;
+      drag.current = { center: (gesture.x0 - center) / pitch, direction: 0 };
     },
     onPanResponderMove: (_, gesture) => {
-      const center = (gesture.moveX - firstCenter) / pitch;
+      const origin = isTenant ? (rowLeft.current ?? 0) + tabWidth / 2 : firstCenter;
+      const center = (gesture.moveX - origin) / pitch;
       const delta = center - drag.current.center;
       const direction = Math.abs(delta * pitch) > 0.5 ? Math.sign(delta) : drag.current.direction;
       const bounded = clamp(center, 0, count - 1);
@@ -109,7 +180,7 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
       if (index === state.index || !pressTab(index, false, direction)) select(state.index, direction);
     },
     onPanResponderTerminate: () => movePill(state.index, 0),
-  }), [count, firstCenter, movePill, pitch, pressTab, select, state.index]);
+  }), [count, firstCenter, isTenant, movePill, pitch, pressTab, select, state.index, tabWidth]);
 
   const leftEdge = frame.left * pitch;
   const rightEdge = frame.right * pitch + tabWidth;
@@ -128,13 +199,20 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
     const label = tabLabel(options, route.name);
     const selected = state.index === index;
     const color = highlight ? colors.onPrimary : colors.onSurfaceVariant;
-    const style = [styles.tab, { width: tabWidth }];
+    const style = [isTenant ? tenantStyles.tab : styles.tab, { width: tabWidth }];
     const content = (
       <>
-        <View style={{ transform: [{ scale: frame.icons[index] }] }}>
+        <View aria-hidden={isTenant || undefined} style={{ transform: [{ scale: frame.icons[index] }] }}>
           {options.tabBarIcon?.({ focused: selected, color, size: 20 })}
         </View>
-        <Text style={[styles.label, { color }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>{label}</Text>
+        <Text
+          style={[styles.label, { color }]}
+          numberOfLines={isTenant ? undefined : 1}
+          maxFontSizeMultiplier={isTenant ? undefined : 1.3}
+          textBreakStrategy={isTenant ? 'simple' : undefined}
+        >
+          {label}
+        </Text>
       </>
     );
 
@@ -143,7 +221,8 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
     return (
       <Pressable
         key={route.key}
-        style={style}
+        ref={isTenant && selected ? activeTabRef : undefined}
+        style={({ pressed }) => [style, isTenant && pressed && tenantStyles.tabPressed]}
         accessibilityRole="tab"
         accessibilityState={{ selected, expanded: selected ? expanded : undefined }}
         accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
@@ -151,11 +230,126 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
         testID={options.tabBarTestID ?? `rubber-dock-tab-${route.name}`}
         onPress={() => pressTab(index, true)}
         onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+        onFocus={isTenant ? () => setFocusedTab(index) : undefined}
+        onBlur={isTenant ? () => setFocusedTab(focused => focused === index ? null : focused) : undefined}
+        onPressIn={isTenant ? () => setPressedTab(index) : undefined}
+        onPressOut={isTenant ? () => setPressedTab(null) : undefined}
       >
         {content}
       </Pressable>
     );
   });
+
+  if (tenantGeometry) {
+    const nudge = frame.nudge * pitch;
+    const minIndicatorWidth = Math.min(24, tabWidth);
+    const pillLeft = clamp(indicatorLeft + nudge, 0, rowWidth - minIndicatorWidth);
+    const pillRight = clamp(Math.max(leftEdge, rightEdge) + nudge, pillLeft + minIndicatorWidth, rowWidth);
+    const escapePanel = () => closePanel(true);
+    const focusPanelControl = () => { panelControlFocused.current = true; };
+    const blurPanelControl = () => { panelControlFocused.current = false; };
+    return (
+      <View
+        style={[tenantStyles.footer, {
+          paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: insets.bottom + dockFooterPadding,
+        }]}
+        onLayout={event => setFooterWidth(event.nativeEvent.layout.width)}
+      >
+        <View style={[tenantStyles.shadow, { width: tenantGeometry.width }]}>
+          <View style={tenantStyles.surface}>
+            {panel && (
+              <View
+                style={{ height: tenantPanelHeight, overflow: 'hidden' }}
+                pointerEvents={tenantPanelVisible ? 'auto' : 'none'}
+                accessibilityElementsHidden={!tenantPanelVisible}
+                importantForAccessibility={tenantPanelVisible ? 'auto' : 'no-hide-descendants'}
+              >
+                <ScrollView
+                  key={panelKey}
+                  style={[tenantStyles.panel, { height: measuredPanelHeight === undefined ? maxPanelHeight : panelHeight }]}
+                  contentContainerStyle={styles.panelContent}
+                  onContentSizeChange={(_, height) => setPanelSizes(sizes => sizes[panelKey] === height ? sizes : { ...sizes, [panelKey]: height })}
+                  onAccessibilityEscape={escapePanel}
+                >
+                  <View style={tenantStyles.panelHeader}>
+                    <Text accessibilityRole="header" style={styles.panelTitle}>{tabLabel(activeOptions, activeRoute.name)}</Text>
+                    <TenantPressable
+                      style={tenantStyles.close}
+                      accessibilityRole="button"
+                      accessibilityLabel="Tutup panel pintasan"
+                      focusable={tenantPanelVisible}
+                      onPress={escapePanel}
+                      onAccessibilityEscape={escapePanel}
+                      onFocus={focusPanelControl}
+                      onBlur={blurPanelControl}
+                    >
+                      <View aria-hidden><X size={20} color={colors.onSurfaceVariant} /></View>
+                    </TenantPressable>
+                  </View>
+                  <Text style={styles.description}>{panel.description}</Text>
+                  {panel.actions?.map(action => (
+                    <TenantPressable
+                      key={action.label}
+                      accessibilityRole="button"
+                      style={tenantStyles.action}
+                      focusable={tenantPanelVisible}
+                      onAccessibilityEscape={escapePanel}
+                      onFocus={focusPanelControl}
+                      onBlur={blurPanelControl}
+                      onPress={() => {
+                        panelControlFocused.current = false;
+                        setExpanded(false);
+                        action.run(navigation);
+                      }}
+                    >
+                      <Text style={styles.actionLabel}>{action.label}</Text>
+                      <View aria-hidden><ChevronRight size={18} color={colors.primary} /></View>
+                    </TenantPressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            <View
+              ref={rowRef}
+              collapsable={false}
+              onLayout={event => {
+                setRowHeight(event.nativeEvent.layout.height);
+                if (rowLeft.current === null) measureRow();
+              }}
+              style={[tenantStyles.row, { width: rowWidth, gap }]}
+              {...pan.panHandlers}
+            >
+              {renderTabs(false)}
+              <View
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[styles.indicator, tenantStyles.pill, {
+                  left: pillLeft, width: pillRight - pillLeft,
+                  backgroundColor: pressedTab === state.index ? colors.onPrimaryFixedVariant : colors.primary,
+                }]}
+              >
+                <View style={[styles.highlightRow, { width: rowWidth, height: '100%', left: -pillLeft, gap }]}>
+                  {renderTabs(true)}
+                </View>
+              </View>
+              {focusedTab !== null && (
+                <View
+                  aria-hidden
+                  pointerEvents="none"
+                  style={[tenantStyles.focusOutline, {
+                    left: focusedTab * pitch + 2, width: Math.max(0, tabWidth - 4),
+                    borderColor: focusedTab === state.index ? colors.onPrimary : colors.tertiary,
+                  }]}
+                />
+              )}
+            </View>
+            <View aria-hidden pointerEvents="none" style={tenantStyles.border} />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.footer, { paddingLeft: insets.left, paddingRight: insets.right, paddingBottom: Math.max(insets.bottom, spacing.stackSm) }]}>
@@ -223,6 +417,31 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
     </View>
   );
 }
+
+const tenantStyles = StyleSheet.create({
+  footer: { alignItems: 'center', flexShrink: 0, backgroundColor: tenantColors.canvas, paddingTop: dockFooterPadding },
+  shadow: {
+    borderRadius: radius.xl, backgroundColor: colors.surfaceContainerLowest,
+    ...Platform.select({ android: { elevation: 4, shadowColor: colors.onSurface }, ios: { boxShadow: tenantColors.dockShadow } }),
+  },
+  surface: {
+    alignItems: 'center', borderRadius: radius.xl, backgroundColor: colors.surfaceContainerLowest,
+    paddingVertical: dockInset, overflow: 'hidden',
+  },
+  border: { ...StyleSheet.absoluteFill, borderRadius: radius.xl, borderWidth: 1, borderColor: tenantColors.border },
+  row: { flexDirection: 'row', minHeight: tabHeight },
+  tab: { minHeight: tabHeight, paddingVertical: 4, gap: 2, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  tabPressed: { backgroundColor: colors.primaryFixed },
+  pill: { top: 0, bottom: 0, borderRadius: 20 },
+  focusOutline: { position: 'absolute', top: 2, bottom: 2, borderWidth: 2, borderRadius: 18 },
+  panel: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  panelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  close: { alignItems: 'center' },
+  action: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    padding: 8, borderRadius: radius.md, backgroundColor: tenantColors.canvas,
+  },
+});
 
 const styles = StyleSheet.create({
   footer: { alignItems: 'center', backgroundColor: colors.surface, paddingTop: dockInset },
