@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
@@ -7,8 +7,10 @@ import { vendorApi } from '../../../../api/vendorApi';
 import { getPrimaryPhotoUrl, type ServiceWithPhotos } from '../../../../utils/serviceImage';
 import Toast from 'react-native-toast-message';
 import { ServicePhoto } from '../../listing/components/ServicePhoto';
+import { TenantDockLayoutContext } from '../../../../navigation/TenantDockLayoutContext';
+import { TenantServicesContent } from './TenantServicesContent';
 
-type ServiceItem = ServiceWithPhotos & { id: number; name: string; price: number };
+export type ServiceItem = ServiceWithPhotos & { id: number; name: string; price: number };
 
 type Props = {
   onSeeAll: () => void;
@@ -24,6 +26,7 @@ const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
 // Prinsip cache-first ringan: state awal array kosong (bukan undefined) supaya render pertama
 // tidak pernah crash walau data belum datang — lihat pembahasan .map() undefined sebelumnya.
 export function MyServicesSection({ onSeeAll, onAddService, onPressService }: Props) {
+  const redesigned = useContext(TenantDockLayoutContext) !== null;
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +61,17 @@ export function MyServicesSection({ onSeeAll, onAddService, onPressService }: Pr
   );
 
   if (loading) return null; // hindari kedip "Belum ada layanan" sekilas sebelum data datang
+
+  if (redesigned) {
+    return (
+      <TenantServicesContent
+        services={services}
+        onSeeAll={onSeeAll}
+        onAddService={onAddService}
+        onPressService={onPressService}
+      />
+    );
+  }
 
   return (
     <View style={styles.wrap}>

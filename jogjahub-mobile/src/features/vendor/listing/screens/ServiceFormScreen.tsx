@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TenantDockLayoutContext } from '../../../../navigation/TenantDockLayoutContext';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Camera,
@@ -152,6 +153,7 @@ export default function ServiceFormScreen() {
   const navigation = useNavigation();
   const { params } = useRoute<ServiceFormRoute>();
   const insets = useSafeAreaInsets();
+  const hasTenantDock = useContext(TenantDockLayoutContext) !== null;
   const isEdit = params.mode === 'edit';
   const existingService: ServiceParam | null = isEdit ? params.service : null;
 
@@ -685,7 +687,7 @@ export default function ServiceFormScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <View style={[styles.stickyBottomBar, { paddingBottom: Math.max(insets.bottom, spacing.stackMd) }]}>
+      <View style={[styles.stickyBottomBar, { paddingBottom: hasTenantDock ? spacing.stackMd : Math.max(insets.bottom, spacing.stackMd) }]}>
         <Pressable
           onPress={() => void handleSave()}
           disabled={saving}
