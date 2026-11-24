@@ -47,7 +47,7 @@ class BookingTest extends TestCase
                  ->assertJsonPath('success', true)
                  ->assertJsonPath('data.status', 'pending')
                  ->assertJsonStructure([
-                     'data', 'payment_url', 'expires_at',
+                     'data', 'expires_at',
                  ]);
 
         $this->assertDatabaseHas('bookings', [

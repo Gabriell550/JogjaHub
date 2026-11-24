@@ -15,27 +15,30 @@ use Illuminate\Validation\ValidationException;
 
 class BookingService
 {
+    // XenditService dipertahankan sebagai dependency untuk kemudahan reaktivasi di masa depan (Opsi A).
+    // Saat ini tidak dipanggil — booking menggunakan alur transfer manual.
     public function __construct(
         private readonly XenditService $xendit
     ) {}
 
     /**
-     * Buat booking baru dengan alur cinema model:
+     * Buat booking baru dengan alur transfer manual:
      *  1. Validasi service & slot
      *  2. Kunci slot dalam DB transaction (booked_count++)
      *  3. Buat record Booking (status: pending)
      *  4. Buat record Payment (status: pending, amount dikalkulasi dari price_type)
-     *  5. Buat invoice di Xendit → dapat payment_url
-     *  6. Jadwalkan job ReleaseExpiredBookingJob (jalan 1 jam lagi)
+     *  5. Jadwalkan job ReleaseExpiredBookingJob (jalan 10 menit lagi)
      *
      * Mendukung dua mode:
      *  - Single-slot (salon/barbershop/dll): kirim slot_id → amount = service.price
      *  - Multi-slot hotel: kirim check_in_date + check_out_date
      *    → amount = service.price × jumlah malam (jika price_type = per_night)
      *
-     * @return array { booking: Booking, payment_url: string, expires_at: Carbon }
+     * Catatan: Xendit tidak digunakan untuk sementara (transfer manual).
+     * Kode XenditService tetap ada untuk kemudahan reaktivasi di masa depan.
+     *
+     * @return array { booking: Booking, expires_at: Carbon }
      * @throws ValidationException
-     * @throws \RuntimeException jika Xendit API error
      */
     public function createBooking(int $customerId, array $data): array
     {
@@ -65,10 +68,11 @@ class BookingService
             $data['slot_id'] = null;
         }
 
+        // Batas waktu pembayaran transfer manual: 10 menit dari sekarang
+        $expiresAt = now()->addMinutes(10);
+
         // ── Kunci slot + buat booking + buat payment dalam satu transaksi ────
-        // Transaksi harus selesai sebelum memanggil Xendit API,
-        // supaya kalau Xendit gagal, slot tidak terkunci selamanya.
-        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot) {
+        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $expiresAt) {
 
             if ($isMultiSlot) {
                 // ── Mode hotel: kunci semua slot dalam rentang check_in s.d. (check_out - 1 hari) ──
@@ -81,47 +85,30 @@ class BookingService
             // ── Kalkulasi total harga berdasarkan price_type service ──────────
             // - per_session (default): harga tetap = service.price
             // - per_night (hotel)    : harga = service.price × jumlah malam
-            //   Jumlah malam sudah disimpan di booking.details['nights'] oleh createMultiSlotBooking()
             $nights = $booking->details['nights'] ?? 1;
             $amount = $service->price_type === PriceType::PER_NIGHT
                 ? (int) $service->price * $nights
                 : (int) $service->price;
 
-            // Buat record payment — amount sudah dikalkulasi sesuai tipe harga
+            // Buat record payment — Xendit fields dikosongkan (transfer manual)
             Payment::create([
-                'booking_id'  => $booking->id,
-                'amount'      => $amount,
-                'currency'    => 'IDR',
-                'status'      => 'pending',
-                'expires_at'  => now()->addHour(),
+                'booking_id' => $booking->id,
+                'amount'     => $amount,
+                'currency'   => 'IDR',
+                'status'     => 'pending',
+                'expires_at' => $expiresAt,
             ]);
 
             return $booking;
         });
 
-        // ── Panggil Xendit API di luar transaksi ─────────────────────────────
-        // Kalau Xendit gagal → booking & payment sudah tersimpan dengan status pending.
-        // Job ReleaseExpiredBookingJob akan bersihkan otomatis setelah 1 jam.
-        $booking->load(['service', 'customer', 'payment']);
-
-        $invoiceData = $this->xendit->createInvoice($booking);
-
-        // Update payment dengan data dari Xendit
-        $booking->payment->update([
-            'xendit_invoice_id'  => $invoiceData['xendit_invoice_id'],
-            'xendit_external_id' => $invoiceData['xendit_external_id'],
-            'payment_url'        => $invoiceData['payment_url'],
-            'expires_at'         => $invoiceData['expires_at'],
-        ]);
-
-        // Jadwalkan release otomatis jika tidak bayar dalam 1 jam
+        // Jadwalkan release otomatis jika tidak ada konfirmasi bayar dalam 10 menit
         ReleaseExpiredBookingJob::dispatch($booking->id)
-            ->delay(now()->addHour());
+            ->delay($expiresAt);
 
         return [
-            'booking'     => $booking->fresh(['service', 'slot', 'slots', 'payment']),
-            'payment_url' => $invoiceData['payment_url'],
-            'expires_at'  => $invoiceData['expires_at'],
+            'booking'    => $booking->fresh(['service', 'slot', 'slots', 'payment']),
+            'expires_at' => $expiresAt,
         ];
     }
 
