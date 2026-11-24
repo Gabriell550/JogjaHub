@@ -33,3 +33,23 @@ export function getPrimaryPhotoUrl(item: ServiceWithPhotos): string | null {
   const primary = item.photos.find((photo) => photo.is_primary) ?? item.photos[0];
   return getPhotoUrl(primary) || null;
 }
+
+export type CustomerPhotoData = Omit<ServicePhotoLike, 'url'> & { url?: string };
+
+function customerPhotoUrl(source?: string): string {
+  const value = source?.trim();
+  if (!value) return '';
+  const storage = /^https?:\/\/(\[[^\]]+\]|[^:/]+)(?::\d+)?\/storage\/(.+)$/i.exec(value);
+  const localHost = /^(?:localhost|0\.0\.0\.0|\[::1\]|(?:127|10|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.[\d.]+|[^.]+\.local)$/i;
+  if (storage && localHost.test(storage[1])) return STORAGE_BASE_URL + storage[2];
+  if (/^https?:\/\/[^/]+/i.test(value)) return value;
+  if (value.includes('://') || value.startsWith('//')) return '';
+  return STORAGE_BASE_URL + value.replace(/^\/+/, '').replace(/^storage\//, '');
+}
+
+export function customerPhotoUrls(photos: CustomerPhotoData[] = [], logo?: string): string[] {
+  const urls = [...photos]
+    .sort((a, b) => Number(!!b.is_primary) - Number(!!a.is_primary) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(photo => customerPhotoUrl(photo.full_url) || customerPhotoUrl(photo.url));
+  return [...new Set([...urls, customerPhotoUrl(logo)].filter(Boolean))];
+}

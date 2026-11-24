@@ -5,8 +5,8 @@ import Link from "next/link";
 import { apiGet } from "@/src/lib/api";
 import { ROUTES } from "@/src/constants/routes";
 import type { Service, TimeSlot } from "@/src/types/service";
+import type { BookingStatus } from "@/src/types/booking";
 
-type BookingStatus = "pending" | "confirmed" | "cancelled";
 type BookingsView = "active" | "history";
 
 interface CustomerBooking {
@@ -28,6 +28,8 @@ interface BookingListResponse {
 const statusLabels: Record<BookingStatus, string> = {
   pending: "Menunggu pembayaran",
   confirmed: "Dikonfirmasi",
+  awaiting_completion_confirmation: "Menunggu konfirmasi selesai",
+  completed: "Selesai",
   cancelled: "Dibatalkan",
 };
 
@@ -81,9 +83,8 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
     };
   }, [requestNumber]);
 
-  const visibleBookings = bookings.filter((booking) => isHistory
-    ? booking.status === "cancelled"
-    : booking.status === "pending" || booking.status === "confirmed");
+  const visibleBookings = bookings.filter((booking) =>
+    (booking.status === "cancelled" || booking.status === "completed") === isHistory);
   const pageCount = Math.max(1, Math.ceil(visibleBookings.length / PAGE_SIZE));
   const pageBookings = visibleBookings.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -95,8 +96,8 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
           <h1 className="font-display mt-2 text-3xl font-bold text-[#121C2A]">{isHistory ? "Riwayat" : "Pesanan Saya"}</h1>
           <p className="mt-2 text-sm text-[#4B596B]">
             {isHistory
-              ? "Pesanan yang dibatalkan berdasarkan status dari backend."
-              : "Pesanan aktif yang menunggu pembayaran atau sudah dikonfirmasi."}
+              ? "Pesanan yang selesai atau dibatalkan."
+              : "Pesanan yang masih berjalan atau menunggu konfirmasi selesai."}
           </p>
         </div>
         <Link href={ROUTES.dashboard} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#B8C2D3] bg-white px-4 text-sm font-semibold text-[#263449] hover:bg-[#F8F9FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">Jelajahi layanan</Link>
@@ -112,8 +113,8 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
         </div>
       ) : pageBookings.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#B8C2D3] bg-white p-10 text-center">
-          <h2 className="font-display text-xl font-semibold text-[#121C2A]">{isHistory ? "Belum ada riwayat pembatalan" : "Belum ada pesanan aktif"}</h2>
-          <p className="mt-2 text-sm text-[#4B596B]">{isHistory ? "Pesanan yang dibatalkan akan muncul di sini." : "Booking yang masih berjalan akan muncul di sini."}</p>
+          <h2 className="font-display text-xl font-semibold text-[#121C2A]">{isHistory ? "Belum ada riwayat pesanan" : "Belum ada pesanan aktif"}</h2>
+          <p className="mt-2 text-sm text-[#4B596B]">{isHistory ? "Pesanan yang selesai atau dibatalkan akan muncul di sini." : "Booking yang masih berjalan akan muncul di sini."}</p>
           {!isHistory ? <Link href={ROUTES.dashboard} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#FF6B00] px-5 text-sm font-bold text-[#121C2A] hover:bg-[#E85F00] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">Cari layanan</Link> : null}
         </div>
       ) : (
@@ -132,7 +133,7 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
                       <p className="mt-1 text-sm text-[#4B596B]">{booking.service.tenant?.business_name ?? "Vendor JogjaHub"}</p>
                     </div>
                     <span className={`inline-flex min-h-8 w-fit items-center rounded-full px-3 text-xs font-bold ${
-                      booking.status === "confirmed" ? "bg-green-100 text-green-900" :
+                      booking.status === "confirmed" || booking.status === "completed" ? "bg-green-100 text-green-900" :
                         booking.status === "cancelled" ? "bg-slate-100 text-slate-700" : "bg-amber-100 text-amber-900"
                     }`}>{statusLabels[booking.status]}</span>
                   </div>

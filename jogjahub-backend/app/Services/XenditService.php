@@ -27,8 +27,8 @@ class XenditService
 
     public function __construct()
     {
-        $this->secretKey    = config('xendit.secret_key');
-        $this->webhookToken = config('xendit.webhook_token');
+        $this->secretKey    = (string) config('xendit.secret_key');
+        $this->webhookToken = (string) config('xendit.webhook_token');
     }
 
     /**
@@ -39,6 +39,10 @@ class XenditService
      */
     public function createInvoice(Booking $booking): array
     {
+        if ($this->secretKey === '') {
+            throw new \RuntimeException('Xendit secret key belum dikonfigurasi.');
+        }
+
         // External ID unik per invoice — dipakai untuk idempotency
         // Format: jogjahub-{booking_uuid} supaya mudah di-trace saat debugging
         $externalId = 'jogjahub-' . $booking->uuid;

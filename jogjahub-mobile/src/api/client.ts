@@ -7,6 +7,7 @@ import { getToken } from '../services/tokenStore';
 export const apiClient = axios.create({
   baseURL: API_BASE_URL, // contoh: https://api.jogjahub.com/api/v1
   timeout: 30000,
+  headers: { Accept: 'application/json' },
 });
 
 // Nempelin Authorization: Bearer <token> otomatis ke semua request yang butuh auth

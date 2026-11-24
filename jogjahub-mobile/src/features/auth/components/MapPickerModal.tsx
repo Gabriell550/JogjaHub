@@ -77,7 +77,7 @@ export function MapPickerModal({ visible, initialCoordinate, onClose, onConfirm 
 type ContentProps = Omit<Props, 'visible'>;
 
 function MapPickerContent({ initialCoordinate, onClose, onConfirm }: ContentProps) {
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<WebView<unknown>>(null);
   const [html] = useState(() => buildMapHtml(initialCoordinate ?? DEFAULT_COORDINATE));
   const [coordinate, setCoordinate] = useState<Coordinate>(initialCoordinate ?? DEFAULT_COORDINATE);
   const [mapReady, setMapReady] = useState(false);
@@ -147,7 +147,7 @@ function MapPickerContent({ initialCoordinate, onClose, onConfirm }: ContentProp
       </View>
 
       <View style={styles.mapWrap}>
-        <WebView
+        <WebView<unknown>
           ref={webViewRef}
           style={styles.webview}
           originWhitelist={['*']}

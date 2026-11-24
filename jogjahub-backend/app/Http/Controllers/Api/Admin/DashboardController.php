@@ -20,7 +20,7 @@ class DashboardController extends Controller
                 'tenants_approved' =>TenantProfile::where('status', 'approved')->count(),
                 'bookings_today' =>Booking::whereDate('created_at', now()->toDateString())->count(),
                 'bookings_pending' =>Booking::where('status', 'pending')->count(),
-                'bookings_confirmed' =>Booking::where('status', 'confirmed')->count(),
+                'bookings_confirmed' =>Booking::whereIn('status', \App\Enums\BookingStatus::accepted())->count(),
                 'bookings_cancelled' =>Booking::where('status', 'cancelled')->count(),
             ],
         ]);

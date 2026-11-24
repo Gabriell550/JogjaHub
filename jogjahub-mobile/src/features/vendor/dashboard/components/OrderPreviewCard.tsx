@@ -5,18 +5,19 @@ import { colors, typography, spacing, radius } from '../../../../constants/theme
 
 type Props = {
   title: string;
-  badgeLabel: 'TERBARU' | 'DIPROSES';
+  badgeLabel: 'TERBARU' | 'DIPROSES' | 'MENUNGGU SELESAI' | 'SELESAI';
   buyerName: string;
   timeAgo: string;
   price: number;
   icon?: React.ComponentType<any>;
+  onPress?: () => void;
 };
 
-export function OrderPreviewCard({ title, badgeLabel, buyerName, timeAgo, price, icon: Icon }: Props) {
-  const isProcessing = badgeLabel === 'DIPROSES';
+export function OrderPreviewCard({ title, badgeLabel, buyerName, timeAgo, price, icon: Icon, onPress }: Props) {
+  const isProcessing = badgeLabel !== 'TERBARU';
 
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} accessibilityRole="button" disabled={!onPress} onPress={onPress}>
       <View style={styles.iconBox}>
         {Icon ? <Icon size={22} color={colors.onSurfaceVariant} /> : <Package size={22} color={colors.onSurfaceVariant} />}
       </View>
@@ -24,9 +25,9 @@ export function OrderPreviewCard({ title, badgeLabel, buyerName, timeAgo, price,
       <View style={styles.content}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
-          <Pressable style={[styles.badge, isProcessing ? styles.badgeProcessing : styles.badgeNew]}>
+          <View style={[styles.badge, isProcessing ? styles.badgeProcessing : styles.badgeNew]}>
             <Text style={styles.badgeText}>{badgeLabel}</Text>
-          </Pressable>
+          </View>
         </View>
         <Text style={styles.buyerTime}>
           <Text style={styles.buyer}>{buyerName}</Text>
@@ -35,7 +36,7 @@ export function OrderPreviewCard({ title, badgeLabel, buyerName, timeAgo, price,
         </Text>
         <Text style={styles.price}>Rp{price.toLocaleString('id-ID')}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

@@ -33,7 +33,7 @@ class BookingService
      *  - Multi-slot hotel: kirim check_in_date + check_out_date
      *    → amount = service.price × jumlah malam (jika price_type = per_night)
      *
-     * @return array { booking: Booking, payment_url: string, expires_at: Carbon }
+     * @return array { booking: Booking, payment_url: ?string, expires_at: ?Carbon }
      * @throws ValidationException
      * @throws \RuntimeException jika Xendit API error
      */
@@ -42,10 +42,26 @@ class BookingService
         $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
 
         // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
-        if (!$service->tenant || $service->tenant->status !== 'approved') {
+        if (!$service->is_active || !$service->tenant || $service->tenant->status !== 'approved') {
             throw ValidationException::withMessages([
-                'service_id' => ['Layanan ini belum tersedia karena tenant belum disetujui.'],
+                'service_id' => ['Layanan ini tidak tersedia untuk dipesan.'],
             ]);
+        }
+
+        $usesXendit = config('booking.checkout') === 'xendit';
+        unset($data['details']['whatsapp_number']);
+        if (!$usesXendit) {
+            $number = preg_replace('/\D/', '', $service->tenant->whatsapp_number ?? '');
+            if (str_starts_with($number, '0')) {
+                $number = '62' . substr($number, 1);
+            }
+            if (strlen($number) < 8 || strlen($number) > 15) {
+                throw ValidationException::withMessages([
+                    'service_id' => ['Nomor WhatsApp tenant belum valid.'],
+                ]);
+            }
+            unset($data['details']['check_in_date'], $data['details']['check_out_date'], $data['details']['nights']);
+            $data['details']['whatsapp_number'] = $number;
         }
 
         $requiresSlot = $service->subcategory->requires_time_slot;
@@ -68,7 +84,7 @@ class BookingService
         // ── Kunci slot + buat booking + buat payment dalam satu transaksi ────
         // Transaksi harus selesai sebelum memanggil Xendit API,
         // supaya kalau Xendit gagal, slot tidak terkunci selamanya.
-        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot) {
+        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $usesXendit) {
 
             if ($isMultiSlot) {
                 // ── Mode hotel: kunci semua slot dalam rentang check_in s.d. (check_out - 1 hari) ──
@@ -93,18 +109,31 @@ class BookingService
                 'amount'      => $amount,
                 'currency'    => 'IDR',
                 'status'      => 'pending',
-                'expires_at'  => now()->addHour(),
+                'payment_method' => $usesXendit ? null : 'WHATSAPP',
+                'expires_at'  => $usesXendit ? now()->addHour() : null,
             ]);
 
             return $booking;
         });
 
         // ── Panggil Xendit API di luar transaksi ─────────────────────────────
-        // Kalau Xendit gagal → booking & payment sudah tersimpan dengan status pending.
-        // Job ReleaseExpiredBookingJob akan bersihkan otomatis setelah 1 jam.
+        if (!$usesXendit) {
+            return [
+                'booking' => $booking->load(['service', 'slot', 'slots', 'payment']),
+                'payment_url' => null,
+                'expires_at' => null,
+            ];
+        }
+
         $booking->load(['service', 'customer', 'payment']);
 
-        $invoiceData = $this->xendit->createInvoice($booking);
+        try {
+            $invoiceData = $this->xendit->createInvoice($booking);
+        } catch (\Throwable $exception) {
+            $this->cancelBooking($booking);
+
+            throw $exception;
+        }
 
         // Update payment dengan data dari Xendit
         $booking->payment->update([
@@ -294,6 +323,10 @@ class BookingService
     public function cancelBooking(Booking $booking): void
     {
         DB::transaction(function () use ($booking) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status !== BookingStatus::PENDING->value) {
+                throw ValidationException::withMessages(['status' => ['Pesanan tidak bisa dibatalkan.']]);
+            }
             // Release semua slot yang dikunci booking ini via pivot booking_slots
             $this->releaseBookingSlots($booking);
 

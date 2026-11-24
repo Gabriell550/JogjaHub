@@ -47,6 +47,8 @@ class ServiceController extends Controller
             'name'           => $request->name,
             'description'    => $request->description,
             'price'          => $request->price,
+            'is_active'     => $request->validated('is_active', true),
+            'price_type'     => $request->validated('price_type', 'per_session'),
             'photos'         => $photoData,
         ]);
 
@@ -138,7 +140,7 @@ class ServiceController extends Controller
         }
 
         $service->load(['subcategory', 'tenant']);
-        $service->loadCount(['bookings as bookings_count' => fn($q) => $q->where('status', 'confirmed')]);
+        $service->loadCount(['bookings as bookings_count' => fn($q) => $q->whereIn('status', \App\Enums\BookingStatus::accepted())]);
         $service->reviews_avg_rating = round(
             $service->bookings()->whereHas('review')->with('review')->get()->avg(fn($b) => $b->review->rating) ?? 0,
             1

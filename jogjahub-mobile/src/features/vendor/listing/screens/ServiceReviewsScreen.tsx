@@ -1,25 +1,32 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { VendorServicesStackParamList } from '../../../../navigation/types';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { VendorServicesStackParamList } from '../../../../navigation/types';
+import { useTenantBookings } from '../../dashboard/useTenantBookings';
 
 type Props = NativeStackScreenProps<VendorServicesStackParamList, 'ServiceReviews'>;
 
 export default function ServiceReviewsScreen({ route }: Props) {
   const { serviceId, serviceName } = route.params;
+  const { records, error, reload } = useTenantBookings();
+  const reviews = records?.flatMap(booking => booking.service?.id === serviceId && booking.review ? [{
+    id: booking.uuid,
+    customer: booking.customer?.name,
+    ...booking.review,
+  }] : []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Ulasan untuk {serviceName}</Text>
-      <Text style={styles.subtitle}>Service ID: {serviceId}</Text>
-
-      {/* TODO: fetch & tampilkan daftar ulasan berdasarkan serviceId */}
-    </View>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <Text accessibilityRole="header">Ulasan untuk {serviceName}</Text>
+      {error && <Text onPress={reload}>Ulasan gagal dimuat. Coba lagi.</Text>}
+      {!reviews && !error && <ActivityIndicator />}
+      {reviews?.length === 0 && <Text>Belum ada ulasan.</Text>}
+      {reviews?.map(review => (
+        <View key={review.id}>
+          <Text>{review.customer ?? 'Pelanggan'} · {review.rating}/5</Text>
+          {!!review.comment && <Text>{review.comment}</Text>}
+        </View>
+      ))}
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666' },
-});

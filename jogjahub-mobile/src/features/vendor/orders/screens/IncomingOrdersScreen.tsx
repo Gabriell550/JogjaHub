@@ -18,10 +18,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingApi } from '../../../../api/bookingApi';
 import Toast from 'react-native-toast-message';
+import { apiErrorMessage } from '../../../../api/apiErrorMessage';
+import { bookingLabel, paymentLabel, bookingStatusLabel, type BookingRecord } from '../../../../types/bookingRecord';
 import type { VendorOrdersStackParamList } from '../../../../navigation/types';
 
-type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
-type DisplayStatus = BookingStatus | 'shipping' | 'completed';
+type BookingStatus = BookingRecord['status'];
 
 interface OrderItem {
   id: string;
@@ -38,78 +39,24 @@ interface OrderItem {
   location_detail: string;
   payment_status: string;
   package_type: string;
-  status: DisplayStatus;
+  status: BookingStatus;
+  hasIssue: boolean;
   custom_note?: string;
   estimate_arrival?: string;
 }
 
-const MOCK_ORDERS: OrderItem[] = [
-  {
-    id: '1',
-    uuid: 'uuid-1',
-    order_code: 'JH-20260906-001',
-    time_ago: '10m lalu',
-    customer_name: 'Anindhya Fathia Rizki',
-    customer_university: 'Mahasiswi UGM • Wisuda Periode IV',
-    customer_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-    service_name: 'Makeup Wisuda + Hijab Do Reguler',
-    price: 450000,
-    schedule_date: 'Minggu, 6 Sep 2026',
-    schedule_time: '06:00 WIB',
-    location_detail: 'Datang ke Lokasi: Kost Putri Samirono C...',
-    payment_status: 'Lunas (BCA VA)',
-    package_type: '1 Paket Terpilih',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    uuid: 'uuid-2',
-    order_code: 'JH-20260906-002',
-    time_ago: '1 jam lalu',
-    customer_name: 'Siti Khadijah',
-    customer_university: 'Mahasiswi UNY • Kampus Karangmalang',
-    customer_avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200',
-    service_name: 'Bouquet Matahari + Selempang Satin',
-    price: 185000,
-    schedule_date: 'Minggu, 6 Sep 2026',
-    schedule_time: '09:30 WIB',
-    location_detail: 'Estimasi Tiba: 09:30 WIB (Kurir Toko)',
-    estimate_arrival: 'Estimasi Tiba: 09:30 WIB (Kurir Toko)',
-    custom_note: 'Custom Bordir: "Siti Khadijah, S.Pd. Cumlaude"',
-    payment_status: 'Lunas (QRIS)',
-    package_type: '1 Paket Terpilih',
-    status: 'shipping',
-  },
-  {
-    id: '3',
-    uuid: 'uuid-3',
-    order_code: 'JH-20260907-005',
-    time_ago: '3 jam lalu',
-    customer_name: 'Budi Pratama',
-    customer_university: 'UPN "Veteran" Yogyakarta',
-    customer_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    service_name: 'Sewa Jas & Toga Lengkap Pria',
-    price: 250000,
-    schedule_date: 'Senin, 7 Sep 2026',
-    schedule_time: '08:00 WIB',
-    location_detail: 'Pengambilan: Senin, 7 Sep 2026 (Ukuran L)',
-    payment_status: 'Lunas (Transfer Manual)',
-    package_type: '1 Paket Lengkap',
-    status: 'confirmed',
-  },
-];
-
 const FILTERS = [
   { key: 'all', label: 'Semua', countKey: 'all' },
   { key: 'pending', label: 'Perlu Diproses', countKey: 'pending' },
-  { key: 'shipping', label: 'Sedang Dikirim', countKey: 'shipping' },
   { key: 'confirmed', label: 'Terkonfirmasi', countKey: 'confirmed' },
+  { key: 'awaiting_completion_confirmation', label: 'Menunggu selesai', countKey: 'awaiting_completion_confirmation' },
   { key: 'completed', label: 'Selesai', countKey: 'completed' },
+  { key: 'cancelled', label: 'Dibatalkan', countKey: 'cancelled' },
 ];
 
 export default function IncomingOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<VendorOrdersStackParamList>>();
-  const [orders, setOrders] = useState<OrderItem[]>(MOCK_ORDERS);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -117,31 +64,27 @@ export default function IncomingOrdersScreen() {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await bookingApi.listIncomingBookings();
-      const data = res.data?.data ?? res.data;
-      if (Array.isArray(data) && data.length > 0) {
-        // Map backend bookings into our structured format
-        const mapped: OrderItem[] = data.map((b: any, idx: number) => ({
-          id: String(b.id || idx),
-          uuid: b.uuid || String(b.id || idx),
-          order_code: b.order_code || `JH-20260906-${String(idx + 1).padStart(3, '0')}`,
-          time_ago: 'Baru saja',
-          customer_name: b.customer_name || b.customer?.name || 'Pelanggan',
-          customer_university: b.customer_location || 'Yogyakarta',
-          customer_avatar: b.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-          service_name: b.service_name || b.service?.name || 'Layanan Wisuda',
-          price: b.price || b.service?.price || 150000,
-          schedule_date: b.slot?.slot_date || '6 Sep 2026',
-          schedule_time: b.slot?.start_time ? `${b.slot.start_time.substring(0, 5)} WIB` : '08:00 WIB',
-          location_detail: b.customer_location || 'Lokasi Pelanggan',
-          payment_status: b.payment_method === 'transfer' ? 'Lunas (Transfer)' : 'COD / Bayar di Tempat',
-          package_type: '1 Paket Terpilih',
-          status: b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending',
-        }));
-        setOrders(mapped);
-      }
-    } catch {
-      // Fallback silently to mock orders
+      const records = await bookingApi.listAllBookings('tenant');
+      setOrders(records.map(booking => ({
+        id: String(booking.id),
+        uuid: booking.uuid,
+        order_code: bookingLabel(booking),
+        time_ago: booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '',
+        customer_name: booking.customer?.name ?? 'Pelanggan',
+        customer_university: '',
+        customer_avatar: booking.customer?.avatar_url ?? '',
+        service_name: booking.service?.name ?? 'Layanan',
+        price: Number(booking.total_amount ?? 0),
+        schedule_date: booking.check_in_date ?? booking.slot?.slot_date.slice(0, 10) ?? 'Tanpa jadwal',
+        schedule_time: booking.check_out_date ? 'Check-out ' + booking.check_out_date : booking.slot?.start_time.slice(0, 5) ?? '',
+        location_detail: '',
+        payment_status: paymentLabel(booking),
+        package_type: booking.nights ? booking.nights + ' malam' : '',
+        status: booking.status,
+        hasIssue: !!booking.issue_reported_at,
+      })));
+    } catch (error) {
+      Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
     } finally {
       setIsLoading(false);
     }
@@ -153,27 +96,15 @@ export default function IncomingOrdersScreen() {
     }, [load])
   );
 
-  const handleUpdateStatus = async (item: OrderItem, newStatus: DisplayStatus) => {
-    const prevStatus = item.status;
-    setOrders((prev) =>
-      prev.map((o) => (o.id === item.id ? { ...o, status: newStatus } : o))
-    );
+  const handleUpdateStatus = async (item: OrderItem, newStatus: 'confirmed' | 'cancelled') => {
+    if (updatingId) return;
     setUpdatingId(item.id);
-
     try {
-      if (newStatus === 'confirmed' || newStatus === 'cancelled') {
-        await bookingApi.updateBookingStatus(item.uuid, newStatus);
-      }
-      Toast.show({
-        type: 'success',
-        text1: newStatus === 'confirmed' ? '✅ Pesanan Diterima' : 'Pesanan Diperbarui',
-        text2: `${item.service_name} berhasil diperbarui.`,
-      });
-    } catch {
-      // Revert if API fails
-      setOrders((prev) =>
-        prev.map((o) => (o.id === item.id ? { ...o, status: prevStatus } : o))
-      );
+      await bookingApi.updateBookingStatus(item.uuid, newStatus);
+      setOrders(previous => previous.map(order => order.id === item.id ? { ...order, status: newStatus } : order));
+      Toast.show({ type: 'success', text1: 'Pesanan diperbarui' });
+    } catch (error) {
+      Alert.alert('Gagal memperbarui pesanan', apiErrorMessage(error, 'Coba lagi nanti.'));
     } finally {
       setUpdatingId(null);
     }
@@ -221,27 +152,14 @@ export default function IncomingOrdersScreen() {
             </View>
           )}
 
-          {item.status === 'shipping' && (
-            <View style={styles.blueBadge}>
-              <Ionicons name="car-outline" size={13} color="#0284C7" />
-              <Text style={styles.blueBadgeText}>Siap Kirim • {item.time_ago}</Text>
-            </View>
-          )}
-
-          {item.status === 'confirmed' && (
+          {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
             <View style={styles.greyBadge}>
               <Ionicons name="calendar-outline" size={13} color="#475569" />
-              <Text style={styles.greyBadgeText}>Jadwal Mendatang</Text>
+              <Text style={styles.greyBadgeText}>{bookingStatusLabel[item.status]}</Text>
             </View>
           )}
 
-          {item.status === 'completed' && (
-            <View style={styles.greenBadge}>
-              <Ionicons name="checkmark-circle-outline" size={13} color="#16A34A" />
-              <Text style={styles.greenBadgeText}>Selesai</Text>
-            </View>
-          )}
-
+          {item.status === 'awaiting_completion_confirmation' && item.hasIssue && <Text>Kendala dilaporkan</Text>}
           <Text style={styles.orderCodeText}>#{item.order_code}</Text>
         </View>
 
@@ -332,45 +250,11 @@ export default function IncomingOrdersScreen() {
           </View>
         )}
 
-        {item.status === 'shipping' && (
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() =>
-                Alert.alert('Chat Pembeli', `Membuka percakapan dengan ${item.customer_name}`)
-              }
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color="#C2410C" />
-              <Text style={styles.chatButtonText}>Chat Pembeli</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.shipButton}
-              onPress={() => handleUpdateStatus(item, 'completed')}
-              activeOpacity={0.88}
-            >
-              <Ionicons name="car" size={18} color="#FFFFFF" />
-              <Text style={styles.shipButtonText}>Kirim Sekarang</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {item.status === 'confirmed' && (
+        {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.fullDetailButton}
-              onPress={() => {
-                navigation.navigate('OrderDetail', {
-                  id: item.id,
-                  order_code: item.order_code,
-                  service_name: item.service_name,
-                  customer_name: item.customer_name,
-                  customer_location: item.location_detail,
-                  price: item.price,
-                  status: 'confirmed',
-                });
-              }}
+              onPress={() => navigation.navigate('OrderDetail', { id: item.uuid })}
               activeOpacity={0.85}
             >
               <Text style={styles.fullDetailButtonText}>Rincian Pesanan</Text>
@@ -384,7 +268,7 @@ export default function IncomingOrdersScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+      <StatusBar barStyle="dark-content" />
 
       {/* Top Header Bar */}
       <View style={styles.topHeader}>
@@ -729,6 +613,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardHeaderRow: {
+    flexWrap: 'wrap',
+    gap: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

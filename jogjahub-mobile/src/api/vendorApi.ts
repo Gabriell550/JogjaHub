@@ -8,8 +8,9 @@ import type { TenantProfileUpdatePayload } from '../types/vendor';
 export const vendorApi = {
   // ─── CUSTOMER (public) ────────────────────────────────────────────────────
 listTenantsOnMap: () => apiClient.get('/tenants/map'),
+  searchTenants: (params: { category_id?: number; q?: string; page: number }) => apiClient.get('/tenants', { params }),
   getTenantProfile: (uuid: string) => apiClient.get(`/tenants/${uuid}`),
-  listServices: (params?: { category_id?: number; subcategory_id?: number }) =>
+  listServices: (params?: { category_id?: number; subcategory_id?: number; q?: string; page?: number; accommodation?: boolean }) =>
     apiClient.get('/services', { params }),
   getServiceReviews: (serviceId: string | number) =>
     apiClient.get(`/services/${serviceId}/reviews`),
@@ -21,10 +22,8 @@ listTenantsOnMap: () => apiClient.get('/tenants/map'),
 
   listMyServices: () => apiClient.get('/tenant/services'),
 
-  // Detail 1 layanan — beda dari listMyServices(), endpoint ini yang punya field
-  // confirmed_bookings_count, reviews_counts, reviews_average_rating.
-  // ⚠️ Endpoint-nya "/services/{id}" (TANPA prefix "tenant"), sesuai hasil test Postman.
-  getServiceDetail: (serviceId: string | number) => apiClient.get(`/services/${serviceId}`),
+  getServiceDetail: (serviceId: string | number) => apiClient.get('/services/' + serviceId),
+  getMyServiceDetail: (serviceId: string | number) => apiClient.get('/tenant/services/' + serviceId),
 
   getMyProfile: () => apiClient.get('/tenant/profile'),
 

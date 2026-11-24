@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Review\StoreReviewRequest;
 use App\Models\Booking;
+use Illuminate\Support\Facades\DB;
 
 class ReviewController extends Controller
 {
@@ -15,19 +16,17 @@ class ReviewController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
-        if ($booking->status !== BookingStatus::CONFIRMED->value) {
-            return response()->json(['success' => false, 'message' => 'Booking belum selesai'], 422);
-        }
+        $review = DB::transaction(function () use ($booking, $request) {
+            $order = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            abort_unless($order->status === BookingStatus::COMPLETED->value, 422, 'Booking belum selesai');
+            abort_if($order->review()->exists(), 422, 'Booking ini sudah pernah review');
 
-        if ($booking->review()->exists()) {
-            return response()->json(['success' => false, 'message' => 'Booking ini sudah pernah review'], 422);
-        }
-
-        $review = $booking->review()->create([
-            'customer_id' => $request->user()->id,
-            'rating'      => $request->rating,
-            'comment'     => $request->comment,
-        ]);
+            return $order->review()->create([
+                'customer_id' => $request->user()->id,
+                'rating' => $request->rating,
+                'comment' => $request->comment,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

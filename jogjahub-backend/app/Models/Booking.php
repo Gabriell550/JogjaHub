@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class Booking extends Model
 {
@@ -23,6 +24,10 @@ class Booking extends Model
 
     protected $casts = [
         'details' => 'array',
+        'fulfilled_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'issue_reported_at' => 'datetime',
+        'completion_reminded_at' => 'datetime',
     ];
 
 
@@ -45,9 +50,23 @@ class Booking extends Model
         return $this->belongsTo(User::class, 'customer_id');
     }
 
+    public function canMarkFulfilled(): bool
+    {
+        $timezone = 'Asia/Jakarta';
+        $checkout = $this->details['check_out_date'] ?? null;
+        if ($checkout) {
+            return now()->gte(Carbon::parse($checkout, $timezone));
+        }
+        $slot = $this->slot;
+        return !$slot || now()->gte(Carbon::parse(
+            substr($slot->slot_date, 0, 10) . ' ' . ($slot->end_time ?: $slot->start_time),
+            $timezone
+        ));
+    }
+
     public function service()
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class)->withTrashed();
     }
 
     public function slot()

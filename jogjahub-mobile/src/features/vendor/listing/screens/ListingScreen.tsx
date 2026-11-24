@@ -20,26 +20,16 @@ import { vendorApi } from '../../../../api/vendorApi';
 import { getPrimaryPhotoUrl } from '../../../../utils/serviceImage';
 import { ServicePhoto } from '../components/ServicePhoto';
 import Toast from 'react-native-toast-message';
-import type { VendorServicesStackParamList } from '../../../../navigation/types';
+import type { ServiceParam, VendorServicesStackParamList } from '../../../../navigation/types';
 
-type ServicePhoto = { url: string; is_primary: boolean; sort_order: number };
+type ServiceItem = ServiceParam;
 
-type ServiceItem = {
-  id: number;
-  name: string;
-  price: number;
-  description?: string;
-  photos?: ServicePhoto[];
-  subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-};
-
-type StatusFilter = 'all' | 'active' | 'draft' | 'archived';
+type StatusFilter = 'all' | 'active' | 'hidden';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Semua' },
   { key: 'active', label: 'Aktif' },
-  { key: 'draft', label: 'Draf' },
-  { key: 'archived', label: 'Diarsipkan' },
+  { key: 'hidden', label: 'Disembunyikan' },
 ];
 
 const formatRupiah = (n: number) => `Rp${Number(n).toLocaleString('id-ID')}`;
@@ -52,7 +42,7 @@ export default function ListingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleMap, setVisibleMap] = useState<Record<number, boolean>>({});
+  const [updatingVisibility, setUpdatingVisibility] = useState<number>();
   const [headerHeight, setHeaderHeight] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -87,15 +77,9 @@ export default function ListingScreen() {
   );
 
   const filteredServices = useMemo(() => {
-    // ⚠️ Draf/Diarsipkan belum punya data status di backend — sengaja
-    // dikosongkan (bukan bug) sampai field status ini tersedia dari server.
-    if (statusFilter === 'draft' || statusFilter === 'archived') {
-      return [];
-    }
-
     let result = services;
-    if (statusFilter === 'active') {
-      result = result.filter((s) => visibleMap[s.id] ?? true);
+    if (statusFilter !== 'all') {
+      result = result.filter(service => (service.is_active ?? true) === (statusFilter === 'active'));
     }
 
     if (searchQuery.trim()) {
@@ -108,7 +92,20 @@ export default function ListingScreen() {
     }
 
     return result;
-  }, [services, searchQuery, statusFilter, visibleMap]);
+  }, [services, searchQuery, statusFilter]);
+
+  const updateVisibility = async (id: number, isActive: boolean) => {
+    if (updatingVisibility !== undefined) return;
+    setUpdatingVisibility(id);
+    try {
+      const { data } = await vendorApi.updateService(id, { is_active: isActive });
+      setServices(previous => previous.map(service => service.id === id ? { ...service, is_active: data.data.is_active } : service));
+    } catch {
+      Toast.show({ type: 'error', text1: 'Status layanan gagal diperbarui' });
+    } finally {
+      setUpdatingVisibility(undefined);
+    }
+  };
 
   const confirmDelete = (item: ServiceItem) => {
     Alert.alert(
@@ -153,7 +150,7 @@ export default function ListingScreen() {
           <View>
             <Text style={styles.title}>Layanan Saya</Text>
             <Text style={styles.titleSubtitle}>
-              {services.length} layanan {services.length === 1 ? 'aktif' : 'terdaftar'}
+              {services.length} layanan terdaftar
             </Text>
           </View>
         </View>
@@ -201,21 +198,9 @@ export default function ListingScreen() {
               <View style={styles.emptyIconWrap}>
                 <PackagePlus size={32} color={colors.primary} />
               </View>
-              {statusFilter === 'draft' || statusFilter === 'archived' ? (
-                <>
-                  <Text style={styles.emptyTitle}>Fitur ini belum tersedia.</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Kategori "{STATUS_FILTERS.find((f) => f.key === statusFilter)?.label}" masih dalam pengembangan.
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.emptyTitle}>Kelola semua layananmu di sini.</Text>
-                  <Text style={styles.emptySubtitle}>Tambahkan layanan baru untuk jangkauan yang lebih luas.</Text>
-                </>
-              )}
+              <Text style={styles.emptyTitle}>Belum ada layanan yang cocok.</Text>
             </View>
-          ) : null
+          ) : undefined
         }
         ItemSeparatorComponent={() => <View style={{ height: spacing.stackLg }} />}
         renderItem={({ item }) => {
@@ -289,8 +274,9 @@ export default function ListingScreen() {
                   <View style={styles.toggleRow}>
                     <Text style={styles.toggleLabel}>Tampilkan</Text>
                     <Switch
-                      value={visibleMap[item.id] ?? true}
-                      onValueChange={(val) => setVisibleMap((prev) => ({ ...prev, [item.id]: val }))}
+                      value={item.is_active ?? true}
+                      disabled={updatingVisibility !== undefined}
+                      onValueChange={value => updateVisibility(item.id, value)}
                       trackColor={{ true: colors.primaryContainer, false: colors.surfaceContainerHigh }}
                       thumbColor="#fff"
                     />

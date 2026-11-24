@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useContext, useEffect, type ReactNode } from 'react';
+import React, { useState, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, StatusBar, useWindowDimensions } from 'react-native';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -18,13 +18,13 @@ import type { VendorTabParamList, VendorDashboardStackParamList } from '../../..
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../../store';
 import { IconlyChart } from '../../../../components/icons/iconlyChart';
-import { IconlyCalendar } from '../../../../components/icons/iconlyCalendar';
 import { IconlyBag } from '../../../../components/icons/iconlyBag';
-import { IconlyTicket } from '../../../../components/icons/iconlyTicket';
-import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
-import { orderTracking } from '../../../../utils/orderTracking';
-import { PerformaCard } from '../components/PerformaCard';
+import { Wallet, Star } from 'lucide-react-native';
 import { SaldoTokoCard } from '../components/SaldoTokoCard';
+import { TenantStatisticsCards } from '../../statistics/components/TenantStatisticsCards';
+import { bookingApi } from '../../../../api/bookingApi';
+import { type BookingRecord } from '../../../../types/bookingRecord';
+import { orderTracking } from '../../../../utils/orderTracking';
 import { MyServicesSection } from '../components/MyServicesSection';
 
 type Nav = CompositeNavigationProp<
@@ -35,65 +35,45 @@ type Nav = CompositeNavigationProp<
 type OrderType = {
   id: string;
   title: string;
-  badgeLabel: 'TERBARU' | 'DIPROSES';
+  badgeLabel: 'TERBARU' | 'DIPROSES' | 'MENUNGGU SELESAI' | 'SELESAI';
   buyerName: string;
   timeAgo: string;
   price: number;
-  status: 'pending' | 'confirmed';
+  status: Exclude<BookingRecord['status'], 'cancelled'>;
 };
 
-// TODO: ganti semua data mock di bawah dengan vendorApi.getMyProfile() + bookingApi.listIncomingBookings()
-// begitu endpoint vendor sudah tersedia dari backend. Bentuk datanya sudah disiapkan mendekati
-// response yang diharapkan supaya nanti tinggal ganti sumbernya, bukan tulis ulang tampilannya.
-
-const MOCK_SUMMARY = {
-  totalOrders: 128,
-  totalOrdersGrowthPercent: 12,
-  confirmedOrders: 5,
-  estimatedRevenue: 4_250_000,
-  completedRevenue: 3_800_000,
-  processingRevenue: 450_000,
-  storeRating: 4.9,
-  ratingCount: 2400,
-  avgResponseMinutes: 5,
-};
-
-const MOCK_ORDERS: OrderType[] = [
-  { id: '1', title: 'Anindhya Fathia Rizki', badgeLabel: 'TERBARU', buyerName: 'Andi Wijaya', timeAgo: '2 jam yang lalu', price: 75000, status: 'pending' },
-  { id: '2', title: 'Bouquet Matahari...', badgeLabel: 'DIPROSES', buyerName: 'Siti Khadijah', timeAgo: '6 jam yang lalu', price: 120000, status: 'confirmed' },
-  { id: '3', title: 'Paket Wisuda Premium', badgeLabel: 'TERBARU', buyerName: 'Budi Santoso', timeAgo: '30 menit lalu', price: 250000, status: 'pending' },
-  { id: '4', title: 'Foto Prewedding', badgeLabel: 'TERBARU', buyerName: 'Dewi Lestari', timeAgo: '1 jam yang lalu', price: 350000, status: 'pending' },
-];
-
-// TODO: 5 titik ini idealnya dari rekap booking per jam (bookingApi) begitu endpoint tenant
-// aktif. `peakHour` dipilih otomatis dari nilai tertinggi kalau nanti datanya dinamis.
-const MOCK_SALES_ACTIVITY = {
-  amount: 3_400_000,
-  growthPercent: 15,
-  completedCount: 18,
-  chartData: [
-    { hour: '08:00', value: 0.2 },
-    { hour: '11:00', value: 0.45 },
-    { hour: '14:00', value: 1 },
-    { hour: '17:00', value: 0.6 },
-    { hour: '20:00', value: 0.3 },
-  ],
-  peakHour: '14:00',
-  avgPerOrder: 188_800,
+const orderBadge: Record<OrderType['status'], OrderType['badgeLabel']> = {
+  pending: 'TERBARU',
+  confirmed: 'DIPROSES',
+  awaiting_completion_confirmation: 'MENUNGGU SELESAI',
+  completed: 'SELESAI',
 };
 
 export default function VendorDashboardScreen() {
   const navigation = useNavigation<Nav>();
+  const statisticsActive = useIsFocused();
   const closedSceneHeight = useContext(TenantDockLayoutContext);
   const redesigned = closedSceneHeight !== null;
   const [refreshing, setRefreshing] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
-  const [orders, setOrders] = useState<OrderType[]>(MOCK_ORDERS);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [viewedOrderIds, setViewedOrderIds] = useState<Set<string>>(new Set());
   const businessName = useSelector(
   (state: RootState) => state.auth?.businessName
 );
 
+  const orders: OrderType[] = bookings.flatMap(booking => {
+    if (booking.status === 'cancelled') return [];
+    return [{
+      id: booking.uuid,
+      title: booking.service?.name ?? 'Layanan',
+      badgeLabel: orderBadge[booking.status],
+      buyerName: booking.customer?.name ?? 'Pelanggan',
+      timeAgo: booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '',
+      price: Number(booking.total_amount ?? 0),
+      status: booking.status,
+    }];
+  });
   useEffect(() => {
     loadViewedOrders();
   }, []);
@@ -113,25 +93,7 @@ export default function VendorDashboardScreen() {
       setViewedOrderIds((prev) => new Set(prev).add(orderId));
     }
 
-    // FIX: 'OrderDetail' itu layar di DALAM stack Orders (VendorOrdersStackNavigator), bukan
-    // layar langsung yang dikenal dari stack Dashboard — jadi harus lewat nested navigation
-    // { screen, params }. Juga wajib kirim data booking LENGKAP (bukan cuma orderId), karena
-    // OrderDetailScreen baca field seperti price/order_code langsung dari route params.
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
-
-    navigation.navigate('Orders', {
-      screen: 'OrderDetail',
-      params: {
-        id: order.id,
-        order_code: `JH-${order.id.padStart(4, '0')}`,
-        service_name: order.title,
-        customer_name: order.buyerName,
-        customer_location: 'Yogyakarta', // TODO: ganti data asli begitu bookingApi sudah aktif
-        price: order.price,
-        status: order.status,
-      },
-    });
+    navigation.navigate('Orders', { screen: 'OrderDetail', params: { id: orderId }, initial: false });
   };
 
   const handleMarkAllViewed = async () => {
@@ -142,12 +104,32 @@ export default function VendorDashboardScreen() {
     }
   };
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    // TODO: panggil ulang vendorApi/bookingApi di sini saat sudah tersambung.
-    setTimeout(() => setRefreshing(false), 800);
+  const pendingRefresh = useRef(false);
+  const loadOrders = useCallback(async (showLoading: boolean) => {
+    if (pendingRefresh.current) return;
+    pendingRefresh.current = true;
+    if (showLoading) setRefreshing(true);
+    try {
+      setBookings(await bookingApi.listAllBookings('tenant'));
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      pendingRefresh.current = false;
+      if (showLoading) setRefreshing(false);
+    }
   }, []);
 
+  const onRefresh = useCallback(() => loadOrders(true), [loadOrders]);
+  useFocusEffect(useCallback(() => {
+    void onRefresh();
+    const timer = setInterval(() => { void loadOrders(false); }, 5000);
+    return () => clearInterval(timer);
+  }, [loadOrders, onRefresh]));
+
+  const { width, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const compact = width - insets.left - insets.right < tenantLayout.narrowWidth || fontScale > tenantLayout.largeFontScale;
   const actions = [
     {
       key: 'listing',
@@ -156,14 +138,7 @@ export default function VendorDashboardScreen() {
       iconBg: colors.orangePale,
       onPress: () => navigation.navigate('Listing'),
     },
-    {
-      key: 'promo',
-      icon: IconlyWallet,
-      label: 'Dompet',
-      iconBg: colors.primaryFixed,
-      disabled: true,
-      onPress: () => {/* TODO */},
-    },
+    ...(redesigned ? [{ key: 'wallet', icon: Wallet, label: 'Dompet', iconBg: colors.surfaceContainerHigh }] : []),
     {
       key: 'stats',
       icon: IconlyChart,
@@ -171,14 +146,7 @@ export default function VendorDashboardScreen() {
       iconBg: colors.accentGreenContainer,
       onPress: () => navigation.navigate('Statistics'),
     },
-    {
-      key: 'reviews',
-      icon: IconlyTicket,
-      label: 'Ulasan',
-      iconBg: colors.grayPale,
-      disabled: true,
-      onPress: () => {/* TODO */},
-    },
+    ...(redesigned ? [{ key: 'reviews', icon: Star, label: 'Ulasan', iconBg: colors.surfaceContainerHigh }] : []),
   ];
 
   const handleSeeAllServices = () => {
@@ -198,32 +166,28 @@ export default function VendorDashboardScreen() {
 
   const header = (
     <VendorHeaderBar
+      nativeLayout={redesigned}
       businessName={businessName ?? 'Vendor'}
-      isOpen={isOpen}
-      onToggleOpen={() => setIsOpen((v) => !v)}
+      onPressBell={() => navigation.navigate('RecentActivity')}
+      onPressAvatar={() => navigation.navigate('Profile')}
     />
   );
-  const hero = (
-    <SaldoTokoCard
-      balance={MOCK_SUMMARY.estimatedRevenue}
-      onTarik={redesigned ? undefined : () => {/* TODO: fitur tarik dana belum ada di scope MVP PRD */}}
-      onRiwayat={redesigned ? undefined : () => {/* TODO: fitur riwayat dompet belum ada di scope MVP PRD */}}
-      onPesanan={() => navigation.navigate('Orders')}
-    />
+  const paidTotal = bookings.reduce((total, booking) =>
+    total + (booking.payment?.status === 'paid' ? Number(booking.total_amount ?? 0) : 0), 0);
+  const revenueCard = <SaldoTokoCard nativeLayout={redesigned} balance={paidTotal} onPesanan={() => navigation.navigate('Orders')} />;
+
+  const statistics = (
+    <View style={tenantStyles.statistics}>
+      <View style={dashboardStyles.headingRow}>
+        <Text accessibilityRole="header" style={dashboardStyles.heading}>Statistik</Text>
+        <TenantPressable accessibilityRole="button" style={dashboardStyles.link} onPress={() => navigation.navigate('Statistics')}>
+          <Text style={dashboardStyles.linkText}>Lihat Statistik</Text>
+        </TenantPressable>
+      </View>
+      <TenantStatisticsCards records={bookings} initialPeriod="today" active={statisticsActive} ordersOnly />
+    </View>
   );
-  const performance = (
-    <PerformaCard
-      label="Pendapatan Hari Ini"
-      amount={MOCK_SALES_ACTIVITY.amount}
-      growthPercent={MOCK_SALES_ACTIVITY.growthPercent}
-      completedCount={MOCK_SALES_ACTIVITY.completedCount}
-      chartData={MOCK_SALES_ACTIVITY.chartData}
-      peakHour={MOCK_SALES_ACTIVITY.peakHour}
-      avgPerOrder={MOCK_SALES_ACTIVITY.avgPerOrder}
-      onSeeAnalysis={() => navigation.navigate('Statistics')}
-    />
-  );
-  const quickActions = <QuickActionsGrid actions={actions} />;
+  const quickActions = <QuickActionsGrid actions={actions} columns={redesigned ? (compact ? 2 : 4) : undefined} />;
   const services = (
     <MyServicesSection
       onSeeAll={handleSeeAllServices}
@@ -246,9 +210,12 @@ export default function VendorDashboardScreen() {
       buyerName={order.buyerName}
       timeAgo={order.timeAgo}
       price={order.price}
-      icon={order.id === '2' ? IconlyCalendar : undefined}
+      onPress={() => handleOrderPress(order.id)}
     />
   );
+  const orderState = loadError
+    ? <Text onPress={onRefresh}>Pesanan gagal dimuat. Coba lagi.</Text>
+    : !refreshing && !orders.length ? <Text>Belum ada pesanan masuk.</Text> : null;
   const seeOrders = () => navigation.navigate('Orders');
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />;
 
@@ -257,15 +224,15 @@ export default function VendorDashboardScreen() {
       <TenantDashboardLayout
         closedSceneHeight={closedSceneHeight}
         header={header}
-        hero={hero}
+        revenueCard={revenueCard}
         refreshControl={refreshControl}
       >
         <View style={tenantStyles.summary}>
+          {notifications}
           {quickActions}
-          {performance}
+          {statistics}
         </View>
         {services}
-        {notifications}
         <View style={tenantStyles.orders}>
           <View style={dashboardStyles.headingRow}>
             <Text accessibilityRole="header" style={dashboardStyles.heading}>Pesanan masuk</Text>
@@ -273,8 +240,8 @@ export default function VendorDashboardScreen() {
               <Text style={dashboardStyles.linkText}>Lihat Semua</Text>
             </TenantPressable>
           </View>
-          <Text style={dashboardStyles.sample}>Data contoh</Text>
-          <View style={tenantStyles.orderList}>{MOCK_ORDERS.map(renderOrder)}</View>
+          {orderState}
+          <View style={tenantStyles.orderList}>{orders.slice(0, 4).map(renderOrder)}</View>
         </View>
       </TenantDashboardLayout>
     );
@@ -287,22 +254,19 @@ export default function VendorDashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={refreshControl}
       >
-        {hero}
-        {performance}
         <View style={{ height: spacing.stackMd }} />
         <View style={{ height: spacing.stackMd }} />
+        {notifications}
+        {revenueCard}
         {quickActions}
+        {statistics}
         {services}
-        {notifications && (
-          <View style={{ marginTop: spacing.stackMd }}>
-            {notifications}
-          </View>
-        )}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Pesanan masuk</Text>
           <Text style={styles.seeAll} onPress={seeOrders}>Lihat Semua</Text>
         </View>
-        {MOCK_ORDERS.map((order) => (
+        {orderState}
+        {orders.slice(0, 4).map((order) => (
           <View key={order.id} style={{ marginBottom: spacing.stackSm }}>
             {renderOrder(order)}
           </View>
@@ -313,10 +277,10 @@ export default function VendorDashboardScreen() {
   );
 }
 
-function TenantDashboardLayout({ closedSceneHeight, header, hero, refreshControl, children }: {
+function TenantDashboardLayout({ closedSceneHeight, header, revenueCard, refreshControl, children }: {
   closedSceneHeight: number;
   header: ReactNode;
-  hero: ReactNode;
+  revenueCard: ReactNode;
   refreshControl: React.ReactElement;
   children: ReactNode;
 }) {
@@ -355,7 +319,7 @@ function TenantDashboardLayout({ closedSceneHeight, header, hero, refreshControl
           <View aria-hidden pointerEvents="none" style={tenantStyles.roundedCanvas} />
           <View style={[tenantStyles.columnHost, horizontalInsets]}>
             <View style={{ width: columnWidth }}>
-              {hero}
+              {revenueCard}
               {children}
             </View>
           </View>
@@ -379,6 +343,7 @@ const tenantStyles = StyleSheet.create({
     backgroundColor: tenantColors.canvas, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
   },
   columnHost: { alignItems: 'center', paddingBottom: spacing.stackMd },
+  statistics: { gap: spacing.stackSm },
   summary: { gap: spacing.stackMd, marginTop: spacing.stackMd },
   orders: { gap: 4, marginTop: spacing.stackLg },
   orderList: { gap: 8, marginTop: 4 },

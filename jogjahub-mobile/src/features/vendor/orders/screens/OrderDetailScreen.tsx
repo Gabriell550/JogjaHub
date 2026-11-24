@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Bell, Calendar as CalendarIcon, Clock, MessageCircle, X, CheckCircle2 } from 'lucide-react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { Bell, X, CheckCircle2 } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
+import { bookingLabel, bookingStatusLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
+import { apiErrorMessage } from '../../../../api/apiErrorMessage';
 import { bookingApi } from '../../../../api/bookingApi';
 import Toast from 'react-native-toast-message';
-import type { VendorOrdersStackParamList } from '../../../../navigation/types';
+import type { VendorOrdersStackParamList, VendorTabParamList } from '../../../../navigation/types';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 type OrderDetailRoute = RouteProp<VendorOrdersStackParamList, 'OrderDetail'>;
 
@@ -15,17 +18,34 @@ function formatRupiah(value: number) {
 
 export default function OrderDetailScreen() {
   const navigation = useNavigation();
-  const { params: booking } = useRoute<OrderDetailRoute>();
-  const [processing, setProcessing] = useState<'accept' | 'reject' | null>(null);
+  const { params: { id } } = useRoute<OrderDetailRoute>();
+  const [booking, setBooking] = useState<BookingRecord>();
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [processing, setProcessing] = useState<'accept' | 'reject' | 'fulfill' | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setError(false);
+    bookingApi.getIncomingBooking(id).then(({ data }) => {
+      if (active) setBooking(data.data);
+    }).catch(() => {
+      if (active) setError(true);
+    });
+    return () => { active = false; };
+  }, [id, attempt]));
+
+  if (error) return <Text style={styles.content} onPress={() => setAttempt(value => value + 1)}>Pesanan gagal dimuat. Coba lagi.</Text>;
+  if (!booking || booking.uuid !== id) return <ActivityIndicator />;
 
   const handleDecision = async (status: 'confirmed' | 'cancelled') => {
     setProcessing(status === 'confirmed' ? 'accept' : 'reject');
     try {
-      await bookingApi.updateBookingStatus(booking.id, status);
+      await bookingApi.updateBookingStatus(id, status);
       Toast.show({
         type: 'success',
         text1: status === 'confirmed' ? 'Pesanan diterima' : 'Pesanan ditolak',
-        text2: booking.service_name,
+        text2: booking.service?.name,
         position: 'top',
       });
       navigation.goBack();
@@ -33,12 +53,33 @@ export default function OrderDetailScreen() {
       Toast.show({
         type: 'error',
         text1: 'Gagal memperbarui pesanan',
-        text2: 'Coba lagi dalam beberapa saat.',
+        text2: apiErrorMessage(err, 'Coba lagi dalam beberapa saat.'),
         position: 'top',
       });
     } finally {
       setProcessing(null);
     }
+  };
+
+  const markFulfilled = async () => {
+    setProcessing('fulfill');
+    try {
+      const { data } = await bookingApi.markFulfilled(id);
+      setBooking(previous => ({ ...data.data, customer: previous?.customer }));
+      setAttempt(value => value + 1);
+    } catch (error) {
+      Alert.alert('Pesanan gagal diperbarui', apiErrorMessage(error, 'Coba lagi.'));
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const openConversation = (conversationId: number) => {
+    navigation.getParent<BottomTabNavigationProp<VendorTabParamList>>()?.navigate('Profile', {
+      screen: 'VendorChatRoom',
+      params: { conversationId: String(conversationId), customerName: booking.customer?.name ?? 'Pelanggan' },
+      initial: false,
+    });
   };
 
   return (
@@ -47,18 +88,19 @@ export default function OrderDetailScreen() {
         <View style={styles.bellCircle}>
           <Bell size={32} color={colors.onPrimary} />
         </View>
-        <Text style={styles.alertTitle}>Pesanan Baru!</Text>
-        <Text style={styles.alertSubtitle}>Konfirmasi segera sebelum waktu habis</Text>
+        <Text style={styles.alertTitle}>Rincian Pesanan</Text>
+        <Text style={styles.alertSubtitle}>{bookingStatusLabel[booking.status]}</Text>
+        <Text style={styles.alertSubtitle}>{paymentLabel(booking)}</Text>
       </View>
 
       <View style={styles.card}>
         <View style={styles.cardTopRow}>
           <View>
             <Text style={styles.orderIdLabel}>ID PESANAN</Text>
-            <Text style={styles.orderId}>#{booking.order_code}</Text>
+            <Text style={styles.orderId}>{bookingLabel(booking)}</Text>
           </View>
           <View style={styles.priceBadge}>
-            <Text style={styles.priceBadgeText}>{formatRupiah(booking.price)}</Text>
+            <Text style={styles.priceBadgeText}>{formatRupiah(Number(booking.total_amount ?? 0))}</Text>
           </View>
         </View>
 
@@ -69,26 +111,43 @@ export default function OrderDetailScreen() {
             <CheckCircle2 size={24} color={colors.primary} />
           </View>
           <View>
-            <Text style={styles.serviceName}>{booking.service_name}</Text>
+            <Text style={styles.serviceName}>{booking.service?.name}</Text>
           </View>
         </View>
 
         <View style={styles.customerRow}>
-          {booking.photo_url ? (
-            <Image source={{ uri: booking.photo_url }} style={styles.avatar} />
+          {booking.customer?.avatar_url ? (
+            <Image source={{ uri: booking.customer?.avatar_url }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]} />
           )}
           <View style={{ flex: 1 }}>
-            <Text style={styles.customerName}>{booking.customer_name}</Text>
-            <Text style={styles.customerLocation}>{booking.customer_location}</Text>
+            <Text style={styles.customerName}>{booking.customer?.name}</Text>
+            <Text style={styles.customerLocation}>{booking.check_in_date ?? booking.slot?.slot_date.slice(0, 10) ?? ''}</Text>
           </View>
-          <TouchableOpacity style={styles.chatButton}>
-            <MessageCircle size={18} color={colors.onSecondaryContainer} />
-          </TouchableOpacity>
         </View>
 
-        <View style={styles.actionRow}>
+        {!!booking.fulfilled_at && <Text>Ditandai selesai {new Date(booking.fulfilled_at).toLocaleString('id-ID')}</Text>}
+        {!!booking.completed_at && <Text>Dikonfirmasi customer {new Date(booking.completed_at).toLocaleString('id-ID')}</Text>}
+        {!!booking.issue_reported_at && <>
+          <Text>{booking.status === 'completed' ? 'Riwayat kendala' : 'Kendala dilaporkan'} · {new Date(booking.issue_reported_at).toLocaleString('id-ID')}</Text>
+          <Text>{booking.completion_issue}</Text>
+          {booking.status !== 'completed' && booking.completion_conversation_id != null && (
+            <TouchableOpacity accessibilityRole="button" style={styles.acceptButton}
+              onPress={() => openConversation(booking.completion_conversation_id!)}>
+              <Text style={styles.acceptButtonText}>Chat pelanggan</Text>
+            </TouchableOpacity>
+          )}
+        </>}
+        {booking.status === 'confirmed' && (booking.can_mark_fulfilled ?
+          <TouchableOpacity accessibilityRole="button" style={styles.acceptButton} disabled={processing !== null}
+            onPress={() => Alert.alert('Tandai selesai', 'Pastikan layanan sudah diberikan kepada pelanggan.', [
+              { text: 'Batal', style: 'cancel' },
+              { text: 'Tandai selesai', onPress: () => void markFulfilled() },
+            ])}>
+            <Text style={styles.acceptButtonText}>{processing === 'fulfill' ? 'Memproses…' : 'Tandai selesai'}</Text>
+          </TouchableOpacity> : <Text>Tandai selesai tersedia setelah jadwal layanan berakhir.</Text>)}
+        {booking.status === 'pending' && <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.rejectButton}
             onPress={() => handleDecision('cancelled')}
@@ -117,7 +176,7 @@ export default function OrderDetailScreen() {
               </>
             )}
           </TouchableOpacity>
-        </View>
+        </View>}
       </View>
     </ScrollView>
   );

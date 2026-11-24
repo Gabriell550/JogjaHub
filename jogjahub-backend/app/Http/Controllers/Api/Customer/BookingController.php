@@ -17,8 +17,9 @@ class BookingController extends Controller
     {
         $bookings = Booking::where('customer_id', $request->user()->id)
             // Load relasi slot (single-slot) DAN slots (multi-slot hotel) + payment untuk total_amount
-            ->with(['service.tenant', 'slot', 'slots', 'payment'])
+            ->with(['service.tenant', 'service.subcategory', 'slot', 'slots', 'review', 'payment'])
             ->latest()
+            ->orderByDesc('id')
             ->paginate(15);
 
         return BookingResource::collection($bookings)->additional(['success' => true]);
@@ -30,7 +31,9 @@ class BookingController extends Controller
 
         return response()->json([
             'success'     => true,
-            'message'     => 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.',
+            'message'     => $result['payment_url']
+                ? 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.'
+                : 'Pesanan dibuat. Lanjutkan transaksi melalui WhatsApp.',
             'data'        => new BookingResource($result['booking']),
             'payment_url' => $result['payment_url'],    // URL halaman bayar Xendit
             'expires_at'  => $result['expires_at'],     // batas waktu bayar (ISO 8601)

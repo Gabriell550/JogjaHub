@@ -18,6 +18,7 @@ class Service extends Model
         'name',
         'description',
         'price',
+        'is_active',
         // price_type menentukan cara kalkulasi total harga saat booking:
         // - per_session: harga tetap 1 sesi (default, backward compat)
         // - per_night  : harga per malam, dikalikan jumlah malam saat checkout
@@ -26,6 +27,7 @@ class Service extends Model
     ];
 
     protected $casts = [
+        'is_active' => 'boolean',
         'photos'     => 'array',
         'price'      => 'decimal:2',
         // Cast ke Enum PriceType agar bisa dibandingkan dengan PriceType::PER_NIGHT

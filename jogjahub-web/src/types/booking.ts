@@ -1,4 +1,4 @@
-export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
+export type BookingStatus = "pending" | "confirmed" | "awaiting_completion_confirmation" | "completed" | "cancelled";
 
 export interface Booking {
   id: string;

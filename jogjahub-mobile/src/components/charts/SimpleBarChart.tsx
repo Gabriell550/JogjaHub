@@ -16,7 +16,7 @@ type Props = {
 export function SimpleBarChart({ labels, values, color = colors.primaryContainer, valueFormatter, height = 160 }: Props) {
   const VIEWBOX_WIDTH = 320;
   const VIEWBOX_HEIGHT = 140;
-  const maxValue = Math.max(...values, 1);
+  const maxValue = Math.max(...values, 0);
   const barCount = values.length;
   const gap = 8;
   const barWidth = (VIEWBOX_WIDTH - gap * (barCount - 1)) / barCount;
@@ -25,7 +25,7 @@ export function SimpleBarChart({ labels, values, color = colors.primaryContainer
     <View>
       <Svg width="100%" height={height} viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} preserveAspectRatio="none">
         {values.map((value, i) => {
-          const barHeight = Math.max((value / maxValue) * (VIEWBOX_HEIGHT - 20), 3);
+          const barHeight = Math.max((value / (maxValue || 1)) * (VIEWBOX_HEIGHT - 20), 3);
           const x = i * (barWidth + gap);
           const y = VIEWBOX_HEIGHT - 20 - barHeight;
           return <Rect key={i} x={x} y={y} width={barWidth} height={barHeight} rx={4} fill={color} />;

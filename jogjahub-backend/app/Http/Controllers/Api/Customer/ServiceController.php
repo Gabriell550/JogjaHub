@@ -13,7 +13,8 @@ class ServiceController extends Controller
 {
     public function index(Request $request)
     {
-        $services = Service::with(['tenant', 'subcategory'])
+        $services = Service::with(['tenant', 'subcategory.category'])
+            ->where('is_active', true)
             ->whereHas('tenant', fn($q) => $q->where('status', 'approved')) // cuma tampilin tenant yang udah approved
             ->when($request->subcategory_id, fn($q) => $q->where('subcategory_id', $request->subcategory_id))
             ->when($request->category_id, function ($q) use ($request) {
@@ -27,6 +28,14 @@ class ServiceController extends Controller
                         ->orWhereHas('tenant', fn($t) => $t->where('business_name', 'like', "%{$keyword}%"));
                 });
             })
+            ->when($request->price_type, fn($q) => $q->where('price_type', $request->price_type))
+            ->when($request->boolean('accommodation'), function ($query) {
+                $query->where(function ($query) {
+                    $query->where('price_type', 'per_night')
+                        ->orWhereHas('subcategory.category', fn ($category) => $category->whereRaw('LOWER(TRIM(name)) = ?', ['penginapan']));
+                });
+            })
+            ->orderBy('id')
             ->paginate(15);
 
         return ServiceResource::collection($services)->additional(['success' => true]);
@@ -34,6 +43,8 @@ class ServiceController extends Controller
 
     public function slots(Service $service)
     {
+        $this->ensureServiceIsPublic($service);
+
         $slots = $service->timeSlots()
             ->where('slot_date', '>=', now()->toDateString())
             ->whereColumn('quota', '>', 'booked_count')
@@ -49,10 +60,12 @@ class ServiceController extends Controller
 
     public function show(Service $service)
     {
-        $service->load(['tenant', 'subcategory']);
+        $this->ensureServiceIsPublic($service);
+
+        $service->load(['tenant', 'subcategory.category']);
 
         $service->loadCount([
-            'bookings as confirmed_bookings_count' => fn($q) => $q->where('status', 'confirmed'),
+            'bookings as confirmed_bookings_count' => fn($q) => $q->whereIn('status', \App\Enums\BookingStatus::accepted()),
         ]);
 
         $reviews = $service->bookings()
@@ -72,6 +85,8 @@ class ServiceController extends Controller
 
     public function reviews(Service $service)
     {
+        $this->ensureServiceIsPublic($service);
+
         $reviews = $service->bookings()
             ->whereHas('review')
             ->with('review.customer:id,name')
@@ -82,5 +97,10 @@ class ServiceController extends Controller
             'success' => true,
             'data' => ReviewResource::collection($reviews),
         ]);
+    }
+
+    private function ensureServiceIsPublic(Service $service): void
+    {
+        abort_unless($service->is_active && $service->tenant?->status === 'approved', 404);
     }
 }

@@ -159,6 +159,8 @@ export default function ServiceFormScreen() {
 
   const [name, setName] = useState(existingService?.name ?? '');
   const [description, setDescription] = useState(existingService?.description ?? '');
+  const [isActive, setIsActive] = useState(existingService?.is_active ?? true);
+  const [priceType, setPriceType] = useState(existingService?.price_type);
   const [rawPrice, setRawPrice] = useState(existingService ? String(existingService.price) : '');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(
@@ -207,6 +209,9 @@ export default function ServiceFormScreen() {
     () => categories.find((category) => category.subcategories.some((subcategory) => subcategory.id === selectedSubcategoryId)),
     [categories, selectedSubcategoryId],
   );
+  const isAccommodation = selectedCategory?.name.trim().toLowerCase() === 'penginapan'
+    || (existingService?.price_type === 'per_night' && existingService.subcategory?.id === selectedSubcategoryId);
+  const effectivePriceType = isAccommodation ? priceType ?? (existingService ? 'per_session' : 'per_night') : 'per_session';
   const selectedSubcategory = selectedCategory?.subcategories.find((subcategory) => subcategory.id === selectedSubcategoryId);
   const photoCount = existingPhotos.length + newPhotos.length;
   const formattedPrice = formatThousands(rawPrice);
@@ -342,6 +347,8 @@ export default function ServiceFormScreen() {
         name: name.trim(),
         subcategory_id: selectedSubcategoryId,
         price: Number(rawPrice),
+        price_type: effectivePriceType,
+        is_active: isActive,
         description: description.trim(),
       };
       const hasPhotoChanges = newPhotos.length > 0 || removedPhotoUrls.length > 0;
@@ -350,6 +357,8 @@ export default function ServiceFormScreen() {
         formData.append('name', payload.name);
         formData.append('subcategory_id', String(payload.subcategory_id));
         formData.append('price', String(payload.price));
+        formData.append('price_type', payload.price_type);
+        formData.append('is_active', payload.is_active ? '1' : '0');
         formData.append('description', payload.description);
         newPhotos.forEach((photo) => appendPhoto(formData, photo));
         if (isEdit) {
@@ -618,6 +627,15 @@ export default function ServiceFormScreen() {
               />
             </View>
             <InlineError>{fieldErrors.price}</InlineError>
+            {isAccommodation && <View style={styles.suggestionRow}>
+              {(['per_night', 'per_session'] as const).map(type => (
+                <Pressable key={type} accessibilityRole="button" accessibilityState={{ selected: effectivePriceType === type }}
+                  onPress={() => setPriceType(type)}
+                  style={[styles.suggestionChip, effectivePriceType === type && styles.subcategorySelected]}>
+                  <Text style={styles.suggestionText}>{type === 'per_night' ? 'Per malam' : 'Per pemesanan'}</Text>
+                </Pressable>
+              ))}
+            </View>}
             {priceWords ? <Text style={styles.priceWords}>Terbilang: {priceWords}</Text> : null}
             <View style={styles.suggestionRow}>
               {PRICE_SUGGESTIONS.map((amount) => (
@@ -672,13 +690,13 @@ export default function ServiceFormScreen() {
             <View style={styles.availabilityCopy}>
               <Text style={styles.availabilityTitle}>Layanan aktif untuk dipesan</Text>
               <Text style={styles.availabilityDescription}>
-                Status aktif belum dapat diubah lewat API layanan. Pengaturan ini belum tersedia.
+                Layanan aktif tampil di katalog pelanggan.
               </Text>
             </View>
             <Switch
-              value
-              disabled
-              accessibilityLabel="Status aktif layanan, belum dapat diubah"
+              value={isActive}
+              onValueChange={setIsActive}
+              accessibilityLabel="Tampilkan layanan di katalog"
               trackColor={{ true: colors.primaryContainer, false: colors.surfaceContainerHigh }}
               thumbColor={colors.onPrimary}
             />
