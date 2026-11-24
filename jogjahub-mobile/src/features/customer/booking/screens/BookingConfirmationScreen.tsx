@@ -7,6 +7,7 @@ import type { CustomerStackParamList } from '../../../../navigation/types';
 import { bookingApi } from '../../../../api/bookingApi';
 import { colors, radius, typography } from '../../../../constants/theme';
 import { apiErrorMessage } from '../../../../api/apiErrorMessage';
+import { verifyBooking } from '../serviceSchedule';
 
 type Props = NativeStackScreenProps<CustomerStackParamList, 'BookingConfirmation'>;
 
@@ -28,11 +29,27 @@ export default function BookingConfirmationScreen({ navigation, route }: Props) 
     try {
       let url = contactUrl;
       if (!url) {
+        let latest;
+        try {
+          latest = await verifyBooking(serviceId, { date: checkInDate ?? date, checkout: checkOutDate, slotId });
+        } catch (error) {
+          Alert.alert('Pesanan gagal diperiksa', apiErrorMessage(error, 'Coba lagi.'));
+          return;
+        }
+        if (!latest) {
+          Alert.alert('Jadwal tidak tersedia', 'Pilih jadwal lain untuk melanjutkan.', [{ text: 'Pilih jadwal', onPress: navigation.goBack }]);
+          return;
+        }
+        if (latest.price !== price) {
+          navigation.setParams(latest);
+          Alert.alert('Harga berubah', 'Periksa total terbaru sebelum melanjutkan.');
+          return;
+        }
         const { data } = await bookingApi.createBooking({
           service_id: serviceId,
-          slot_id: slotId,
-          check_in_date: checkInDate,
-          check_out_date: checkOutDate,
+          slot_id: latest.slotId,
+          check_in_date: latest.checkInDate,
+          check_out_date: latest.checkOutDate,
         });
         url = data.data?.whatsapp_url ?? data.payment_url;
         if (!url) {
@@ -50,7 +67,10 @@ export default function BookingConfirmationScreen({ navigation, route }: Props) 
       }
     } catch (error) {
       if (isAxiosError(error) && error.response && error.response.status < 500) {
-        Alert.alert('Gagal membuat pesanan', apiErrorMessage(error, 'Periksa pesanan dan coba lagi.'));
+        const errors = error.response.data?.errors;
+        const scheduleChanged = error.response.status === 422 && (errors?.slot_id || errors?.check_in_date || errors?.check_out_date);
+        Alert.alert('Gagal membuat pesanan', apiErrorMessage(error, 'Periksa pesanan dan coba lagi.'),
+          scheduleChanged ? [{ text: 'Pilih jadwal', onPress: navigation.goBack }] : undefined);
       } else {
         Alert.alert('Status pesanan belum diketahui', 'Periksa Pesanan Saya sebelum mencoba kembali.');
         showBookings();

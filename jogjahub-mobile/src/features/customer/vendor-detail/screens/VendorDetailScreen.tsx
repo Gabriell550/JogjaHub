@@ -9,10 +9,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CustomerStackParamList } from '../../../../navigation/types';
 import { chatApi } from '../../../../api/chatApi';
 import { apiErrorMessage } from '../../../../api/apiErrorMessage';
+import CustomerPhoto from '../../catalog/components/CustomerPhoto';
+import { customerPhotoUrls, type CustomerPhotoData } from '../../../../utils/serviceImage';
 import { vendorApi } from '../../../../api/vendorApi';
 
 type Category = { id: number; name: string };
-type ServiceItem = { id: number; name: string; price: number; photos?: { url: string; is_primary: boolean }[]; subcategory?: { id: number; name: string }; reviews_count?: number; reviews_average_rating?: number | null; };
+type ServiceItem = { id: number; name: string; price: number; photos?: CustomerPhotoData[]; subcategory?: { id: number; name: string }; reviews_count?: number; reviews_average_rating?: number | null; };
 type TenantProfile = { id: number; uuid: string; business_name: string; description?: string; address?: { street?: string; city?: string; province?: string; }; location?: { latitude: number; longitude: number }; whatsapp_number?: string; logo_url?: string; categories?: Category[]; services?: ServiceItem[]; };
 
 export default function VendorDetailScreen() {
@@ -56,7 +58,7 @@ export default function VendorDetailScreen() {
   };
 
   const handleBook = (svc: ServiceItem) => {
-    navigation.navigate('Booking', {
+    navigation.navigate('ServiceDetail', {
       serviceId: svc.id,
     });
   };
@@ -99,7 +101,7 @@ export default function VendorDetailScreen() {
                 onPress={() => handleBook(svc)}
                 style={styles.service}
               >
-                <View style={styles.serviceCopy}>
+                <CustomerPhoto urls={customerPhotoUrls(svc.photos, profile.logo_url)} style={styles.servicePhoto} /><View style={styles.serviceCopy}>
                   <Text style={styles.serviceName}>{svc.name}</Text>
                   <Text style={styles.servicePrice}>Rp {svc.price}</Text>
                 </View>
@@ -110,7 +112,7 @@ export default function VendorDetailScreen() {
 
           <View style={styles.footer}>
             <TouchableOpacity onPress={handleChat} disabled={openingChat} accessibilityRole="button" style={styles.contact}>
-              <Text style={styles.contactLabel}>{openingChat ? 'Membuka chat...' : 'Chat di JogjaHub'}</Text>
+              <Text style={styles.contactLabel}>{openingChat ? 'Membuka chat...' : 'Chat toko'}</Text>
             </TouchableOpacity>
             {!!profile.whatsapp_number && (
               <TouchableOpacity onPress={handleWhatsApp} accessibilityRole="button" style={styles.contact}>
@@ -143,6 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg,
     borderWidth: 1, borderColor: customerColors.border,
   },
+  servicePhoto: { width: 64, height: 64, borderRadius: radius.md },
   serviceCopy: { flex: 1, gap: 4 },
   serviceName: { ...typography.headlineSm, color: colors.navy },
   servicePrice: { ...typography.labelLg, color: customerColors.hero },

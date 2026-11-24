@@ -14,6 +14,7 @@ class ConversationTest extends TestCase
 
     public function test_customer_and_tenant_exchange_messages_using_public_tenant_uuid(): void
     {
+        $this->freezeTime();
         $customer = User::factory()->create(['role' => 'customer']);
         $tenant = TenantProfile::factory()->approved()->create();
 

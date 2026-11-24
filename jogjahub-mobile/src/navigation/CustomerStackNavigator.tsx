@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CustomerTabNavigator } from './CustomerTabNavigator';
 import NotificationsScreen from '../features/shared/notifications/NotificationsScreen';
 import BookingScreen from '../features/customer/booking/screens/BookingScreen';
+import BookingDetailScreen from '../features/customer/my-bookings/screens/BookingDetailScreen';
 import BookingConfirmationScreen from '../features/customer/booking/screens/BookingConfirmationScreen';
 import HotelBookingScreen from '../features/customer/hotel/screens/HotelBookingScreen';
 import CatalogScreen from '../features/customer/catalog/screens/CatalogScreen';
@@ -32,13 +33,14 @@ export function CustomerStackNavigator() {
         {({ navigation }) => <ChatInbox role="customer" open={(id, name) => navigation.navigate('CustomerChatRoom', { id, name })} />}
       </Stack.Screen>
       <Stack.Screen name="CustomerChatRoom" options={({ route }) => ({ headerShown: true, title: route.params.name })}>
-        {({ route }) => <ChatRoom key={route.params.id} role="customer" id={route.params.id} />}
+        {({ route }) => <ChatRoom key={route.params.id} role="customer" id={route.params.id} initialDraft={route.params.draft} />}
       </Stack.Screen>
       <Stack.Screen name="Catalog" component={CatalogScreen} />
       <Stack.Screen name="HotelBooking" component={HotelBookingScreen} />
       <Stack.Screen name="ServiceDetail" component={CustomerServiceDetailScreen} />
       <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
       <Stack.Screen name="Booking" component={BookingScreen} />
+      <Stack.Screen name="BookingDetail" component={BookingDetailScreen} options={{ headerShown: true, title: 'Detail Pesanan' }} />
       <Stack.Screen
         name="BookingConfirmation"
         component={BookingConfirmationScreen}

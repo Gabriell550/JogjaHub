@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\BookingService;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
+use App\Models\Conversation;
 use App\Http\Resources\BookingResource;
 use App\Http\Requests\Tenant\UpdateBookingStatusRequest;
 use Illuminate\Http\Request;
@@ -40,6 +41,11 @@ class BookingController extends Controller
 
         $booking->load(['customer:id,name,email,phone', 'service:id,name', 'slot', 'slots', 'review', 'payment']);
 
+        if ($booking->issue_reported_at) {
+            $booking->completion_conversation_id = Conversation::where('customer_id', $booking->customer_id)
+                ->where('tenant_id', $request->user()->id)->value('id');
+        }
+
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);
     }
 
@@ -64,7 +70,9 @@ class BookingController extends Controller
             // pakai method yang sama dengan customer, biar kuota slot ikut dikembalikan
             $this->bookingService->cancelBooking($booking);
         } else {
-            $booking->update(['status' => BookingStatus::CONFIRMED->value]);
+            $changed = Booking::whereKey($booking->id)->where('status', BookingStatus::PENDING->value)
+                ->update(['status' => BookingStatus::CONFIRMED->value]);
+            abort_unless($changed, 422, 'Hanya booking berstatus pending yang bisa diubah');
         }
 
         return response()->json([

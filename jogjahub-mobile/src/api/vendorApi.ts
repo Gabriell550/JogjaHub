@@ -8,6 +8,7 @@ import type { TenantProfileUpdatePayload } from '../types/vendor';
 export const vendorApi = {
   // ─── CUSTOMER (public) ────────────────────────────────────────────────────
 listTenantsOnMap: () => apiClient.get('/tenants/map'),
+  searchTenants: (params: { category_id?: number; q?: string; page: number }) => apiClient.get('/tenants', { params }),
   getTenantProfile: (uuid: string) => apiClient.get(`/tenants/${uuid}`),
   listServices: (params?: { category_id?: number; subcategory_id?: number; q?: string; page?: number; accommodation?: boolean }) =>
     apiClient.get('/services', { params }),

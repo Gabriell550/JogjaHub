@@ -223,13 +223,15 @@ function statusLabel(status: string): string {
   switch (status) {
     case 'pending': return 'Menunggu';
     case 'confirmed': return 'Dikonfirmasi';
+    case 'awaiting_completion_confirmation': return 'Menunggu konfirmasi selesai';
+    case 'completed': return 'Selesai';
     case 'cancelled': return 'Dibatalkan';
     default: return status;
   }
 }
 
 function bookingStatusStyle(status: string) {
-  if (status === 'confirmed') return styles.bookingStatusConfirmed;
+  if (status === 'confirmed' || status === 'awaiting_completion_confirmation' || status === 'completed') return styles.bookingStatusConfirmed;
   if (status === 'cancelled') return styles.bookingStatusCancelled;
   return styles.bookingStatusPending;
 }

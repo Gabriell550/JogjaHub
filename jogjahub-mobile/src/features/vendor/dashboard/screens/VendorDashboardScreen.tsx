@@ -35,11 +35,18 @@ type Nav = CompositeNavigationProp<
 type OrderType = {
   id: string;
   title: string;
-  badgeLabel: 'TERBARU' | 'DIPROSES';
+  badgeLabel: 'TERBARU' | 'DIPROSES' | 'MENUNGGU SELESAI' | 'SELESAI';
   buyerName: string;
   timeAgo: string;
   price: number;
-  status: 'pending' | 'confirmed';
+  status: Exclude<BookingRecord['status'], 'cancelled'>;
+};
+
+const orderBadge: Record<OrderType['status'], OrderType['badgeLabel']> = {
+  pending: 'TERBARU',
+  confirmed: 'DIPROSES',
+  awaiting_completion_confirmation: 'MENUNGGU SELESAI',
+  completed: 'SELESAI',
 };
 
 export default function VendorDashboardScreen() {
@@ -60,7 +67,7 @@ export default function VendorDashboardScreen() {
     return [{
       id: booking.uuid,
       title: booking.service?.name ?? 'Layanan',
-      badgeLabel: booking.status === 'pending' ? 'TERBARU' : 'DIPROSES',
+      badgeLabel: orderBadge[booking.status],
       buyerName: booking.customer?.name ?? 'Pelanggan',
       timeAgo: booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '',
       price: Number(booking.total_amount ?? 0),

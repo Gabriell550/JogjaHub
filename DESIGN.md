@@ -185,77 +185,63 @@ Arah visual berasal dari gambar `image(3).png` yang diberikan bersama brief. Pem
 
 ## Desain customer mobile
 
-Beranda menggunakan kanvas krem hangat dan hierarki visual dari referensi. Header menampilkan merek JogjaHub, lokasi Yogyakarta, dan tombol notifikasi. Kolom pencarian berada di atas hero hijau “Wisuda Besok?”, diikuti kategori, rekomendasi vendor yang bisa digeser, dan peta Yogyakarta. Foto tetap berasal dari data vendor. Hero menggunakan bidang warna dan aksen lingkaran agar teks tetap terbaca.
+Beranda memakai kanvas krem, judul Lexend, isi Inter, dan aksen oranye JogjaHub. Header menampilkan lokasi Yogyakarta dan notifikasi. Pencarian, kategori, dan Lihat semua pada Rekomendasi Layanan membuka Jelajah. Nama dan ID kategori mengikuti API. Penginapan, Beauty & Style, Gifting, dan Dokumentasi masing-masing memakai ikon tempat tidur, palet, hadiah, dan kamera.
 
-| Elemen | Implementasi |
-| --- | --- |
-| Warna | Kanvas '#FAF7F2' dan garis '#E6DED4' berbagi token tenant. Hero hijau '#0B5D48', judul navy, permukaan kartu putih, dan aksen oranye dari tema JogjaHub. |
-| Tipografi | Lexend untuk judul dan Inter untuk isi, metadata, serta label. |
-| Kategori | Nama, ID, dan urutan mengikuti API kategori. Penginapan memakai ikon tempat tidur, Beauty & Style memakai palet, Gifting memakai hadiah, dan Dokumentasi memakai kamera. Setiap kategori membuka Katalog dengan filter ID dari backend. |
-| Katalog dan kartu layanan | Katalog memakai kanvas yang sama. Kartu menampilkan foto layanan atau logo vendor, nama layanan dan vendor, subkategori, lokasi, harga, dan tombol Pesan. Foto membuka Detail Vendor. |
-| Detail vendor | Tombol kembali berada di atas judul. Foto besar diikuti kartu layanan yang menuju pemesanan. Tombol WhatsApp menetap di footer saat vendor memiliki nomor. |
-| Rekomendasi Layanan | Beranda menampilkan maksimal delapan layanan dari halaman pertama katalog publik. Backend membatasi katalog ke layanan aktif milik tenant berstatus approved. Lihat semua membuka Katalog. Tarik untuk menyegarkan memuat ulang kategori dan rekomendasi. Rekomendasi punya tampilan memuat, kosong, dan gagal dengan aksi Coba lagi. |
+### Jelajah
+
+Filter **Semua**, **Toko**, dan **Layanan** mempertahankan kata kunci dan kategori. Semua menampilkan dua baris horizontal dengan sebagian kartu berikutnya terlihat. Layanan tampil lebih dulu, kecuali nama toko cocok persis setelah huruf dan spasi dinormalisasi. **Lihat semua** membuka daftar vertikal untuk jenis hasil terkait, dengan aksi **Muat lagi**. Hasil punya status memuat, kosong, dan gagal tersendiri.
+
+Kartu toko menampilkan logo, nama, kota jika tersedia, dan kategori. Satu UUID membuka satu Profil Toko. Endpoint publik toko mencakup tenant approved tanpa syarat koordinat. Filter kategori mensyaratkan layanan aktif di kategori itu. Profil Toko tetap menampilkan semua layanan aktif toko.
+
+Kartu layanan menampilkan foto, nama layanan, toko, dan harga Rupiah. Foto, judul, dan **Lihat detail** di Beranda, Jelajah, dan Katalog buka Detail Layanan dengan ID yang sama. Baris layanan di Profil Toko memiliki thumbnail dan membuka layar yang sama.
 
 ### Bottom bar customer
 
-iOS dan Android memakai varian Rubber Dock tenant melalui CustomerTabNavigator. Permukaan putih membulat dan berbayang mengambang pada footer krem selebar layar. Dock memakai margin sisi 12 dp, atau 8 dp pada layar sempit, dengan lebar maksimum 560 dp. Footer mengisi safe area bawah sampai tepi layar. Konten mendapat ruang tersendiri di atas footer sehingga baris terakhir tetap bisa dijangkau.
+Urutan dock adalah **Beranda · Jelajah · Pesanan · Pesan · Profil**. iOS dan Android memakai permukaan Rubber Dock mengambang dengan footer krem yang mengisi area aman bawah. Konten bisa digulir sampai elemen terakhir di atas footer. Pesanan memakai ikon kalender dan Pesan memakai gelembung chat.
 
-Tiga slot tetap berurutan Beranda, Pesanan, Profil. Indikator aktif, gestur, animasi, dan panel pintasan memakai komponen yang sama dengan tenant. Dock tampil pada tiga tab utama. Layar yang dibuka melalui CustomerStackNavigator, seperti Katalog dan Detail Vendor, memiliki navigasi kembali sendiri. Expo Web memakai varian dock sebelumnya.
+Pesan menampilkan inbox tenant dan badge dari jumlah pesan belum dibaca. Badge diperbarui ketika kembali ke tab customer atau inbox. **Chat toko** dari Profil Toko dan Detail Layanan membuka percakapan berdasarkan UUID tenant. Dari Detail Layanan, kolom pesan berisi draf yang bisa diedit sebelum dikirim.
 
-### Detail Layanan customer · spesifikasi implementasi
-
-Ketukan pada foto atau judul kartu di Rekomendasi Layanan dan Katalog membuka Detail Layanan untuk layanan yang dipilih. Detail Layanan berada di customer stack sebagai rute baru `ServiceDetail` dengan parameter `serviceId`. Tombol kembali mengembalikan customer ke layar asal dengan posisi gulir dan filter sebelumnya. Tombol Pesan pada kartu tetap menjadi pintasan ke pemesanan. Nama vendor di Detail Layanan membuka Detail Vendor dengan UUID dari respons layanan.
-
-#### Susunan layar
+### Detail Layanan dan konfirmasi
 
 ~~~text
 ┌─────────────────────────────────────────┐
 │ [‹]                                     │
-│ Nama layanan                            │  Latar oranye muda
-│ Subkategori · Nama vendor               │
-│             Foto utama layanan          │
-│ ╭─────────────────╮                     │
-│ │ Harga           │                     │
-│ │ Rp… / malam     │                     │
-│ ╰─────────────────╯                     │
-│ Deskripsi               ★ 4,8 (12 ulasan)│
-│ Informasi layanan dari vendor           │
-│ Foto layanan                            │
+│              Foto utama                 │
 │ [ Foto 1 ] [ Foto 2 ] [ Foto 3 ]         │
+│ Nama layanan                            │
+│ Subkategori · Toko                      │
+│ Rp… per malam / per sesi                │
+│ Deskripsi               ★ 4,8 (12 ulasan)│
+│ Ketersediaan                            │
+│ [ Check-in / tanggal ]                  │
+│ [ Check-out / jam ]                     │
 ├─────────────────────────────────────────┤
-│             [ Pesan layanan ]           │
+│ [ Chat toko ]   [ Pilih jadwal / Pesan ] │
 │              Area aman bawah            │
 └─────────────────────────────────────────┘
 ~~~
 
-- **Hero.** Letakkan tombol kembali di sisi kiri atas safe area, lalu judul layanan, subkategori, dan nama vendor sebelum foto. Foto utama mengisi lebar hero dengan sudut membulat 24 dp dan rasio sekitar 4:3. Kartu harga putih menumpang pada sudut kiri bawah foto dalam ruang yang disediakan layout. Biarkan harga dan satuannya membungkus pada layar kecil atau saat ukuran teks diperbesar.
-- **Harga.** Format angka sebagai Rupiah dengan locale `id-ID`. Tampilkan satuan *per malam* untuk `price_type: per_night` dan *per sesi* untuk `per_session`. Kartu menampilkan tarif layanan. Total dihitung pada layar pemesanan berdasarkan pilihan customer.
-- **Deskripsi dan ulasan.** Tempatkan rating di samping judul Deskripsi bila ruang cukup. Pindahkan ke baris berikutnya pada layar sempit atau teks besar. Tampilkan nilai serta jumlah ulasan jika tersedia. Gunakan label *Belum ada ulasan* bila jumlahnya nol. Jika deskripsi kosong, tampilkan *Deskripsi belum tersedia*.
-- **Galeri.** Saat ada beberapa foto, tampilkan thumbnail horizontal dengan garis oranye dan status terpilih pada foto aktif. Pilihan thumbnail mengganti foto hero. Gunakan foto bertanda utama, lalu foto pertama menurut `sort_order`. Jika foto kosong atau gagal dimuat, gunakan permukaan oranye muda dengan ikon foto. Tata letak galeri mengadaptasi deretan swatch pada referensi untuk menampilkan foto layanan.
-- **Footer pemesanan.** Tombol Pesan layanan memenuhi lebar konten, tinggi minimum 48 dp, dan radius kapsul. Footer tetap di luar konten yang digulir dan mengisi safe area bawah. Beri jarak 16 dp setelah elemen gulir terakhir. Detail Layanan memakai footer pemesanan dengan satu aksi utama.
+Galeri memakai latar oranye muda, rasio foto utama 4:3, dan thumbnail horizontal untuk lebih dari satu foto. Urutan foto dimulai dari foto utama, lalu berdasarkan sort order. Kartu, galeri, dan thumbnail Profil Toko memakai penentu URL yang sama. Foto utama yang gagal memicu percobaan foto berikutnya, logo toko, lalu placeholder. Thumbnail galeri menampilkan placeholder jika foto pilihannya gagal.
 
-#### Token JogjaHub
+Bagian ringkasan menampilkan subkategori, nama toko yang membuka Profil Toko, harga dan satuannya, deskripsi, serta nilai dan jumlah ulasan. Detail menampilkan indikator saat memuat, aksi **Coba lagi** saat gagal, dan status **Layanan tidak tersedia** jika layanan mengembalikan 404.
+
+Penginapan memilih check-in dan check-out dengan malam yang tersedia berurutan. Layanan dengan slot memilih tanggal dan jam. Layanan tanpa slot dapat langsung dipesan. **Pilih jadwal** menggulir ke Ketersediaan. Setelah pilihan lengkap, **Pesan layanan** memeriksa kembali harga dan slot lalu membuka ringkasan dengan pilihan yang sama. Konfirmasi memeriksa ulang sebelum membuat pesanan dan menawarkan kembali ke pemilihan jika slot habis. Alur transaksi yang berlaku diteruskan setelah pesanan dibuat.
 
 | Peran | Token yang dipakai |
 | --- | --- |
-| Kanvas dan garis kartu | `customerColors.canvas` (#FAF7F2) dan `customerColors.border` (#E6DED4) |
-| Hero dan thumbnail aktif | `colors.primaryFixed` (#FFDBCC) untuk latar, `colors.primary` (#A04100) untuk garis pilihan |
-| Kartu harga dan footer | `colors.surfaceContainerLowest` (#FFFFFF) |
-| Harga dan bintang ulasan | `colors.primary` (#A04100) |
-| Tombol Pesan layanan | `colors.primaryContainer` (#FF6B00) dan label `colors.onPrimaryFixed` (#351000) |
-| Judul dan metadata | `colors.navy` untuk judul Lexend 24 dp, `colors.onSurfaceVariant` untuk isi dan metadata Inter 14 dp |
+| Kanvas dan garis kartu | customerColors.canvas (#FAF7F2) dan customerColors.border (#E6DED4) |
+| Hero dan thumbnail aktif | colors.primaryFixed (#FFDBCC) dan colors.primary (#A04100) |
+| Kartu harga dan footer | colors.surfaceContainerLowest (#FFFFFF) |
+| Harga dan bintang ulasan | colors.primary (#A04100) |
+| Tombol Pesan layanan | colors.primaryContainer (#FF6B00) dan colors.onPrimaryFixed (#351000) |
+| Judul dan metadata | colors.navy dan colors.onSurfaceVariant |
 
-Gunakan margin konten 20 dp, jarak antarseksi 24 dp, dan jarak dalam kelompok 8–12 dp. Tombol kembali, galeri, tautan vendor, dan tombol pesan memiliki area sentuh minimal 48 dp. Label aksesibilitas thumbnail menggunakan urutan foto dan status terpilih.
+Skenario uji perangkat dicatat di [CUSTOMER-MOBILE-HANDOFF.md](CUSTOMER-MOBILE-HANDOFF.md).
 
-#### Data dan tindakan
+### Penyelesaian pesanan
 
-- Muat `GET /services/{serviceId}` lewat `vendorApi.getServiceDetail`. Gunakan `name`, `description`, `price`, `price_type`, `subcategory.name`, `tenant.business_name`, `tenant.uuid`, `photos[].full_url`, `reviews_avg_rating`, dan `reviews_count`.
-- Saat memuat, tampilkan indikator dan pertahankan tombol kembali. Pada kegagalan jaringan, tampilkan **Coba lagi**. Jika layanan mengembalikan 404, tampilkan **Layanan tidak tersedia**. Tampilkan tombol Pesan layanan setelah detail berhasil dimuat.
-- Tombol **Pesan layanan** membuka `Booking` dengan `serviceId`. Pemilihan tanggal check-in dan check-out untuk Penginapan serta pemilihan tanggal dan jam untuk layanan yang memerlukan slot tetap dilakukan di layar Booking. Variasi produk pada referensi diterjemahkan menjadi galeri foto, sedangkan pilihan jadwal mengikuti aturan layanan yang sudah berlaku.
+Tenant membuka Rincian Pesanan dan menekan **Tandai selesai** setelah menyerahkan layanan. Untuk pesanan terjadwal, tombol tersedia setelah akhir slot atau pada tanggal check-out dalam WIB. Pesanan kemudian berstatus **Menunggu konfirmasi selesai** di kedua sisi.
 
-#### Kriteria penerimaan
+Aktivitas Pesanan menampilkan waktu penandaan dan membuka Detail Pesanan. Customer dapat menekan **Konfirmasi selesai** atau mengisi alasan melalui **Laporkan kendala**. Kedua pihak melihat alasan dan waktu laporan, serta dapat melanjutkan percakapan di chat toko. Pesanan tetap menunggu sampai customer mengonfirmasi. Setelah konfirmasi, Detail Pesanan menampilkan waktu penyelesaian dan **Beri ulasan** bila pesanan belum pernah diulas.
 
-- [ ] Dari Beranda dan Katalog, ketuk dua layanan berbeda. Nama, foto, harga, dan ID pemesanan harus cocok dengan kartu yang dipilih. Kembali harus memulihkan posisi gulir dan filter.
-- [ ] Periksa warna hero, harga, dan tombol dengan token oranye JogjaHub. Uji lebar 320 dan 390 dp, teks besar, nama panjang, serta safe area Android dan iOS.
-- [ ] Uji foto tunggal, beberapa foto, foto gagal, deskripsi kosong, tanpa ulasan, kegagalan jaringan, dan 404.
-- [ ] Uji aksi Pesan layanan untuk Penginapan, layanan dengan slot, dan layanan tanpa slot. Setiap alur harus menuju pemesanan untuk ID yang sama.
+Pengingat di Aktivitas Pesanan muncul sekali setelah ambang waktu yang dikonfigurasi, selama pesanan masih menunggu dan customer belum melaporkan kendala. Daftar Pesanan dan tampilan tenant mengenali status menunggu dan selesai.

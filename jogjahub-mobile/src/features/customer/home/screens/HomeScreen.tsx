@@ -123,13 +123,13 @@ export default function HomeScreen() {
             <Ionicons name="search" size={16} color={colors.onSurfaceVariant} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Cari vendor di Jogja"
-              accessibilityLabel="Cari vendor di Jogja"
+              placeholder="Cari toko atau layanan"
+              accessibilityLabel="Cari toko atau layanan"
               placeholderTextColor={colors.onSurfaceVariant}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
-              onSubmitEditing={() => navigation.navigate('Catalog', { query: searchQuery.trim() })}
+              onSubmitEditing={() => navigation.navigate('CustomerTabs', { screen: 'Explore', params: { query: searchQuery.trim(), categoryId: undefined, requestId: Date.now() } })}
             />
           </View>
         </View>
@@ -140,14 +140,14 @@ export default function HomeScreen() {
           subtitle="Tenang, temukan vendor yang masih tersedia untuk hari spesialmu."
         />
 
-        <CategoryGrid categories={categories} onSelectCategory={(categoryId, title) => navigation.navigate('Catalog', { categoryId, title })} />
+        <CategoryGrid categories={categories} onSelectCategory={categoryId => navigation.navigate('CustomerTabs', { screen: 'Explore', params: { categoryId, query: '', requestId: Date.now() } })} />
         {categoryError && <Text style={styles.sectionHeader} onPress={() => setCategoryAttempt(value => value + 1)}>Kategori gagal dimuat. Coba lagi.</Text>}
 
         <View style={[styles.sectionHeader, styles.recommendationHeader]}>
           <Text style={styles.sectionTitle}>Rekomendasi Layanan</Text>
           <TouchableOpacity
             accessibilityRole="button"
-            onPress={() => navigation.navigate('Catalog', {})}
+            onPress={() => navigation.navigate('CustomerTabs', { screen: 'Explore', params: { categoryId: undefined, query: '', requestId: Date.now() } })}
             style={styles.catalogLink}
           >
             <Text style={styles.catalogLinkLabel}>Lihat semua</Text>
@@ -161,7 +161,6 @@ export default function HomeScreen() {
                 key={service.id}
                 vendor={service}
                 onPressCard={() => navigation.navigate('ServiceDetail', { serviceId: service.id })}
-                onPressBook={() => navigation.navigate('Booking', { serviceId: service.id })}
               />
             ))}
           </ScrollView>

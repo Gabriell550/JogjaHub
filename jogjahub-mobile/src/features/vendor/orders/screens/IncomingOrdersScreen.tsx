@@ -19,10 +19,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { bookingApi } from '../../../../api/bookingApi';
 import Toast from 'react-native-toast-message';
 import { apiErrorMessage } from '../../../../api/apiErrorMessage';
-import { bookingLabel, paymentLabel } from '../../../../types/bookingRecord';
+import { bookingLabel, paymentLabel, bookingStatusLabel, type BookingRecord } from '../../../../types/bookingRecord';
 import type { VendorOrdersStackParamList } from '../../../../navigation/types';
 
-type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+type BookingStatus = BookingRecord['status'];
 
 interface OrderItem {
   id: string;
@@ -40,6 +40,7 @@ interface OrderItem {
   payment_status: string;
   package_type: string;
   status: BookingStatus;
+  hasIssue: boolean;
   custom_note?: string;
   estimate_arrival?: string;
 }
@@ -48,6 +49,8 @@ const FILTERS = [
   { key: 'all', label: 'Semua', countKey: 'all' },
   { key: 'pending', label: 'Perlu Diproses', countKey: 'pending' },
   { key: 'confirmed', label: 'Terkonfirmasi', countKey: 'confirmed' },
+  { key: 'awaiting_completion_confirmation', label: 'Menunggu selesai', countKey: 'awaiting_completion_confirmation' },
+  { key: 'completed', label: 'Selesai', countKey: 'completed' },
   { key: 'cancelled', label: 'Dibatalkan', countKey: 'cancelled' },
 ];
 
@@ -78,6 +81,7 @@ export default function IncomingOrdersScreen() {
         payment_status: paymentLabel(booking),
         package_type: booking.nights ? booking.nights + ' malam' : '',
         status: booking.status,
+        hasIssue: !!booking.issue_reported_at,
       })));
     } catch (error) {
       Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
@@ -148,13 +152,14 @@ export default function IncomingOrdersScreen() {
             </View>
           )}
 
-          {item.status === 'confirmed' && (
+          {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
             <View style={styles.greyBadge}>
               <Ionicons name="calendar-outline" size={13} color="#475569" />
-              <Text style={styles.greyBadgeText}>Jadwal Mendatang</Text>
+              <Text style={styles.greyBadgeText}>{bookingStatusLabel[item.status]}</Text>
             </View>
           )}
 
+          {item.status === 'awaiting_completion_confirmation' && item.hasIssue && <Text>Kendala dilaporkan</Text>}
           <Text style={styles.orderCodeText}>#{item.order_code}</Text>
         </View>
 
@@ -245,7 +250,7 @@ export default function IncomingOrdersScreen() {
           </View>
         )}
 
-        {item.status === 'confirmed' && (
+        {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.fullDetailButton}
@@ -608,6 +613,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardHeaderRow: {
+    flexWrap: 'wrap',
+    gap: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

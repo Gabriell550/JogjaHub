@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { customerPhotoUrls, type CustomerPhotoData } from '../../../utils/serviceImage';
 import { vendorApi } from '../../../api/vendorApi';
 
 export interface PublicService {
@@ -7,7 +8,7 @@ export interface PublicService {
   price: number | string;
   price_type: 'per_session' | 'per_night';
   is_accommodation?: boolean;
-  photos?: { full_url: string; is_primary: boolean; sort_order?: number }[];
+  photos?: CustomerPhotoData[];
   description?: string | null;
   reviews_avg_rating?: number | string | null;
   reviews_count?: number;
@@ -25,7 +26,7 @@ export interface CatalogCard {
   uuid: string;
   name: string;
   serviceName: string;
-  imageUrl?: string;
+  imageUrls: string[];
   category: string;
   location: string;
   priceFrom: number;
@@ -74,13 +75,13 @@ export function useCatalog(categoryId?: number, query = '', hotelsOnly = false) 
           uuid: service.tenant.uuid,
           name: service.tenant.business_name,
           serviceName: service.name,
-          imageUrl: (service.photos?.find(photo => photo.is_primary) ?? service.photos?.[0])?.full_url || service.tenant.logo_url,
+          imageUrls: customerPhotoUrls(service.photos, service.tenant.logo_url),
           category: service.subcategory?.name ?? '',
           location: service.tenant.address?.city ?? '',
           priceFrom: Number(service.price),
           perNight: service.price_type === 'per_night',
         }));
-        setCards(previous => requestedPage === 1 ? next : [...previous, ...next]);
+        setCards(previous => Array.from(new Map((requestedPage === 1 ? next : [...previous, ...next]).map(card => [card.id, card])).values()));
         setLastPage(response.meta?.last_page ?? (Array.isArray(result) ? undefined : result.last_page) ?? 1);
       } catch {
         if (active) setError(true);

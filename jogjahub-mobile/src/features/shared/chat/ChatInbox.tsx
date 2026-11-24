@@ -3,7 +3,9 @@ import { FlatList, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { chatApi, type ChatRole, type Conversation } from '../../../api/chatApi';
 
-export default function ChatInbox({ role, open }: { role: ChatRole; open: (id: number, name: string) => void }) {
+export default function ChatInbox({ role, open, onUnread }: {
+  role: ChatRole; open: (id: number, name: string) => void; onUnread?: (count?: number) => void;
+}) {
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -14,14 +16,20 @@ export default function ChatInbox({ role, open }: { role: ChatRole; open: (id: n
     setLoading(true);
     setError(false);
     chatApi.list(role).then(({ data }) => {
-      if (active) setItems(data.data);
+      if (active) {
+        setItems(data.data);
+        onUnread?.(data.data.reduce((total, item) => total + (item.unread_count ?? 0), 0));
+      }
     }).catch(() => {
-      if (active) setError(true);
+      if (active) {
+        setError(true);
+        onUnread?.();
+      }
     }).finally(() => {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [role, attempt]));
+  }, [role, attempt, onUnread]));
 
   return <FlatList data={items} keyExtractor={item => String(item.id)} refreshing={loading} onRefresh={retry}
     contentContainerStyle={{ padding: 16, gap: 12 }}

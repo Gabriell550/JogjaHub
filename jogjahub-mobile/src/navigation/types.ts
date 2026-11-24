@@ -12,7 +12,8 @@ export type AuthStackParamList = {
 
 export type CustomerTabParamList = {
   Home: undefined;
-  Catalog: { categoryId: string };
+  Explore: { categoryId?: number; query?: string; requestId?: number } | undefined;
+  Messages: undefined;
   MyBookings: undefined;
   Profile: undefined;
 };
@@ -27,7 +28,7 @@ export type VendorTabParamList = {
   // "Orders" itu sebenarnya nge-render sebuah stack (VendorOrdersStackNavigator) yang punya
   // layar sendiri di dalamnya (OrdersList, OrderDetail), bukan satu layar tunggal.
   Orders: NavigatorScreenParams<VendorOrdersStackParamList> | undefined;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<VendorProfileStackParamList> | undefined;
 };
 
 // Stack kecil di dalam tab Profile — supaya bisa lompat ke form "Lengkapi Profil Bisnis"
@@ -58,8 +59,9 @@ export type AdminStackParamList = {
 export type CustomerStackParamList = {
   CustomerTabs: NavigatorScreenParams<CustomerTabParamList> | undefined;
   Notifications: undefined;
+  BookingDetail: { id: string };
   CustomerChats: undefined;
-  CustomerChatRoom: { id: number; name: string };
+  CustomerChatRoom: { id: number; name: string; draft?: string };
   HotelBooking: undefined;
   Catalog: { categoryId?: number; title?: string; query?: string };
   ServiceDetail: { serviceId: number | string };

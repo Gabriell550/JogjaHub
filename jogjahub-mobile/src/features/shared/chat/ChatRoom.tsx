@@ -6,11 +6,11 @@ import { chatApi, type ChatRole, type Message } from '../../../api/chatApi';
 import { apiErrorMessage } from '../../../api/apiErrorMessage';
 import { colors, radius } from '../../../constants/theme';
 
-export default function ChatRoom({ role, id }: { role: ChatRole; id: number | string }) {
+export default function ChatRoom({ role, id, initialDraft = '' }: { role: ChatRole; id: number | string; initialDraft?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(initialDraft);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);

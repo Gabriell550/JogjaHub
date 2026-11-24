@@ -105,7 +105,7 @@ class ConversationController extends Controller
         $this->authorizeConversation($request->user(), $conversation);
 
         $messages = $conversation->messages()
-            ->latest('id')
+            ->reorder('id', 'desc')
             ->paginate(30);
 
         return response()->json([

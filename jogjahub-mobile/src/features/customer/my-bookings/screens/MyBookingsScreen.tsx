@@ -11,15 +11,13 @@ import {
   Alert,
   Linking,
   AppState,
-  Modal,
-  TextInput,
   SafeAreaView,
   StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiErrorMessage } from '../../../../api/apiErrorMessage';
-import { bookingLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
+import { bookingLabel, paymentLabel, bookingStatusLabel, type BookingRecord } from '../../../../types/bookingRecord';
 import Toast from 'react-native-toast-message';
 import { bookingApi } from '../../../../api/bookingApi';
 import OrderDetailsModal from '../components/OrderDetailsModal';
@@ -44,13 +42,15 @@ interface CustomerBookingItem {
   custom_note?: string;
   payment_url?: string;
   whatsapp_url?: string;
-  reviewed: boolean;
+  hasIssue: boolean;
 }
 
 const FILTERS = [
   { key: 'all', label: 'Semua' },
   { key: 'pending', label: 'Perlu Diproses' },
   { key: 'confirmed', label: 'Jadwal Mendatang' },
+  { key: 'awaiting_completion_confirmation', label: 'Menunggu selesai' },
+  { key: 'completed', label: 'Selesai' },
   { key: 'cancelled', label: 'Dibatalkan' },
 ];
 
@@ -61,11 +61,6 @@ export default function MyBookingsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<CustomerBookingItem | null>(null);
 
-  const [reviewTarget, setReviewTarget] = useState<CustomerBookingItem>();
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const reviewBusy = useRef(false);
   const loadSequence = useRef(0);
 
   const loadBookings = useCallback(async () => {
@@ -92,7 +87,7 @@ export default function MyBookingsScreen() {
           Date.parse(booking.payment.expires_at) > Date.now() ? booking.payment.payment_url ?? undefined : undefined,
         package_type: booking.nights ? booking.nights + ' malam' : '',
         status: booking.status,
-        reviewed: !!booking.review,
+        hasIssue: !!booking.issue_reported_at,
       })));
     } catch (error) {
       if (request === loadSequence.current) Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
@@ -142,23 +137,6 @@ export default function MyBookingsScreen() {
     );
   };
 
-  const submitReview = async () => {
-    if (!reviewTarget || !rating || reviewBusy.current) return;
-    reviewBusy.current = true;
-    setReviewSubmitting(true);
-    try {
-      await bookingApi.submitReview(reviewTarget.id, { rating, comment: comment.trim() || undefined });
-      setBookings(previous => previous.map(booking => booking.id === reviewTarget.id ? { ...booking, reviewed: true } : booking));
-      setReviewTarget(undefined);
-      Toast.show({ type: 'success', text1: 'Ulasan dikirim' });
-      void loadBookings();
-    } catch (error) {
-      Alert.alert('Ulasan gagal dikirim', apiErrorMessage(error, 'Coba lagi nanti.'));
-    } finally {
-      reviewBusy.current = false;
-      setReviewSubmitting(false);
-    }
-  };
 
   const filteredBookings =
     activeFilter === 'all'
@@ -185,10 +163,10 @@ export default function MyBookingsScreen() {
             </View>
           )}
 
-          {item.status === 'confirmed' && (
+          {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
             <View style={styles.greyBadge}>
               <Ionicons name="calendar-outline" size={13} color="#475569" />
-              <Text style={styles.greyBadgeText}>Jadwal Mendatang</Text>
+              <Text style={styles.greyBadgeText}>{bookingStatusLabel[item.status]}</Text>
             </View>
           )}
 
@@ -199,6 +177,7 @@ export default function MyBookingsScreen() {
             </View>
           )}
 
+          {item.status === 'awaiting_completion_confirmation' && item.hasIssue && <Text>Kendala dilaporkan</Text>}
           <Text style={styles.orderCodeText}>#{item.order_code}</Text>
         </View>
 
@@ -215,7 +194,7 @@ export default function MyBookingsScreen() {
         <TouchableOpacity
           style={styles.detailsContainer}
           activeOpacity={0.88}
-          onPress={() => setSelectedBookingForDetail(item)}
+          onPress={() => item.status === 'pending' || item.status === 'cancelled' ? setSelectedBookingForDetail(item) : navigation.navigate('BookingDetail', { id: item.id })}
         >
           <View style={styles.detailsTitleRow}>
             <Text style={styles.serviceNameText} numberOfLines={2}>
@@ -277,23 +256,16 @@ export default function MyBookingsScreen() {
           </View>
         )}
 
-        {item.status === 'confirmed' && (
+        {(item.status === 'confirmed' || item.status === 'awaiting_completion_confirmation' || item.status === 'completed') && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.fullDetailButton}
-              onPress={() => setSelectedBookingForDetail(item)}
+              onPress={() => navigation.navigate('BookingDetail', { id: item.id })}
               activeOpacity={0.85}
             >
               <Text style={styles.fullDetailButtonText}>Rincian Pesanan</Text>
               <Ionicons name="chevron-forward" size={16} color="#1E293B" />
             </TouchableOpacity>
-            {!item.reviewed && <TouchableOpacity style={styles.acceptButton} onPress={() => {
-              setRating(0);
-              setComment('');
-              setReviewTarget(item);
-            }}>
-              <Text style={styles.acceptButtonText}>Beri Ulasan</Text>
-            </TouchableOpacity>}
           </View>
         )}
       </View>
@@ -444,28 +416,6 @@ export default function MyBookingsScreen() {
       </ScrollView>
 
       {/* Rincian Pesanan Modal */}
-      <Modal transparent visible={!!reviewTarget} onRequestClose={() => { if (!reviewSubmitting) setReviewTarget(undefined); }}>
-        <View style={styles.reviewOverlay}>
-          <View style={styles.reviewCard}>
-            <Text style={styles.topHeaderTitle}>Ulasan layanan</Text>
-            <Text>{reviewTarget?.service_name}</Text>
-            <View style={styles.reviewRatings}>
-              {[1, 2, 3, 4, 5].map(value => (
-                <TouchableOpacity key={value} accessibilityRole="button" accessibilityLabel={value + ' bintang'}
-                  accessibilityState={{ selected: rating === value }} disabled={reviewSubmitting} onPress={() => setRating(value)}>
-                  <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={30} color="#8C3B00" />
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput placeholder="Komentar (opsional)" value={comment} maxLength={1000}
-              editable={!reviewSubmitting} multiline onChangeText={setComment} style={styles.reviewInput} />
-            <TouchableOpacity style={styles.acceptButton} onPress={submitReview} disabled={reviewSubmitting || !rating}>
-              <Text style={styles.acceptButtonText}>{reviewSubmitting ? 'Mengirim...' : 'Kirim Ulasan'}</Text>
-            </TouchableOpacity>
-            <Text onPress={() => { if (!reviewSubmitting) setReviewTarget(undefined); }}>Tutup</Text>
-          </View>
-        </View>
-      </Modal>
       <OrderDetailsModal
         visible={!!selectedBookingForDetail}
         booking={selectedBookingForDetail}
@@ -680,6 +630,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardHeaderRow: {
+    flexWrap: 'wrap',
+    gap: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

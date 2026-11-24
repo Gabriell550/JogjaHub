@@ -323,6 +323,10 @@ class BookingService
     public function cancelBooking(Booking $booking): void
     {
         DB::transaction(function () use ($booking) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status !== BookingStatus::PENDING->value) {
+                throw ValidationException::withMessages(['status' => ['Pesanan tidak bisa dibatalkan.']]);
+            }
             // Release semua slot yang dikunci booking ini via pivot booking_slots
             $this->releaseBookingSlots($booking);
 

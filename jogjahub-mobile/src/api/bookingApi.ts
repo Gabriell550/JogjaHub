@@ -15,6 +15,11 @@ export const bookingApi = {
 
   createBooking: (payload: CreateBookingPayload) => apiClient.post('/customer/bookings', payload),
   listMyBookings: (params?: { page?: number }) => apiClient.get('/customer/bookings', { params }),
+  getMyBooking: (id: string) => apiClient.get<{ data: BookingRecord }>(`/customer/bookings/${id}`),
+  confirmCompletion: (id: string) => apiClient.post<{ data: BookingRecord }>(`/customer/bookings/${id}/confirm-completion`),
+  reportCompletionIssue: (id: string, reason: string) =>
+    apiClient.post<{ data: BookingRecord }>(`/customer/bookings/${id}/completion-issue`, { reason }),
+  markFulfilled: (id: string) => apiClient.post<{ data: BookingRecord }>(`/tenant/bookings/${id}/mark-fulfilled`),
   cancelBooking: (bookingId: string | number) => apiClient.post(`/customer/bookings/${bookingId}/cancel`),
   submitReview: (bookingId: string | number, payload: { rating: number; comment?: string }) =>
     apiClient.post(`/customer/bookings/${bookingId}/review`, payload),

@@ -5,7 +5,7 @@ import { colors, typography, spacing, radius } from '../../../../constants/theme
 
 type Props = {
   title: string;
-  badgeLabel: 'TERBARU' | 'DIPROSES';
+  badgeLabel: 'TERBARU' | 'DIPROSES' | 'MENUNGGU SELESAI' | 'SELESAI';
   buyerName: string;
   timeAgo: string;
   price: number;
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function OrderPreviewCard({ title, badgeLabel, buyerName, timeAgo, price, icon: Icon, onPress }: Props) {
-  const isProcessing = badgeLabel === 'DIPROSES';
+  const isProcessing = badgeLabel !== 'TERBARU';
 
   return (
     <Pressable style={styles.card} accessibilityRole="button" disabled={!onPress} onPress={onPress}>

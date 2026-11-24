@@ -1,10 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { FlatList, Text, TouchableOpacity } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { CustomerStackParamList } from '../../../navigation/types';
 import { bookingApi } from '../../../api/bookingApi';
 import { bookingLabel, paymentLabel, type BookingRecord } from '../../../types/bookingRecord';
 
 export default function NotificationsScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<CustomerStackParamList>>();
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -15,8 +18,8 @@ export default function NotificationsScreen() {
     let active = true;
     setLoading(true);
     setError(false);
-    bookingApi.listMyBookings().then(({ data }) => {
-      if (active) setBookings(data.data);
+    bookingApi.listAllBookings('customer').then(records => {
+      if (active) setBookings(records);
     }).catch(() => {
       if (active) setError(true);
     }).finally(() => {
@@ -25,12 +28,25 @@ export default function NotificationsScreen() {
     return () => { active = false; };
   }, [attempt]));
 
-  return <FlatList data={bookings} keyExtractor={booking => booking.uuid} refreshing={loading} onRefresh={reload}
+  const activity = bookings.flatMap(booking => {
+    const events = [
+      { key: 'booking', title: paymentLabel(booking), at: booking.created_at },
+      { key: 'fulfilled', title: 'Toko menandai pesanan selesai', at: booking.fulfilled_at },
+      { key: 'reminder', title: 'Pengingat konfirmasi selesai', at: booking.completion_reminded_at },
+      { key: 'issue', title: 'Kendala dilaporkan', at: booking.issue_reported_at },
+      { key: 'completed', title: 'Pesanan selesai', at: booking.completed_at },
+    ];
+    return events.filter(event => event.at || event.key === 'booking').map(event => ({ ...event, booking }));
+  }).sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
+
+  return <FlatList data={activity} keyExtractor={item => item.booking.uuid + ':' + item.key} refreshing={loading} onRefresh={reload}
     contentContainerStyle={{ padding: 16, gap: 12 }}
     ListHeaderComponent={error ? <Text onPress={reload}>Aktivitas gagal dimuat. Coba lagi.</Text> : undefined}
     ListEmptyComponent={!loading && !error ? <Text>Belum ada aktivitas pesanan.</Text> : undefined}
-    renderItem={({ item }) => <View style={{ padding: 14, backgroundColor: 'white', gap: 4 }}>
-      <Text style={{ fontWeight: '600' }}>{item.service?.name ?? 'Layanan'} · {bookingLabel(item)}</Text>
-      <Text>{paymentLabel(item)}</Text>
-    </View>} />;
+    renderItem={({ item }) => <TouchableOpacity accessibilityRole="button" style={{ padding: 14, backgroundColor: 'white', gap: 4 }}
+      onPress={() => navigation.navigate('BookingDetail', { id: item.booking.uuid })}>
+      <Text style={{ fontWeight: '600' }}>{item.booking.service?.name ?? 'Layanan'} · {bookingLabel(item.booking)}</Text>
+      <Text>{item.title}</Text>
+      {!!item.at && <Text>{new Date(item.at).toLocaleString('id-ID')}</Text>}
+    </TouchableOpacity>} />;
 }

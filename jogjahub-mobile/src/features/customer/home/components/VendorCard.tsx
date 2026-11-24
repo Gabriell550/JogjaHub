@@ -1,43 +1,25 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, typography } from '../../../../constants/theme';
 import { customerColors } from '../../../../constants/theme/customer';
+import CustomerPhoto from '../../catalog/components/CustomerPhoto';
 import type { CatalogCard } from '../../catalog/useCatalog';
 
 interface VendorCardProps {
   vendor: CatalogCard;
   onPressCard?: () => void;
-  onPressBook?: () => void;
+  fullWidth?: boolean;
 }
 
-function formatPrice(value: number) {
-  if (value >= 1000000) {
-    return `Rp${(value / 1000000).toFixed(1)}jt`;
-  }
-  return `Rp${Math.round(value / 1000)}k`;
-}
-
-export default function VendorCard({ vendor, onPressCard, onPressBook }: VendorCardProps) {
+export default function VendorCard({ vendor, onPressCard, fullWidth = false }: VendorCardProps) {
   return (
-    <View style={styles.card}>
-      <View>
-        <TouchableOpacity
-          onPress={onPressCard}
-          disabled={!onPressCard}
-          accessibilityRole="button"
-          accessibilityLabel={'Lihat detail ' + vendor.serviceName}
-        >
-          {vendor.imageUrl ? <Image source={{ uri: vendor.imageUrl }} style={styles.image} /> : <View style={styles.image} />}
-        </TouchableOpacity>
-
-      </View>
-
+    <TouchableOpacity style={[styles.card, fullWidth && styles.fullWidth]} onPress={onPressCard} disabled={!onPressCard}
+      accessibilityRole="button" accessibilityHint="Buka detail layanan">
+      <CustomerPhoto urls={vendor.imageUrls} style={styles.image} />
       <View style={styles.content}>
         <Text style={styles.category}>{vendor.category}</Text>
-        <TouchableOpacity accessibilityRole="button" disabled={!onPressCard} onPress={onPressCard} style={styles.titleButton}>
-          <Text style={styles.name}>{vendor.serviceName}</Text>
-        </TouchableOpacity>
+        <Text style={styles.name}>{vendor.serviceName}</Text>
         <Text style={styles.location}>{vendor.name}</Text>
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={12} color={colors.onSurfaceVariant} />
@@ -49,14 +31,14 @@ export default function VendorCard({ vendor, onPressCard, onPressBook }: VendorC
         <View style={styles.footer}>
           <View>
             <Text style={styles.priceLabel}>{vendor.perNight ? 'Per malam' : 'Harga layanan'}</Text>
-            <Text style={styles.price}>{formatPrice(vendor.priceFrom)}</Text>
+            <Text style={styles.price}>{'Rp ' + vendor.priceFrom.toLocaleString('id-ID')}</Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" style={styles.bookButton} onPress={onPressBook} activeOpacity={0.85}>
-            <Text style={styles.bookButtonText}>Pesan</Text>
-          </TouchableOpacity>
+          <View style={styles.bookButton}>
+            <Text style={styles.bookButtonText}>Lihat detail</Text>
+          </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -66,25 +48,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.xl,
     borderWidth: 1, borderColor: customerColors.border,
   },
+  fullWidth: { width: '100%', marginRight: 0 },
   image: { width: '100%', height: 138, backgroundColor: colors.accentGreenContainer },
-  ratingBadge: {
-    position: 'absolute', top: 10, left: 10, flexDirection: 'row', gap: 4,
-    alignItems: 'center', backgroundColor: colors.surfaceContainerLowest,
-    borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 4,
-  },
-  ratingText: { ...typography.labelSm, color: colors.navy },
-  favoriteButton: {
-    position: 'absolute', top: 8, right: 8, width: 48, height: 48,
-    borderRadius: radius.full, backgroundColor: colors.surfaceContainerLowest,
-    alignItems: 'center', justifyContent: 'center',
-  },
   content: { padding: 12, gap: 4 },
   category: { ...typography.labelSm, color: colors.primary },
-  titleButton: { minHeight: 48, justifyContent: 'center' },
   name: { ...typography.headlineSm, color: colors.navy },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   location: { ...typography.bodySm, color: colors.onSurfaceVariant, flexShrink: 1 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6 },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6 },
   priceLabel: { ...typography.labelSm, color: colors.onSurfaceVariant },
   price: { ...typography.labelLg, color: customerColors.hero },
   bookButton: {

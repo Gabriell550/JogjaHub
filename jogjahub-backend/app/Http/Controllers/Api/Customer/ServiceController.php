@@ -65,7 +65,7 @@ class ServiceController extends Controller
         $service->load(['tenant', 'subcategory.category']);
 
         $service->loadCount([
-            'bookings as confirmed_bookings_count' => fn($q) => $q->where('status', 'confirmed'),
+            'bookings as confirmed_bookings_count' => fn($q) => $q->whereIn('status', \App\Enums\BookingStatus::accepted()),
         ]);
 
         $reviews = $service->bookings()

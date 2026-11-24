@@ -27,6 +27,13 @@ class BookingResource extends JsonResource
             'whatsapp_url' => $this->whatsappUrl(),
             'details'    => $this->details,
             'created_at' => $this->created_at,
+            'fulfilled_at' => $this->fulfilled_at,
+            'completed_at' => $this->completed_at,
+            'issue_reported_at' => $this->issue_reported_at,
+            'completion_issue' => $this->completion_issue,
+            'completion_reminded_at' => $this->completion_reminded_at,
+            'completion_conversation_id' => $this->completion_conversation_id,
+            'can_mark_fulfilled' => $this->status === 'confirmed' && $this->relationLoaded('slot') && $this->canMarkFulfilled(),
 
             // ── Info harga ──────────────────────────────────────────────────────
             // total_amount: total yang harus/sudah dibayar user

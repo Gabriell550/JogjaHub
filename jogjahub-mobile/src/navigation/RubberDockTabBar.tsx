@@ -204,6 +204,7 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
       <>
         <View aria-hidden={isTenant || undefined} style={{ transform: [{ scale: frame.icons[index] }] }}>
           {options.tabBarIcon?.({ focused: selected, color, size: 20 })}
+          {options.tabBarBadge !== undefined && <Text style={styles.badge}>{options.tabBarBadge}</Text>}
         </View>
         <Text
           style={[styles.label, { color }]}
@@ -460,6 +461,8 @@ const styles = StyleSheet.create({
   row: { height: tabHeight, flexDirection: 'row', gap: tabGap },
   tab: { height: tabHeight, gap: 2, alignItems: 'center', justifyContent: 'center' },
   label: { ...typography.labelSm, maxWidth: '100%', textAlign: 'center' },
+  badge: { position: 'absolute', top: -6, left: 12, minWidth: 16, textAlign: 'center', paddingHorizontal: 3,
+    borderRadius: 10, fontSize: 10, lineHeight: 15, color: colors.onPrimary, backgroundColor: colors.error },
   indicator: { position: 'absolute', overflow: 'hidden', backgroundColor: colors.primary },
   highlightRow: { position: 'absolute', flexDirection: 'row', gap: tabGap, height: tabHeight },
   panel: { position: 'absolute', bottom: dockHeight },
