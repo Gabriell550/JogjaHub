@@ -26,7 +26,7 @@ export default function VendorCard({ vendor, onPressCard, onPressBook }: VendorC
           onPress={onPressCard}
           disabled={!onPressCard}
           accessibilityRole="button"
-          accessibilityLabel={vendor.name}
+          accessibilityLabel={'Lihat detail ' + vendor.serviceName}
         >
           {vendor.imageUrl ? <Image source={{ uri: vendor.imageUrl }} style={styles.image} /> : <View style={styles.image} />}
         </TouchableOpacity>
@@ -35,9 +35,9 @@ export default function VendorCard({ vendor, onPressCard, onPressBook }: VendorC
 
       <View style={styles.content}>
         <Text style={styles.category}>{vendor.category}</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {vendor.serviceName}
-        </Text>
+        <TouchableOpacity accessibilityRole="button" disabled={!onPressCard} onPress={onPressCard} style={styles.titleButton}>
+          <Text style={styles.name}>{vendor.serviceName}</Text>
+        </TouchableOpacity>
         <Text style={styles.location}>{vendor.name}</Text>
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={12} color={colors.onSurfaceVariant} />
@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
   },
   content: { padding: 12, gap: 4 },
   category: { ...typography.labelSm, color: colors.primary },
+  titleButton: { minHeight: 48, justifyContent: 'center' },
   name: { ...typography.headlineSm, color: colors.navy },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   location: { ...typography.bodySm, color: colors.onSurfaceVariant, flexShrink: 1 },

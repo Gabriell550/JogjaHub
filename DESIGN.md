@@ -191,13 +191,71 @@ Beranda menggunakan kanvas krem hangat dan hierarki visual dari referensi. Heade
 | --- | --- |
 | Warna | Kanvas '#FAF7F2' dan garis '#E6DED4' berbagi token tenant. Hero hijau '#0B5D48', judul navy, permukaan kartu putih, dan aksen oranye dari tema JogjaHub. |
 | Tipografi | Lexend untuk judul dan Inter untuk isi, metadata, serta label. |
-| Kategori | Empat slot setara dengan ikon beraksen oranye dan teks yang dapat membungkus. Urutannya Hotel, Beauty&Style, Gifting, Photo. ID, ikon, serta tujuan kategori mengikuti implementasi sebelumnya. Hotel membuka HotelBooking, sedangkan tiga lainnya membuka Catalog. |
-| Katalog dan kartu vendor | Katalog memakai kanvas yang sama. Kartu menampilkan foto, kategori, rating, lokasi, favorit, harga, dan tombol Pesan. Ketukan pada foto menggunakan handler VendorDetail yang sudah disediakan Beranda dan Katalog. |
+| Kategori | Nama, ID, dan urutan mengikuti API kategori. Penginapan memakai ikon tempat tidur, Beauty & Style memakai palet, Gifting memakai hadiah, dan Dokumentasi memakai kamera. Setiap kategori membuka Katalog dengan filter ID dari backend. |
+| Katalog dan kartu layanan | Katalog memakai kanvas yang sama. Kartu menampilkan foto layanan atau logo vendor, nama layanan dan vendor, subkategori, lokasi, harga, dan tombol Pesan. Foto membuka Detail Vendor. |
 | Detail vendor | Tombol kembali berada di atas judul. Foto besar diikuti kartu layanan yang menuju pemesanan. Tombol WhatsApp menetap di footer saat vendor memiliki nomor. |
-| Isi dan data | Beranda memakai data rekomendasi dan state favorit yang sudah ada. Logika pencarian Katalog, request detail vendor, parameter pemesanan, dan tujuan peta dipertahankan. Tombol promo dan Lihat Semua yang sebelumnya berupa placeholder dihapus dari Beranda. |
+| Rekomendasi Layanan | Beranda menampilkan maksimal delapan layanan dari halaman pertama katalog publik. Backend membatasi katalog ke layanan aktif milik tenant berstatus approved. Lihat semua membuka Katalog. Tarik untuk menyegarkan memuat ulang kategori dan rekomendasi. Rekomendasi punya tampilan memuat, kosong, dan gagal dengan aksi Coba lagi. |
 
 ### Bottom bar customer
 
 iOS dan Android memakai varian Rubber Dock tenant melalui CustomerTabNavigator. Permukaan putih membulat dan berbayang mengambang pada footer krem selebar layar. Dock memakai margin sisi 12 dp, atau 8 dp pada layar sempit, dengan lebar maksimum 560 dp. Footer mengisi safe area bawah sampai tepi layar. Konten mendapat ruang tersendiri di atas footer sehingga baris terakhir tetap bisa dijangkau.
 
 Tiga slot tetap berurutan Beranda, Pesanan, Profil. Indikator aktif, gestur, animasi, dan panel pintasan memakai komponen yang sama dengan tenant. Dock tampil pada tiga tab utama. Layar yang dibuka melalui CustomerStackNavigator, seperti Katalog dan Detail Vendor, memiliki navigasi kembali sendiri. Expo Web memakai varian dock sebelumnya.
+
+### Detail Layanan customer · spesifikasi implementasi
+
+Ketukan pada foto atau judul kartu di Rekomendasi Layanan dan Katalog membuka Detail Layanan untuk layanan yang dipilih. Detail Layanan berada di customer stack sebagai rute baru `ServiceDetail` dengan parameter `serviceId`. Tombol kembali mengembalikan customer ke layar asal dengan posisi gulir dan filter sebelumnya. Tombol Pesan pada kartu tetap menjadi pintasan ke pemesanan. Nama vendor di Detail Layanan membuka Detail Vendor dengan UUID dari respons layanan.
+
+#### Susunan layar
+
+~~~text
+┌─────────────────────────────────────────┐
+│ [‹]                                     │
+│ Nama layanan                            │  Latar oranye muda
+│ Subkategori · Nama vendor               │
+│             Foto utama layanan          │
+│ ╭─────────────────╮                     │
+│ │ Harga           │                     │
+│ │ Rp… / malam     │                     │
+│ ╰─────────────────╯                     │
+│ Deskripsi               ★ 4,8 (12 ulasan)│
+│ Informasi layanan dari vendor           │
+│ Foto layanan                            │
+│ [ Foto 1 ] [ Foto 2 ] [ Foto 3 ]         │
+├─────────────────────────────────────────┤
+│             [ Pesan layanan ]           │
+│              Area aman bawah            │
+└─────────────────────────────────────────┘
+~~~
+
+- **Hero.** Letakkan tombol kembali di sisi kiri atas safe area, lalu judul layanan, subkategori, dan nama vendor sebelum foto. Foto utama mengisi lebar hero dengan sudut membulat 24 dp dan rasio sekitar 4:3. Kartu harga putih menumpang pada sudut kiri bawah foto dalam ruang yang disediakan layout. Biarkan harga dan satuannya membungkus pada layar kecil atau saat ukuran teks diperbesar.
+- **Harga.** Format angka sebagai Rupiah dengan locale `id-ID`. Tampilkan satuan *per malam* untuk `price_type: per_night` dan *per sesi* untuk `per_session`. Kartu menampilkan tarif layanan. Total dihitung pada layar pemesanan berdasarkan pilihan customer.
+- **Deskripsi dan ulasan.** Tempatkan rating di samping judul Deskripsi bila ruang cukup. Pindahkan ke baris berikutnya pada layar sempit atau teks besar. Tampilkan nilai serta jumlah ulasan jika tersedia. Gunakan label *Belum ada ulasan* bila jumlahnya nol. Jika deskripsi kosong, tampilkan *Deskripsi belum tersedia*.
+- **Galeri.** Saat ada beberapa foto, tampilkan thumbnail horizontal dengan garis oranye dan status terpilih pada foto aktif. Pilihan thumbnail mengganti foto hero. Gunakan foto bertanda utama, lalu foto pertama menurut `sort_order`. Jika foto kosong atau gagal dimuat, gunakan permukaan oranye muda dengan ikon foto. Tata letak galeri mengadaptasi deretan swatch pada referensi untuk menampilkan foto layanan.
+- **Footer pemesanan.** Tombol Pesan layanan memenuhi lebar konten, tinggi minimum 48 dp, dan radius kapsul. Footer tetap di luar konten yang digulir dan mengisi safe area bawah. Beri jarak 16 dp setelah elemen gulir terakhir. Detail Layanan memakai footer pemesanan dengan satu aksi utama.
+
+#### Token JogjaHub
+
+| Peran | Token yang dipakai |
+| --- | --- |
+| Kanvas dan garis kartu | `customerColors.canvas` (#FAF7F2) dan `customerColors.border` (#E6DED4) |
+| Hero dan thumbnail aktif | `colors.primaryFixed` (#FFDBCC) untuk latar, `colors.primary` (#A04100) untuk garis pilihan |
+| Kartu harga dan footer | `colors.surfaceContainerLowest` (#FFFFFF) |
+| Harga dan bintang ulasan | `colors.primary` (#A04100) |
+| Tombol Pesan layanan | `colors.primaryContainer` (#FF6B00) dan label `colors.onPrimaryFixed` (#351000) |
+| Judul dan metadata | `colors.navy` untuk judul Lexend 24 dp, `colors.onSurfaceVariant` untuk isi dan metadata Inter 14 dp |
+
+Gunakan margin konten 20 dp, jarak antarseksi 24 dp, dan jarak dalam kelompok 8–12 dp. Tombol kembali, galeri, tautan vendor, dan tombol pesan memiliki area sentuh minimal 48 dp. Label aksesibilitas thumbnail menggunakan urutan foto dan status terpilih.
+
+#### Data dan tindakan
+
+- Muat `GET /services/{serviceId}` lewat `vendorApi.getServiceDetail`. Gunakan `name`, `description`, `price`, `price_type`, `subcategory.name`, `tenant.business_name`, `tenant.uuid`, `photos[].full_url`, `reviews_avg_rating`, dan `reviews_count`.
+- Saat memuat, tampilkan indikator dan pertahankan tombol kembali. Pada kegagalan jaringan, tampilkan **Coba lagi**. Jika layanan mengembalikan 404, tampilkan **Layanan tidak tersedia**. Tampilkan tombol Pesan layanan setelah detail berhasil dimuat.
+- Tombol **Pesan layanan** membuka `Booking` dengan `serviceId`. Pemilihan tanggal check-in dan check-out untuk Penginapan serta pemilihan tanggal dan jam untuk layanan yang memerlukan slot tetap dilakukan di layar Booking. Variasi produk pada referensi diterjemahkan menjadi galeri foto, sedangkan pilihan jadwal mengikuti aturan layanan yang sudah berlaku.
+
+#### Kriteria penerimaan
+
+- [ ] Dari Beranda dan Katalog, ketuk dua layanan berbeda. Nama, foto, harga, dan ID pemesanan harus cocok dengan kartu yang dipilih. Kembali harus memulihkan posisi gulir dan filter.
+- [ ] Periksa warna hero, harga, dan tombol dengan token oranye JogjaHub. Uji lebar 320 dan 390 dp, teks besar, nama panjang, serta safe area Android dan iOS.
+- [ ] Uji foto tunggal, beberapa foto, foto gagal, deskripsi kosong, tanpa ulasan, kegagalan jaringan, dan 404.
+- [ ] Uji aksi Pesan layanan untuk Penginapan, layanan dengan slot, dan layanan tanpa slot. Setiap alur harus menuju pemesanan untuk ID yang sama.

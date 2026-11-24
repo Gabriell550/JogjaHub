@@ -2,6 +2,7 @@ export interface BookingRecord {
   id: number;
   uuid: string;
   status: 'pending' | 'confirmed' | 'cancelled';
+  whatsapp_url?: string;
   created_at?: string;
   check_in_date?: string;
   check_out_date?: string;
@@ -28,6 +29,7 @@ export function paymentLabel(booking: BookingRecord) {
   if (booking.payment?.status === 'paid') return 'Lunas';
   if (booking.payment?.status === 'expired') return 'Pembayaran kedaluwarsa';
   if (booking.status === 'cancelled') return 'Pesanan dibatalkan';
+  if (booking.whatsapp_url) return 'Transaksi via WhatsApp';
   if (booking.payment?.status === 'pending') return 'Menunggu pembayaran';
   return 'Status pembayaran belum tersedia';
 }

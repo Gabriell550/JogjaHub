@@ -7,7 +7,10 @@ export interface PublicService {
   price: number | string;
   price_type: 'per_session' | 'per_night';
   is_accommodation?: boolean;
-  photos?: { full_url: string; is_primary: boolean }[];
+  photos?: { full_url: string; is_primary: boolean; sort_order?: number }[];
+  description?: string | null;
+  reviews_avg_rating?: number | string | null;
+  reviews_count?: number;
   subcategory?: { name: string; requires_time_slot: boolean };
   tenant: {
     uuid: string;
@@ -27,6 +30,16 @@ export interface CatalogCard {
   location: string;
   priceFrom: number;
   perNight: boolean;
+}
+
+interface ServicePage {
+  data: PublicService[];
+  last_page?: number;
+}
+
+interface ServiceListResponse {
+  data: PublicService[] | ServicePage;
+  meta?: { last_page: number };
 }
 
 export function useCatalog(categoryId?: number, query = '', hotelsOnly = false) {
@@ -53,7 +66,10 @@ export function useCatalog(categoryId?: number, query = '', hotelsOnly = false) 
           page: requestedPage,
         });
         if (!active) return;
-        const next = (data.data as PublicService[]).map((service): CatalogCard => ({
+        const response: ServiceListResponse = data;
+        const result = response.data;
+        const services = Array.isArray(result) ? result : result.data;
+        const next = services.map((service): CatalogCard => ({
           id: String(service.id),
           uuid: service.tenant.uuid,
           name: service.tenant.business_name,
@@ -65,7 +81,7 @@ export function useCatalog(categoryId?: number, query = '', hotelsOnly = false) 
           perNight: service.price_type === 'per_night',
         }));
         setCards(previous => requestedPage === 1 ? next : [...previous, ...next]);
-        setLastPage(data.meta.last_page);
+        setLastPage(response.meta?.last_page ?? (Array.isArray(result) ? undefined : result.last_page) ?? 1);
       } catch {
         if (active) setError(true);
       } finally {

@@ -10,10 +10,11 @@ type Props<Period extends string> = {
   periods: readonly { key: Period; label: string }[];
   period: Period;
   onChangePeriod: (period: Period) => void;
-  revenue: number;
+  label: string;
+  value: number;
   change: number | null;
   values: readonly number[];
-  formatRevenue: (value: number) => string;
+  formatValue: (value: number) => string;
   active: boolean;
 };
 
@@ -24,11 +25,11 @@ const formatChange = (value: number) => {
 };
 
 export function StatCard<Period extends string>({
-  periods, period, onChangePeriod, revenue, change, values, formatRevenue, active,
+  periods, period, onChangePeriod, label, value, change, values, formatValue, active,
 }: Props<Period>) {
   const [selectorWidth, setSelectorWidth] = useState(0);
   const selectedIndex = Math.max(0, periods.findIndex(item => item.key === period));
-  const frame = useStatCardMotion(values, active, { revenue, change: change ?? 0, selectedIndex });
+  const frame = useStatCardMotion(values, active, { revenue: value, change: change ?? 0, selectedIndex });
   const slotWidth = selectorWidth / Math.max(1, periods.length);
   const comparison = change === null ? '' : `. ${formatChange(change)} dibanding periode sebelumnya`;
   const range = periods[selectedIndex]?.label ?? 'periode ini';
@@ -38,11 +39,11 @@ export function StatCard<Period extends string>({
     <View style={styles.card}>
       <View
         accessible
-        accessibilityLabel={`Total Pendapatan ${range}, ${formatRevenue(revenue)}${comparison}`}
+        accessibilityLabel={`${label} ${range}, ${formatValue(value)}${comparison}`}
         style={styles.metrics}
       >
         <View style={styles.header}>
-          <Text style={styles.label}>Total Pendapatan</Text>
+          <Text style={styles.label}>{label}</Text>
           {change !== null && (
             <View style={styles.comparison}>
               <Text style={[styles.delta, falling && styles.deltaNegative]}>{formatChange(frame.change)}</Text>
@@ -50,12 +51,12 @@ export function StatCard<Period extends string>({
             </View>
           )}
         </View>
-        <Text style={styles.revenue}>{formatRevenue(frame.revenue)}</Text>
+        <Text style={styles.revenue}>{formatValue(frame.revenue)}</Text>
       </View>
 
       {values.length > 0 ? <RevenueAreaChart points={frame.points} /> : (
         <View style={styles.emptyChart}>
-          <Text style={styles.comparisonLabel}>Belum ada data pendapatan</Text>
+          <Text style={styles.comparisonLabel}>Belum ada data</Text>
         </View>
       )}
 
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   track: { padding: 3, backgroundColor: tenantColors.canvas, borderRadius: radius.full },
   periods: { flexDirection: 'row' },
   indicator: { position: 'absolute', top: 0, bottom: 0, left: 0, backgroundColor: colors.primaryFixed, borderRadius: radius.full },
-  period: { flex: 1, alignItems: 'center', padding: 6, borderRadius: radius.full },
+  period: { flex: 1, alignItems: 'center', padding: 6, minHeight: 48, justifyContent: 'center', borderRadius: radius.full },
   periodLabel: { ...typography.labelSm, color: colors.onSurfaceVariant, textAlign: 'center' },
   periodSelected: { color: colors.onPrimaryFixedVariant },
 });

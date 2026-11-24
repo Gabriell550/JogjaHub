@@ -9,6 +9,7 @@ import BookingScreen from '../features/customer/booking/screens/BookingScreen';
 import BookingConfirmationScreen from '../features/customer/booking/screens/BookingConfirmationScreen';
 import HotelBookingScreen from '../features/customer/hotel/screens/HotelBookingScreen';
 import CatalogScreen from '../features/customer/catalog/screens/CatalogScreen';
+import CustomerServiceDetailScreen from '../features/customer/service-detail/screens/CustomerServiceDetailScreen';
 import VendorDetailScreen from '../features/customer/vendor-detail/screens/VendorDetailScreen';
 import EditCustomerProfileScreen from '../features/customer/profile/screens/EditCustomerProfileScreen';
 import { CustomerStackParamList } from './types';
@@ -35,6 +36,7 @@ export function CustomerStackNavigator() {
       </Stack.Screen>
       <Stack.Screen name="Catalog" component={CatalogScreen} />
       <Stack.Screen name="HotelBooking" component={HotelBookingScreen} />
+      <Stack.Screen name="ServiceDetail" component={CustomerServiceDetailScreen} />
       <Stack.Screen name="VendorDetail" component={VendorDetailScreen} />
       <Stack.Screen name="Booking" component={BookingScreen} />
       <Stack.Screen

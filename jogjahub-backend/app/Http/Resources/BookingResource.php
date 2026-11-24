@@ -24,6 +24,7 @@ class BookingResource extends JsonResource
             'id'         => $this->id,
             'uuid'       => $this->uuid,
             'status'     => $this->status,
+            'whatsapp_url' => $this->whatsappUrl(),
             'details'    => $this->details,
             'created_at' => $this->created_at,
 
@@ -64,5 +65,25 @@ class BookingResource extends JsonResource
                 'paid_at'     => $this->payment?->paid_at,
             ]),
         ];
+    }
+    private function whatsappUrl(): ?string
+    {
+        $number = $this->details['whatsapp_number'] ?? null;
+        if (!is_string($number) || !preg_match('/^[1-9][0-9]{7,14}$/D', $number)
+            || $this->status === 'cancelled' || $this->payment?->payment_method !== 'WHATSAPP') {
+            return null;
+        }
+
+        $code = 'JH-' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+        $service = $this->service?->name ?? 'layanan JogjaHub';
+        $message = "Halo, saya ingin melanjutkan pesanan {$service} di JogjaHub ({$code}).";
+
+        if (isset($this->details['check_in_date'], $this->details['check_out_date'])) {
+            $message .= " Check-in {$this->details['check_in_date']}, check-out {$this->details['check_out_date']}.";
+        } elseif ($this->slot) {
+            $message .= ' Jadwal ' . $this->slot->slot_date . ' ' . substr($this->slot->start_time, 0, 5) . ' WIB.';
+        }
+
+        return 'https://wa.me/' . $number . '?text=' . rawurlencode($message);
     }
 }

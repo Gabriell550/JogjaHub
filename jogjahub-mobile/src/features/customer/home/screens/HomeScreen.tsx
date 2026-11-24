@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  RefreshControl,
   View,
   Text,
   TextInput,
@@ -34,7 +36,8 @@ type MapVendor = { uuid: string; business_name: string; latitude: number | strin
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<CustomerStackParamList>>();
   const [searchQuery, setSearchQuery] = useState('');
-  const { cards: vendors, loading, error, retry } = useCatalog();
+  const { cards: recommendations, loading, error, retry } = useCatalog();
+  const [refreshing, setRefreshing] = useState(false);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [categoryError, setCategoryError] = useState(false);
   const [categoryAttempt, setCategoryAttempt] = useState(0);
@@ -49,6 +52,16 @@ export default function HomeScreen() {
     });
     return () => { active = false; };
   }, [categoryAttempt]);
+
+  useEffect(() => {
+    if (!loading) setRefreshing(false);
+  }, [loading]);
+
+  const refreshHome = () => {
+    setRefreshing(true);
+    retry();
+    setCategoryAttempt(value => value + 1);
+  };
 
   const [locations, setLocations] = useState<MapVendor[]>();
   const [loadingLocations, setLoadingLocations] = useState(false);
@@ -99,7 +112,11 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshHome} tintColor={colors.primary} colors={[colors.primary]} />}
+      >
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchBar}>
@@ -126,38 +143,45 @@ export default function HomeScreen() {
         <CategoryGrid categories={categories} onSelectCategory={(categoryId, title) => navigation.navigate('Catalog', { categoryId, title })} />
         {categoryError && <Text style={styles.sectionHeader} onPress={() => setCategoryAttempt(value => value + 1)}>Kategori gagal dimuat. Coba lagi.</Text>}
 
-        {/* Rekomendasi Terverifikasi */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Rekomendasi Terverifikasi</Text>
+        <View style={[styles.sectionHeader, styles.recommendationHeader]}>
+          <Text style={styles.sectionTitle}>Rekomendasi Layanan</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('Catalog', {})}
+            style={styles.catalogLink}
+          >
+            <Text style={styles.catalogLinkLabel}>Lihat semua</Text>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.vendorList}
-        >
-          {error && <Text onPress={retry}>Layanan gagal dimuat. Coba lagi.</Text>}
-          {loading && <Text>Memuat layanan...</Text>}
-          {!loading && !error && !vendors.length && <Text>Belum ada layanan tersedia.</Text>}
-          {vendors.slice(0, 8).map((vendor) => (
-           <VendorCard
-            key={vendor.id}
-            vendor={vendor}
-            onPressCard={() => {
-              navigation.navigate('VendorDetail', {
-                tenantUuid: vendor.uuid,
-                businessName: vendor.name,
-                imageUrl: vendor.imageUrl,
-              });
-            }}
-            onPressBook={() => {
-              navigation.navigate('Booking', {
-                serviceId: vendor.id,
-              });
-            }}
-          />
-          ))}
-        </ScrollView>
+        {recommendations.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vendorList}>
+            {recommendations.slice(0, 8).map(service => (
+              <VendorCard
+                key={service.id}
+                vendor={service}
+                onPressCard={() => navigation.navigate('ServiceDetail', { serviceId: service.id })}
+                onPressBook={() => navigation.navigate('Booking', { serviceId: service.id })}
+              />
+            ))}
+          </ScrollView>
+        )}
+        {error && (
+          <View style={styles.recommendationStatus}>
+            <Text style={styles.statusLabel}>Rekomendasi gagal dimuat.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={retry} style={styles.catalogLink}>
+              <Text style={styles.catalogLinkLabel}>Coba lagi</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {recommendations.length === 0 && !error && (
+          <View style={styles.recommendationStatus}>
+            {loading && <ActivityIndicator color={colors.primary} />}
+            <Text style={styles.statusLabel}>
+              {loading ? 'Memuat rekomendasi…' : 'Belum ada layanan yang tersedia dari vendor terverifikasi.'}
+            </Text>
+          </View>
+        )}
 
         {/* Lokasi Vendor */}
         <View style={styles.sectionHeader}>
@@ -235,7 +259,16 @@ const styles = StyleSheet.create({
   },
   searchInput: { ...typography.bodyMd, flex: 1, paddingVertical: 10, color: colors.onSurface },
   sectionHeader: { paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
-  sectionTitle: { ...typography.titleMd, color: colors.navy },
+  sectionTitle: { ...typography.titleMd, color: colors.navy, flexShrink: 1 },
+  recommendationHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4 },
+  catalogLink: { minHeight: 48, justifyContent: 'center' },
+  catalogLinkLabel: { ...typography.labelLg, color: colors.primary },
+  recommendationStatus: {
+    marginHorizontal: 20, padding: 16, gap: 8, alignItems: 'flex-start',
+    backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: customerColors.border,
+  },
+  statusLabel: { ...typography.bodyMd, color: colors.onSurfaceVariant },
   vendorList: {
     paddingLeft: 20,
     paddingRight: 6,

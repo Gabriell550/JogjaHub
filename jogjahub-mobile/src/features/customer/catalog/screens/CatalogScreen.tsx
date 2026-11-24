@@ -46,7 +46,7 @@ export default function CatalogScreen({ hotelCatalog = false }: { hotelCatalog?:
           <View style={styles.cardWrapper}>
             <VendorCard
               vendor={item}
-              onPressCard={() => navigation.navigate('VendorDetail', { tenantUuid: item.uuid, businessName: item.name, imageUrl: item.imageUrl })}
+              onPressCard={() => navigation.navigate('ServiceDetail', { serviceId: item.id })}
               onPressBook={() => navigation.navigate('Booking', { serviceId: item.id })}
             />
           </View>

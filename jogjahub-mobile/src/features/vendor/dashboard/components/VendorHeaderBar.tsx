@@ -6,28 +6,29 @@ import { colors, typography, spacing, radius } from '../../../../constants/theme
 
 type Props = {
   businessName: string;
+  nativeLayout?: boolean;
   onPressBell?: () => void;
   onPressAvatar?: () => void;
 };
 
-export function VendorHeaderBar({ businessName, onPressBell, onPressAvatar }: Props) {
+export function VendorHeaderBar({ businessName, nativeLayout, onPressBell, onPressAvatar }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: nativeLayout ? 16 : spacing.stackLg }]}>
       <View style={styles.topRow}>
         <View style={styles.brandRow}>
-          <View style={styles.logoBox}>
+          <View style={[styles.logoBox, nativeLayout && styles.nativeLogo]}>
             <Text style={styles.logoText}>JH</Text>
           </View>
           <Text style={styles.brandTitle}>JogjaHub</Text>
         </View>
 
         <View style={styles.actionsRow}>
-          <Pressable style={styles.iconBtn} onPress={onPressBell} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Aktivitas terbaru" style={[styles.iconBtn, nativeLayout && styles.nativeIcon]} onPress={onPressBell} hitSlop={nativeLayout ? undefined : 8}>
             <Bell size={18} color={colors.onNavy} />
           </Pressable>
-          <Pressable style={styles.iconBtn} onPress={onPressAvatar} hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Profil tenant" style={[styles.iconBtn, nativeLayout && styles.nativeIcon]} onPress={onPressAvatar} hitSlop={nativeLayout ? undefined : 8}>
             <User size={18} color={colors.onNavy} />
           </Pressable>
         </View>
@@ -36,7 +37,7 @@ export function VendorHeaderBar({ businessName, onPressBell, onPressAvatar }: Pr
       <Text style={styles.greetingLabel}>Selamat Datang,</Text>
 
       <View style={styles.nameRow}>
-        <Text style={styles.businessName} numberOfLines={1}>{businessName} </Text>
+        <Text style={styles.businessName} numberOfLines={nativeLayout ? undefined : 1}>{businessName} </Text>
       </View>
     </View>
   );
@@ -60,6 +61,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   notifDot: { position: 'absolute', top: 6, right: 7, width: 7, height: 7, borderRadius: 4, backgroundColor: colors.notificationRed },
+  nativeLogo: { width: 32, height: 32 },
+  nativeIcon: { width: 48, height: 48 },
   greetingLabel: { fontFamily: typography.bodyMd.fontFamily, fontSize: 12, color: colors.navySub, marginBottom: 2 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.stackSm },
   businessName: { flex: 1, fontFamily: typography.headlineLgMobile.fontFamily, fontSize: 19, fontWeight: '700', color: colors.onNavy },

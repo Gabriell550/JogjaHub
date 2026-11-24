@@ -62,6 +62,7 @@ export type CustomerStackParamList = {
   CustomerChatRoom: { id: number; name: string };
   HotelBooking: undefined;
   Catalog: { categoryId?: number; title?: string; query?: string };
+  ServiceDetail: { serviceId: number | string };
   VendorDetail: {
     tenantUuid: string;
     businessName?: string;

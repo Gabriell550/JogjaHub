@@ -43,6 +43,7 @@ interface CustomerBookingItem {
   status: CustomerBookingStatus;
   custom_note?: string;
   payment_url?: string;
+  whatsapp_url?: string;
   reviewed: boolean;
 }
 
@@ -86,6 +87,7 @@ export default function MyBookingsScreen() {
         schedule_time: booking.check_out_date ? 'Check-out ' + booking.check_out_date : booking.slot?.start_time.slice(0, 5) ?? '',
         location_detail: booking.service?.tenant?.address?.city ?? '',
         payment_status: paymentLabel(booking),
+        whatsapp_url: booking.whatsapp_url,
         payment_url: booking.payment?.status === 'pending' && booking.payment.expires_at &&
           Date.parse(booking.payment.expires_at) > Date.now() ? booking.payment.payment_url ?? undefined : undefined,
         package_type: booking.nights ? booking.nights + ' malam' : '',
@@ -264,13 +266,13 @@ export default function MyBookingsScreen() {
               <Text style={styles.rejectButtonText}>Batalkan</Text>
             </TouchableOpacity>
 
-            {item.payment_url && <TouchableOpacity
+            {(item.whatsapp_url || item.payment_url) && <TouchableOpacity
               style={styles.acceptButton}
-              onPress={() => Linking.openURL(item.payment_url!).catch(() => Alert.alert('Tautan pembayaran gagal dibuka'))}
+              onPress={() => Linking.openURL((item.whatsapp_url || item.payment_url)!).catch(() => Alert.alert('Tautan pembayaran gagal dibuka'))}
               activeOpacity={0.88}
             >
               <Ionicons name="card-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.acceptButtonText}>Bayar</Text>
+              <Text style={styles.acceptButtonText}>{item.whatsapp_url ? 'WhatsApp' : 'Bayar'}</Text>
             </TouchableOpacity>}
           </View>
         )}

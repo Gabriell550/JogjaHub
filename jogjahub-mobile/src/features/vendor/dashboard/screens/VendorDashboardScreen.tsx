@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useContext, useEffect, type ReactNode } from 'react';
+import React, { useState, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, StatusBar, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,10 +19,12 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../../../store';
 import { IconlyChart } from '../../../../components/icons/iconlyChart';
 import { IconlyBag } from '../../../../components/icons/iconlyBag';
+import { Wallet, Star } from 'lucide-react-native';
+import { SaldoTokoCard } from '../components/SaldoTokoCard';
+import { TenantStatisticsCards } from '../../statistics/components/TenantStatisticsCards';
 import { bookingApi } from '../../../../api/bookingApi';
 import { type BookingRecord } from '../../../../types/bookingRecord';
 import { orderTracking } from '../../../../utils/orderTracking';
-import { SaldoTokoCard } from '../components/SaldoTokoCard';
 import { MyServicesSection } from '../components/MyServicesSection';
 
 type Nav = CompositeNavigationProp<
@@ -42,6 +44,7 @@ type OrderType = {
 
 export default function VendorDashboardScreen() {
   const navigation = useNavigation<Nav>();
+  const statisticsActive = useIsFocused();
   const closedSceneHeight = useContext(TenantDockLayoutContext);
   const redesigned = closedSceneHeight !== null;
   const [refreshing, setRefreshing] = useState(false);
@@ -64,9 +67,6 @@ export default function VendorDashboardScreen() {
       status: booking.status,
     }];
   });
-  const paidTotal = bookings.reduce((total, booking) =>
-    total + (booking.payment?.status === 'paid' ? Number(booking.total_amount ?? 0) : 0), 0);
-
   useEffect(() => {
     loadViewedOrders();
   }, []);
@@ -97,20 +97,32 @@ export default function VendorDashboardScreen() {
     }
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setLoadError(false);
+  const pendingRefresh = useRef(false);
+  const loadOrders = useCallback(async (showLoading: boolean) => {
+    if (pendingRefresh.current) return;
+    pendingRefresh.current = true;
+    if (showLoading) setRefreshing(true);
     try {
       setBookings(await bookingApi.listAllBookings('tenant'));
+      setLoadError(false);
     } catch {
       setLoadError(true);
     } finally {
-      setRefreshing(false);
+      pendingRefresh.current = false;
+      if (showLoading) setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { void onRefresh(); }, [onRefresh]));
+  const onRefresh = useCallback(() => loadOrders(true), [loadOrders]);
+  useFocusEffect(useCallback(() => {
+    void onRefresh();
+    const timer = setInterval(() => { void loadOrders(false); }, 5000);
+    return () => clearInterval(timer);
+  }, [loadOrders, onRefresh]));
 
+  const { width, fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const compact = width - insets.left - insets.right < tenantLayout.narrowWidth || fontScale > tenantLayout.largeFontScale;
   const actions = [
     {
       key: 'listing',
@@ -119,6 +131,7 @@ export default function VendorDashboardScreen() {
       iconBg: colors.orangePale,
       onPress: () => navigation.navigate('Listing'),
     },
+    ...(redesigned ? [{ key: 'wallet', icon: Wallet, label: 'Dompet', iconBg: colors.surfaceContainerHigh }] : []),
     {
       key: 'stats',
       icon: IconlyChart,
@@ -126,6 +139,7 @@ export default function VendorDashboardScreen() {
       iconBg: colors.accentGreenContainer,
       onPress: () => navigation.navigate('Statistics'),
     },
+    ...(redesigned ? [{ key: 'reviews', icon: Star, label: 'Ulasan', iconBg: colors.surfaceContainerHigh }] : []),
   ];
 
   const handleSeeAllServices = () => {
@@ -145,18 +159,28 @@ export default function VendorDashboardScreen() {
 
   const header = (
     <VendorHeaderBar
+      nativeLayout={redesigned}
       businessName={businessName ?? 'Vendor'}
       onPressBell={() => navigation.navigate('RecentActivity')}
       onPressAvatar={() => navigation.navigate('Profile')}
     />
   );
-  const hero = (
-    <SaldoTokoCard
-      balance={paidTotal}
-      onPesanan={() => navigation.navigate('Orders')}
-    />
+  const paidTotal = bookings.reduce((total, booking) =>
+    total + (booking.payment?.status === 'paid' ? Number(booking.total_amount ?? 0) : 0), 0);
+  const revenueCard = <SaldoTokoCard nativeLayout={redesigned} balance={paidTotal} onPesanan={() => navigation.navigate('Orders')} />;
+
+  const statistics = (
+    <View style={tenantStyles.statistics}>
+      <View style={dashboardStyles.headingRow}>
+        <Text accessibilityRole="header" style={dashboardStyles.heading}>Statistik</Text>
+        <TenantPressable accessibilityRole="button" style={dashboardStyles.link} onPress={() => navigation.navigate('Statistics')}>
+          <Text style={dashboardStyles.linkText}>Lihat Statistik</Text>
+        </TenantPressable>
+      </View>
+      <TenantStatisticsCards records={bookings} initialPeriod="today" active={statisticsActive} ordersOnly />
+    </View>
   );
-  const quickActions = <QuickActionsGrid actions={actions} />;
+  const quickActions = <QuickActionsGrid actions={actions} columns={redesigned ? (compact ? 2 : 4) : undefined} />;
   const services = (
     <MyServicesSection
       onSeeAll={handleSeeAllServices}
@@ -193,14 +217,15 @@ export default function VendorDashboardScreen() {
       <TenantDashboardLayout
         closedSceneHeight={closedSceneHeight}
         header={header}
-        hero={hero}
+        revenueCard={revenueCard}
         refreshControl={refreshControl}
       >
         <View style={tenantStyles.summary}>
+          {notifications}
           {quickActions}
+          {statistics}
         </View>
         {services}
-        {notifications}
         <View style={tenantStyles.orders}>
           <View style={dashboardStyles.headingRow}>
             <Text accessibilityRole="header" style={dashboardStyles.heading}>Pesanan masuk</Text>
@@ -222,16 +247,13 @@ export default function VendorDashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={refreshControl}
       >
-        {hero}
         <View style={{ height: spacing.stackMd }} />
         <View style={{ height: spacing.stackMd }} />
+        {notifications}
+        {revenueCard}
         {quickActions}
+        {statistics}
         {services}
-        {notifications && (
-          <View style={{ marginTop: spacing.stackMd }}>
-            {notifications}
-          </View>
-        )}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Pesanan masuk</Text>
           <Text style={styles.seeAll} onPress={seeOrders}>Lihat Semua</Text>
@@ -248,10 +270,10 @@ export default function VendorDashboardScreen() {
   );
 }
 
-function TenantDashboardLayout({ closedSceneHeight, header, hero, refreshControl, children }: {
+function TenantDashboardLayout({ closedSceneHeight, header, revenueCard, refreshControl, children }: {
   closedSceneHeight: number;
   header: ReactNode;
-  hero: ReactNode;
+  revenueCard: ReactNode;
   refreshControl: React.ReactElement;
   children: ReactNode;
 }) {
@@ -290,7 +312,7 @@ function TenantDashboardLayout({ closedSceneHeight, header, hero, refreshControl
           <View aria-hidden pointerEvents="none" style={tenantStyles.roundedCanvas} />
           <View style={[tenantStyles.columnHost, horizontalInsets]}>
             <View style={{ width: columnWidth }}>
-              {hero}
+              {revenueCard}
               {children}
             </View>
           </View>
@@ -314,6 +336,7 @@ const tenantStyles = StyleSheet.create({
     backgroundColor: tenantColors.canvas, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
   },
   columnHost: { alignItems: 'center', paddingBottom: spacing.stackMd },
+  statistics: { gap: spacing.stackSm },
   summary: { gap: spacing.stackMd, marginTop: spacing.stackMd },
   orders: { gap: 4, marginTop: spacing.stackLg },
   orderList: { gap: 8, marginTop: 4 },

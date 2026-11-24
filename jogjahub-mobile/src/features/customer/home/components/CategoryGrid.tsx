@@ -9,7 +9,16 @@ interface CategoryGridProps {
   onSelectCategory: (id: number, name: string) => void;
 }
 
+const categoryIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+  penginapan: 'bed-outline',
+  beautystyle: 'color-palette-outline',
+  gifting: 'gift-outline',
+  dokumentasi: 'camera-outline',
+};
+
 export default function CategoryGrid({ categories, onSelectCategory }: CategoryGridProps) {
+  if (!categories.length) return null;
+
   return (
     <View style={styles.row}>
       {categories.map((cat) => (
@@ -21,7 +30,12 @@ export default function CategoryGrid({ categories, onSelectCategory }: CategoryG
           activeOpacity={0.7}
         >
           <View style={styles.iconCircle}>
-            <Ionicons name="grid-outline" size={22} color={colors.primary} />
+            <Ionicons
+              name={categoryIcons[cat.name.toLowerCase().replace(/[^a-z]/g, '')] ?? 'grid-outline'}
+              size={22}
+              color={colors.primary}
+              aria-hidden
+            />
           </View>
           <Text style={styles.label}>
             {cat.name}

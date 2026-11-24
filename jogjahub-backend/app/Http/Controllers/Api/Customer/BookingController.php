@@ -31,7 +31,9 @@ class BookingController extends Controller
 
         return response()->json([
             'success'     => true,
-            'message'     => 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.',
+            'message'     => $result['payment_url']
+                ? 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.'
+                : 'Pesanan dibuat. Lanjutkan transaksi melalui WhatsApp.',
             'data'        => new BookingResource($result['booking']),
             'payment_url' => $result['payment_url'],    // URL halaman bayar Xendit
             'expires_at'  => $result['expires_at'],     // batas waktu bayar (ISO 8601)

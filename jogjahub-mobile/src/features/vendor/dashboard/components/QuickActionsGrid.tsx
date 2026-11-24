@@ -8,10 +8,10 @@ type Action = {
   label: string;
   subtitle?: string;
   iconBg: string;
-  onPress: () => void;
+  onPress?: () => void;
 };
 
-export function QuickActionsGrid({ actions }: { actions: Action[] }) {
+export function QuickActionsGrid({ actions, columns }: { actions: Action[]; columns?: 2 | 4 }) {
   return (
     <View style={styles.grid}>
       {actions.map((action) => {
@@ -22,12 +22,16 @@ export function QuickActionsGrid({ actions }: { actions: Action[] }) {
             key={action.key}
             style={({ pressed }) => [
               styles.card,
+              columns && { width: columns === 2 ? '48%' : '23%', elevation: 0, padding: 8, minHeight: 80 },
               pressed && styles.cardPressed,
             ]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !action.onPress }}
+            disabled={!action.onPress}
             onPress={action.onPress}
           >
             <View
-              style={[styles.iconWrap, { backgroundColor: action.iconBg }]}
+              style={[styles.iconWrap, columns && styles.compactIcon, { backgroundColor: action.iconBg }]}
             >
               {typeof action.icon === 'string' ? (
                 <Text style={styles.icon}>{action.icon}</Text>
@@ -75,6 +79,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  compactIcon: { width: 40, height: 40 },
   label: {
     fontFamily: typography.labelMd.fontFamily,
     fontSize: 12,

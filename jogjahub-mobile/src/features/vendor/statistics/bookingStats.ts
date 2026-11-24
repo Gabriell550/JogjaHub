@@ -24,13 +24,18 @@ export function getBookingStats(bookings: BookingRecord[], period: PeriodKey, no
   const { labels, starts, previous } = ranges[period];
   const revenue = labels.map(() => 0);
   const orders = labels.map(() => 0);
+  const paidCounts = labels.map(() => 0);
   let previousRevenue = 0;
+  let previousOrders = 0;
+  let previousPaidCount = 0;
   let paidCount = 0;
   const bucketFor = (time: number) => labels.findIndex((_, i) => time >= starts[i] && time < starts[i + 1]);
 
   for (const booking of bookings) {
-    const orderBucket = bucketFor(Date.parse(booking.created_at ?? '') + wibOffset);
+    const createdAt = Date.parse(booking.created_at ?? '') + wibOffset;
+    const orderBucket = bucketFor(createdAt);
     if (orderBucket >= 0) orders[orderBucket]++;
+    else if (createdAt >= previous && createdAt < starts[0]) previousOrders++;
     if (booking.payment?.status !== 'paid') continue;
     const paidAt = Date.parse(booking.payment.paid_at ?? '') + wibOffset;
     const amount = Number(booking.total_amount ?? 0);
@@ -38,9 +43,11 @@ export function getBookingStats(bookings: BookingRecord[], period: PeriodKey, no
     if (paymentBucket >= 0) {
       revenue[paymentBucket] += amount;
       paidCount++;
+      paidCounts[paymentBucket]++;
     } else if (paidAt >= previous && paidAt < starts[0]) {
       previousRevenue += amount;
+      previousPaidCount++;
     }
   }
-  return { labels, revenue, orders, previousRevenue, paidCount };
+  return { labels, revenue, orders, previousRevenue, previousOrders, previousPaidCount, paidCount, paidCounts };
 }

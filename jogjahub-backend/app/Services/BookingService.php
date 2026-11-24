@@ -33,7 +33,7 @@ class BookingService
      *  - Multi-slot hotel: kirim check_in_date + check_out_date
      *    → amount = service.price × jumlah malam (jika price_type = per_night)
      *
-     * @return array { booking: Booking, payment_url: string, expires_at: Carbon }
+     * @return array { booking: Booking, payment_url: ?string, expires_at: ?Carbon }
      * @throws ValidationException
      * @throws \RuntimeException jika Xendit API error
      */
@@ -46,6 +46,22 @@ class BookingService
             throw ValidationException::withMessages([
                 'service_id' => ['Layanan ini tidak tersedia untuk dipesan.'],
             ]);
+        }
+
+        $usesXendit = config('booking.checkout') === 'xendit';
+        unset($data['details']['whatsapp_number']);
+        if (!$usesXendit) {
+            $number = preg_replace('/\D/', '', $service->tenant->whatsapp_number ?? '');
+            if (str_starts_with($number, '0')) {
+                $number = '62' . substr($number, 1);
+            }
+            if (strlen($number) < 8 || strlen($number) > 15) {
+                throw ValidationException::withMessages([
+                    'service_id' => ['Nomor WhatsApp tenant belum valid.'],
+                ]);
+            }
+            unset($data['details']['check_in_date'], $data['details']['check_out_date'], $data['details']['nights']);
+            $data['details']['whatsapp_number'] = $number;
         }
 
         $requiresSlot = $service->subcategory->requires_time_slot;
@@ -68,7 +84,7 @@ class BookingService
         // ── Kunci slot + buat booking + buat payment dalam satu transaksi ────
         // Transaksi harus selesai sebelum memanggil Xendit API,
         // supaya kalau Xendit gagal, slot tidak terkunci selamanya.
-        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot) {
+        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $usesXendit) {
 
             if ($isMultiSlot) {
                 // ── Mode hotel: kunci semua slot dalam rentang check_in s.d. (check_out - 1 hari) ──
@@ -93,13 +109,22 @@ class BookingService
                 'amount'      => $amount,
                 'currency'    => 'IDR',
                 'status'      => 'pending',
-                'expires_at'  => now()->addHour(),
+                'payment_method' => $usesXendit ? null : 'WHATSAPP',
+                'expires_at'  => $usesXendit ? now()->addHour() : null,
             ]);
 
             return $booking;
         });
 
         // ── Panggil Xendit API di luar transaksi ─────────────────────────────
+        if (!$usesXendit) {
+            return [
+                'booking' => $booking->load(['service', 'slot', 'slots', 'payment']),
+                'payment_url' => null,
+                'expires_at' => null,
+            ];
+        }
+
         $booking->load(['service', 'customer', 'payment']);
 
         try {

@@ -13,7 +13,7 @@ type Props = NativeStackScreenProps<CustomerStackParamList, 'BookingConfirmation
 export default function BookingConfirmationScreen({ navigation, route }: Props) {
   const { serviceId, serviceName, vendorName, date, timeSlot, price, slotId, checkInDate, checkOutDate } = route.params;
   const [submitting, setSubmitting] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string>();
+  const [contactUrl, setContactUrl] = useState<string>();
   const busy = useRef(false);
 
   const showBookings = () => navigation.reset({
@@ -26,7 +26,7 @@ export default function BookingConfirmationScreen({ navigation, route }: Props) 
     busy.current = true;
     setSubmitting(true);
     try {
-      let url = paymentUrl;
+      let url = contactUrl;
       if (!url) {
         const { data } = await bookingApi.createBooking({
           service_id: serviceId,
@@ -34,19 +34,19 @@ export default function BookingConfirmationScreen({ navigation, route }: Props) 
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
         });
-        url = data.payment_url;
+        url = data.data?.whatsapp_url ?? data.payment_url;
         if (!url) {
-          Alert.alert('Pesanan dibuat', 'Tautan pembayaran belum tersedia. Periksa Pesanan Saya.');
+          Alert.alert('Pesanan dibuat', 'Tautan untuk melanjutkan pesanan belum tersedia. Periksa Pesanan Saya.');
           showBookings();
           return;
         }
-        setPaymentUrl(url);
+        setContactUrl(url);
       }
       try {
         await Linking.openURL(url);
         showBookings();
       } catch {
-        Alert.alert('Tautan gagal dibuka', 'Coba buka kembali pembayaran untuk pesanan ini.');
+        Alert.alert('Tautan gagal dibuka', 'Coba buka kembali WhatsApp untuk pesanan ini.');
       }
     } catch (error) {
       if (isAxiosError(error) && error.response && error.response.status < 500) {
@@ -63,15 +63,15 @@ export default function BookingConfirmationScreen({ navigation, route }: Props) 
 
   return (
     <SafeAreaView style={styles.screen}>
-      <Text style={styles.link} onPress={() => paymentUrl ? showBookings() : navigation.goBack()}>Kembali</Text>
+      <Text style={styles.link} onPress={() => contactUrl ? showBookings() : navigation.goBack()}>Kembali</Text>
       <Text style={styles.title}>Konfirmasi pesanan</Text>
       <Text style={styles.heading}>{serviceName}</Text>
       <Text>{vendorName}</Text>
       {date && <Text>{checkOutDate ? date + ' sampai ' + checkOutDate : [date, timeSlot].filter(Boolean).join(' ? ')}</Text>}
       <Text style={styles.heading}>Rp {price.toLocaleString('id-ID')}</Text>
-      <Text>Pilih metode pembayaran di halaman Xendit.</Text>
+      <Text>Pesanan akan tercatat di JogjaHub. Kirim pesan yang disiapkan di WhatsApp untuk melanjutkan transaksi dengan tenant.</Text>
       <TouchableOpacity accessibilityRole="button" disabled={submitting} onPress={checkout} style={styles.button}>
-        <Text style={styles.buttonText}>{submitting ? 'Memproses...' : paymentUrl ? 'Buka kembali Xendit' : 'Bayar melalui Xendit'}</Text>
+        <Text style={styles.buttonText}>{submitting ? 'Memproses...' : contactUrl ? 'Buka kembali WhatsApp' : 'Pesan lewat WhatsApp'}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

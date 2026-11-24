@@ -33,6 +33,35 @@ class BookingTest extends TestCase
 
     // ─── Create Booking ───────────────────────────────────────────────────────
 
+    public function test_whatsapp_booking_is_visible_to_tenant_without_creating_an_invoice(): void
+    {
+        config(['booking.checkout' => 'whatsapp']);
+        $customer = User::factory()->customer()->create();
+        $tenant = TenantProfile::factory()->approved()->create(['whatsapp_number' => '0812-3456-7890']);
+        $service = Service::factory()->create(['tenant_id' => $tenant->id]);
+        $this->mock(XenditService::class, fn ($mock) => $mock->shouldNotReceive('createInvoice'));
+
+        $response = $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id' => $service->id,
+            'details' => ['whatsapp_number' => '1234567890'],
+        ])->assertCreated()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('payment_url', null)
+            ->assertJsonPath('expires_at', null);
+
+        $url = $response->json('data.whatsapp_url');
+        $this->assertStringStartsWith('https://wa.me/6281234567890?text=', $url);
+        $this->assertStringContainsString('JH-', rawurldecode($url));
+        Queue::assertNothingPushed();
+
+        $this->getJson('/api/v1/customer/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.whatsapp_url', $url);
+        $this->actingAs($tenant->user)->getJson('/api/v1/tenant/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.uuid', $response->json('data.uuid'));
+    }
+
     public function test_customer_bisa_buat_booking()
     {
         $customer = User::factory()->customer()->create();
