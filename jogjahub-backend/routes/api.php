@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/categories', [\App\Http\Controllers\Api\Customer\CategoryController::class, 'index']);
     Route::get('/tenants/map', [\App\Http\Controllers\Api\Customer\TenantController::class, 'map']);
+    Route::get('/tenants', [\App\Http\Controllers\Api\Customer\TenantController::class, 'index']);
     Route::get('/services', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'index']);
     Route::get('/services/{service}', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'show']);
     Route::get('/services/{service}/slots', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'slots']);
@@ -40,6 +41,8 @@ Route::prefix('v1')->group(function () {
 
     // ===== Customer =====
     Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
+        Route::post('bookings/{booking}/confirm-completion', [\App\Http\Controllers\Api\BookingCompletionController::class, 'confirm']);
+        Route::post('bookings/{booking}/completion-issue', [\App\Http\Controllers\Api\BookingCompletionController::class, 'report']);
         // Profil customer: lihat dan update (termasuk upload avatar)
         Route::get('profile', [\App\Http\Controllers\Api\Customer\ProfileController::class, 'show']);
         Route::post('profile', [\App\Http\Controllers\Api\Customer\ProfileController::class, 'update']);
@@ -84,8 +87,12 @@ Route::prefix('v1')->group(function () {
             Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
             Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
             Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
+<<<<<<< HEAD
             // Konfirmasi pembayaran transfer manual — tenant verifikasi bukti lalu konfirmasi
             Route::post('bookings/{booking}/confirm-payment', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'confirmPayment']);
+=======
+            Route::post('bookings/{booking}/mark-fulfilled', [\App\Http\Controllers\Api\BookingCompletionController::class, 'mark']);
+>>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
         });
 
         // Chat — inbox percakapan masuk dari customer (tidak butuh tenant.approved)

@@ -79,7 +79,7 @@ class XenditWebhookController extends \App\Http\Controllers\Controller
 
             $booking = $payment->booking()->lockForUpdate()->first();
 
-            if (!$booking) {
+            if (!$booking || in_array($booking->status, [BookingStatus::AWAITING_COMPLETION->value, BookingStatus::COMPLETED->value], true)) {
                 return;
             }
 

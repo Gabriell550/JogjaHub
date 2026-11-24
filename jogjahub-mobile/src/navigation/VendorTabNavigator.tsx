@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Calendar, ClipboardList, LayoutDashboard, Store, User } from 'lucide-react-native';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AppState, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IncomingOrderPopup } from '../features/vendor/orders/components/IncomingOrderPopup';
+import { bookingApi } from '../api/bookingApi';
+import type { BookingRecord } from '../types/bookingRecord';
 import ManageCalendarScreen from '../features/vendor/calendar/screens/ManageCalendarScreen';
 import { RubberDockTabBar, type RubberDockPanel } from './RubberDockTabBar';
 import { TenantDockLayoutContext } from './TenantDockLayoutContext';
@@ -52,6 +55,44 @@ const panels = {
 } satisfies Record<keyof VendorTabParamList, RubberDockPanel>;
 
 export function VendorTabNavigator() {
+  const [incomingOrders, setIncomingOrders] = useState<BookingRecord[]>([]);
+  useEffect(() => {
+    let active = true;
+    let checking = false;
+    let latestOrderId: number | undefined;
+
+    async function checkOrders() {
+      if (checking || AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
+      checking = true;
+      try {
+        const { data } = await bookingApi.listIncomingBookings();
+        if (!active) return;
+        const orders: BookingRecord[] = data.data;
+        if (latestOrderId !== undefined) {
+          const cutoff = latestOrderId;
+          const unseen = orders.filter(order => order.status === 'pending' && order.id > cutoff);
+          if (unseen.length > 0) setIncomingOrders(pending => [...pending, ...unseen]);
+        }
+        latestOrderId = Math.max(latestOrderId ?? 0, ...orders.map(order => order.id));
+      } catch {
+        // The next poll retries if the connection is interrupted.
+      } finally {
+        checking = false;
+      }
+    }
+
+    void checkOrders();
+    const timer = setInterval(checkOrders, 5000);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void checkOrders();
+    });
+    return () => {
+      active = false;
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, []);
+
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [hostHeight, setHostHeight] = useState<number | null>(null);
@@ -61,11 +102,18 @@ export function VendorTabNavigator() {
   const navigator = (
     <Tab.Navigator
       tabBar={props => (
-        <RubberDockTabBar
-          {...props}
-          panels={panels}
-          tenantLayout={nativeTenantDock ? { usableHeight, onClosedHeightChange: setClosedFooterHeight } : undefined}
-        />
+        <>
+          <RubberDockTabBar
+            {...props}
+            panels={panels}
+            tenantLayout={nativeTenantDock ? { usableHeight, onClosedHeightChange: setClosedFooterHeight } : undefined}
+          />
+          <IncomingOrderPopup orders={incomingOrders} onClose={() => setIncomingOrders([])} onOpen={id => {
+            setIncomingOrders([]);
+            if (id) props.navigation.navigate('Orders', { screen: 'OrderDetail', params: { id }, initial: false });
+            else props.navigation.navigate('Orders', { screen: 'OrdersList' });
+          }} />
+        </>
       )}
       screenOptions={{ headerShown: false }}
     >

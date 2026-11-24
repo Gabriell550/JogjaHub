@@ -1,5 +1,7 @@
 export const tenantColors = {
   canvas: '#FAF7F2',
+  hero: '#0B5D48',
+  heroTextMuted: '#D4F3E8',
   border: '#E6DED4',
   onPositive: '#1F6426',
   translucentWhite: 'rgba(255,255,255,0.12)',

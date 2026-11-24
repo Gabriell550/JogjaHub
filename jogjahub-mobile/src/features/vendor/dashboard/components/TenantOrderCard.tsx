@@ -7,7 +7,7 @@ import { dashboardStyles } from './tenantDashboardStyles';
 
 type Props = {
   title: string;
-  badgeLabel: 'TERBARU' | 'DIPROSES';
+  badgeLabel: 'TERBARU' | 'DIPROSES' | 'MENUNGGU SELESAI' | 'SELESAI';
   buyerName: string;
   timeAgo: string;
   price: number;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export function TenantOrderCard({ title, badgeLabel, buyerName, timeAgo, price, icon: Icon = Package, onPress }: Props) {
-  const isProcessing = badgeLabel === 'DIPROSES';
+  const isProcessing = badgeLabel !== 'TERBARU';
   const formattedPrice = `Rp${price.toLocaleString('id-ID')}`;
   const style = [dashboardStyles.card, styles.card];
   const content = (

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\MessageResource;
 use App\Models\Conversation;
+use App\Models\TenantProfile;
 use App\Models\User;
 use App\Events\MessageSent;
 use Illuminate\Http\Request;
@@ -49,11 +50,13 @@ class ConversationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'tenant_id' => 'required|integer|exists:users,id',
+            'tenant_id' => 'required_without:tenant_uuid|prohibits:tenant_uuid|integer|exists:users,id',
+            'tenant_uuid' => 'required_without:tenant_id|uuid',
         ]);
 
         // Pastikan tenant_id benar-benar user dengan role tenant
-        $tenant = User::where('id', $validated['tenant_id'])
+        $tenantId = $validated['tenant_id'] ?? TenantProfile::where('uuid', $validated['tenant_uuid'])->firstOrFail()->user_id;
+        $tenant = User::where('id', $tenantId)
             ->where('role', 'tenant')
             ->firstOrFail();
 
@@ -102,12 +105,13 @@ class ConversationController extends Controller
         $this->authorizeConversation($request->user(), $conversation);
 
         $messages = $conversation->messages()
-            ->latest() // urut terbaru dulu agar cursor pagination lebih mudah di frontend
+            ->reorder('id', 'desc')
             ->paginate(30);
 
         return response()->json([
             'success' => true,
             'data'    => MessageResource::collection($messages),
+            'last_page' => $messages->lastPage(),
         ]);
     }
 

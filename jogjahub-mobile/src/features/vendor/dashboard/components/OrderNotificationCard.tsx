@@ -9,7 +9,6 @@ type OrderType = {
   buyerName: string;
   timeAgo: string;
   price: number;
-  status: 'pending' | 'confirmed';
 };
 
 type Props = {

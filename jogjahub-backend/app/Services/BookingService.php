@@ -34,10 +34,14 @@ class BookingService
      *  - Multi-slot hotel: kirim check_in_date + check_out_date
      *    → amount = service.price × jumlah malam (jika price_type = per_night)
      *
+<<<<<<< HEAD
      * Catatan: Xendit tidak digunakan untuk sementara (transfer manual).
      * Kode XenditService tetap ada untuk kemudahan reaktivasi di masa depan.
      *
      * @return array { booking: Booking, expires_at: Carbon }
+=======
+     * @return array { booking: Booking, payment_url: ?string, expires_at: ?Carbon }
+>>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
      * @throws ValidationException
      */
     public function createBooking(int $customerId, array $data): array
@@ -45,10 +49,26 @@ class BookingService
         $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
 
         // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
-        if (!$service->tenant || $service->tenant->status !== 'approved') {
+        if (!$service->is_active || !$service->tenant || $service->tenant->status !== 'approved') {
             throw ValidationException::withMessages([
-                'service_id' => ['Layanan ini belum tersedia karena tenant belum disetujui.'],
+                'service_id' => ['Layanan ini tidak tersedia untuk dipesan.'],
             ]);
+        }
+
+        $usesXendit = config('booking.checkout') === 'xendit';
+        unset($data['details']['whatsapp_number']);
+        if (!$usesXendit) {
+            $number = preg_replace('/\D/', '', $service->tenant->whatsapp_number ?? '');
+            if (str_starts_with($number, '0')) {
+                $number = '62' . substr($number, 1);
+            }
+            if (strlen($number) < 8 || strlen($number) > 15) {
+                throw ValidationException::withMessages([
+                    'service_id' => ['Nomor WhatsApp tenant belum valid.'],
+                ]);
+            }
+            unset($data['details']['check_in_date'], $data['details']['check_out_date'], $data['details']['nights']);
+            $data['details']['whatsapp_number'] = $number;
         }
 
         $requiresSlot = $service->subcategory->requires_time_slot;
@@ -72,7 +92,13 @@ class BookingService
         $expiresAt = now()->addMinutes(10);
 
         // ── Kunci slot + buat booking + buat payment dalam satu transaksi ────
+<<<<<<< HEAD
         $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $expiresAt) {
+=======
+        // Transaksi harus selesai sebelum memanggil Xendit API,
+        // supaya kalau Xendit gagal, slot tidak terkunci selamanya.
+        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $usesXendit) {
+>>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
 
             if ($isMultiSlot) {
                 // ── Mode hotel: kunci semua slot dalam rentang check_in s.d. (check_out - 1 hari) ──
@@ -92,17 +118,57 @@ class BookingService
 
             // Buat record payment — Xendit fields dikosongkan (transfer manual)
             Payment::create([
+<<<<<<< HEAD
                 'booking_id' => $booking->id,
                 'amount'     => $amount,
                 'currency'   => 'IDR',
                 'status'     => 'pending',
                 'expires_at' => $expiresAt,
+=======
+                'booking_id'  => $booking->id,
+                'amount'      => $amount,
+                'currency'    => 'IDR',
+                'status'      => 'pending',
+                'payment_method' => $usesXendit ? null : 'WHATSAPP',
+                'expires_at'  => $usesXendit ? now()->addHour() : null,
+>>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
             ]);
 
             return $booking;
         });
 
+<<<<<<< HEAD
         // Jadwalkan release otomatis jika tidak ada konfirmasi bayar dalam 10 menit
+=======
+        // ── Panggil Xendit API di luar transaksi ─────────────────────────────
+        if (!$usesXendit) {
+            return [
+                'booking' => $booking->load(['service', 'slot', 'slots', 'payment']),
+                'payment_url' => null,
+                'expires_at' => null,
+            ];
+        }
+
+        $booking->load(['service', 'customer', 'payment']);
+
+        try {
+            $invoiceData = $this->xendit->createInvoice($booking);
+        } catch (\Throwable $exception) {
+            $this->cancelBooking($booking);
+
+            throw $exception;
+        }
+
+        // Update payment dengan data dari Xendit
+        $booking->payment->update([
+            'xendit_invoice_id'  => $invoiceData['xendit_invoice_id'],
+            'xendit_external_id' => $invoiceData['xendit_external_id'],
+            'payment_url'        => $invoiceData['payment_url'],
+            'expires_at'         => $invoiceData['expires_at'],
+        ]);
+
+        // Jadwalkan release otomatis jika tidak bayar dalam 1 jam
+>>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
         ReleaseExpiredBookingJob::dispatch($booking->id)
             ->delay($expiresAt);
 
@@ -281,6 +347,10 @@ class BookingService
     public function cancelBooking(Booking $booking): void
     {
         DB::transaction(function () use ($booking) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status !== BookingStatus::PENDING->value) {
+                throw ValidationException::withMessages(['status' => ['Pesanan tidak bisa dibatalkan.']]);
+            }
             // Release semua slot yang dikunci booking ini via pivot booking_slots
             $this->releaseBookingSlots($booking);
 

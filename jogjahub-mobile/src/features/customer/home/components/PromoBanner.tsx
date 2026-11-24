@@ -1,56 +1,43 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, radius, typography } from '../../../../constants/theme';
+import { customerColors } from '../../../../constants/theme/customer';
 
 interface PromoBannerProps {
   title: string;
   subtitle: string;
-  ctaLabel: string;
-  onPress?: () => void;
 }
 
-export default function PromoBanner({ title, subtitle, ctaLabel, onPress }: PromoBannerProps) {
+export default function PromoBanner({ title, subtitle }: PromoBannerProps) {
   return (
     <View style={styles.container}>
+      <View pointerEvents="none" style={styles.accent} />
+      <View pointerEvents="none" style={styles.ring} />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
-      <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.85}>
-        <Text style={styles.buttonText}>{ctaLabel}</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1565C0',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: customerColors.hero,
+    borderRadius: radius.xl,
+    padding: 22,
+    minHeight: 144,
+    justifyContent: 'center',
+    overflow: 'hidden',
     marginHorizontal: 20,
     marginTop: 16,
   },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
+  accent: {
+    position: 'absolute', width: 176, height: 176, borderRadius: 88,
+    right: -90, top: -54, backgroundColor: customerColors.heroAccent,
   },
-  subtitle: {
-    color: '#E3F2FD',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 16,
-    maxWidth: '85%',
+  ring: {
+    position: 'absolute', width: 210, height: 210, borderRadius: 105,
+    right: -109, top: -70, borderWidth: 1, borderColor: customerColors.heroAccent,
   },
-  button: {
-    backgroundColor: '#FFFFFF',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-  },
-  buttonText: {
-    color: '#1565C0',
-    fontWeight: '700',
-    fontSize: 13,
-  },
+  title: { ...typography.headlineXl, color: colors.onNavy, marginBottom: 6 },
+  subtitle: { ...typography.bodyMd, color: customerColors.onHeroMuted, maxWidth: 260 },
 });

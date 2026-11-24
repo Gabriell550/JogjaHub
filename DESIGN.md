@@ -1,4 +1,4 @@
-# JogjaHub · Desain dashboard tenant mobile
+# JogjaHub · Desain mobile tenant dan customer
 
 **Baseline implementasi** [PR #84 · add tab navigator motion](https://github.com/Gabriell550/JogjaHub/pull/84), commit `105e87325a9be9425f6131ca480c3b3f5945dc5e` pada `mobile-app`. Gunakan baseline tersebut untuk implementasi karena sudah memuat Rubber Dock. Dokumen ini menjadi spesifikasi untuk perubahan UI berikutnya.
 
@@ -7,7 +7,7 @@
 - Redesign isi `Dashboard → DashboardHome` untuk tenant yang disetujui di aplikasi iOS dan Android. Dock merupakan bagian navigator tenant sehingga tampil konsisten pada kelima tab, termasuk saat membuka layar turunan. Layar tujuan mempertahankan isi dan gayanya.
 - Perubahan yang diizinkan meliputi susunan komponen, tata letak, token lokal, copy presentasi, styling, ukuran area sentuh, label aksesibilitas, dan penempatan dock serta lapisan animasi. Pertahankan pengaturan orientasi portrait dan tema aplikasi yang ada.
 - Pertahankan identifier, urutan, parameter, handler navigasi, event tab dan state stack, serta seluruh logika dashboard, sumber data, endpoint, bentuk request/response, otorisasi, izin perangkat, Redux, dan penyimpanan lokal. `RootNavigator` tetap menormalisasi role `tenant` ke `vendor` dan membatasi `VendorTabNavigator` ke `tenantStatus === 'approved'`.
-- Customer, admin, auth/onboarding, Expo Web, web JogjaHub, backend, dan konfigurasi lingkungan berada di luar ruang lingkup. Gunakan dependensi yang sudah tersedia. Jika berbagi `RubberDockTabBar`, aktifkan varian baru secara eksplisit dari `VendorTabNavigator` pada iOS/Android. Tampilan dan interaksi default customer mengikuti PR #84.
+- Bagian dashboard ini mencakup tenant native. Implementasi customer didokumentasikan pada bagian Desain customer mobile. Admin, auth/onboarding, Expo Web, web JogjaHub, backend, dan konfigurasi lingkungan berada di luar cakupan desain.
 
 ## Baseline yang ditinjau
 
@@ -177,8 +177,71 @@ Rujukan implementasi. [React Navigation v6 · Bottom Tabs Navigator](https://rea
 - [ ] Uji dock pada kelima tab dan layar turunan, termasuk input ber-keyboard. Ketuk, ketuk ulang, long press, geser, buka/tutup panel, jalankan setiap pintasan panel, dan gunakan Android Back saat panel terbuka. Pastikan hitbox tab stabil, panel terbuka ke atas, dan tidak ada lompatan atau clipping pada transisi.
 - [ ] Uji Reduce Motion, VoiceOver/TalkBack, dan teks sistem besar (minimal ~200% bila perangkat mendukung), termasuk layar 320 dp, nama usaha panjang, dan nominal Rupiah panjang. Pastikan target aktif 48 dp, indikator fokus terbaca, dan label atau aksi tidak hilang saat wrap. Nominal tersembunyi tidak dibaca.
 - [ ] Uji toggle toko, mata, refresh, layanan loading/kosong/berisi/foto gagal/API gagal, grafik kosong, pesanan baru kosong/berisi, detail dan tandai dilihat. Pastikan perubahan status baca bertahan setelah reload sesuai perilaku saat ini.
-- [ ] Bandingkan customer dock dengan baseline PR #84. Verifikasi tampilan dan tujuan customer, admin, tenant pending/rejected, serta Expo Web memakai perilaku yang sudah ada.
+- [ ] Verifikasi tujuan tab tenant dan perilaku role admin, tenant pending/rejected, serta Expo Web.
 
 ## Asumsi dan batas verifikasi
 
 Arah visual berasal dari gambar `image(3).png` yang diberikan bersama brief. Pemilihan hijau gelap, canvas hangat, urutan seksi, dan batas dimensi di atas adalah keputusan desain usulan. Audit baseline dilakukan dari source dan diff pada commit acuan. Pengukuran visual serta perilaku iOS dan Android masih perlu diverifikasi ketika spesifikasi diimplementasikan. Data contoh dashboard, kontrol dompet/ulasan, dan status toko lokal adalah kondisi yang sudah ada.
+
+## Desain customer mobile
+
+Beranda memakai kanvas krem, judul Lexend, isi Inter, dan aksen oranye JogjaHub. Header menampilkan lokasi Yogyakarta dan notifikasi. Pencarian, kategori, dan Lihat semua pada Rekomendasi Layanan membuka Jelajah. Nama dan ID kategori mengikuti API. Penginapan, Beauty & Style, Gifting, dan Dokumentasi masing-masing memakai ikon tempat tidur, palet, hadiah, dan kamera.
+
+### Jelajah
+
+Filter **Semua**, **Toko**, dan **Layanan** mempertahankan kata kunci dan kategori. Semua menampilkan dua baris horizontal dengan sebagian kartu berikutnya terlihat. Layanan tampil lebih dulu, kecuali nama toko cocok persis setelah huruf dan spasi dinormalisasi. **Lihat semua** membuka daftar vertikal untuk jenis hasil terkait, dengan aksi **Muat lagi**. Hasil punya status memuat, kosong, dan gagal tersendiri.
+
+Kartu toko menampilkan logo, nama, kota jika tersedia, dan kategori. Satu UUID membuka satu Profil Toko. Endpoint publik toko mencakup tenant approved tanpa syarat koordinat. Filter kategori mensyaratkan layanan aktif di kategori itu. Profil Toko tetap menampilkan semua layanan aktif toko.
+
+Kartu layanan menampilkan foto, nama layanan, toko, dan harga Rupiah. Foto, judul, dan **Lihat detail** di Beranda, Jelajah, dan Katalog buka Detail Layanan dengan ID yang sama. Baris layanan di Profil Toko memiliki thumbnail dan membuka layar yang sama.
+
+### Bottom bar customer
+
+Urutan dock adalah **Beranda · Jelajah · Pesanan · Pesan · Profil**. iOS dan Android memakai permukaan Rubber Dock mengambang dengan footer krem yang mengisi area aman bawah. Konten bisa digulir sampai elemen terakhir di atas footer. Pesanan memakai ikon kalender dan Pesan memakai gelembung chat.
+
+Pesan menampilkan inbox tenant dan badge dari jumlah pesan belum dibaca. Badge diperbarui ketika kembali ke tab customer atau inbox. **Chat toko** dari Profil Toko dan Detail Layanan membuka percakapan berdasarkan UUID tenant. Dari Detail Layanan, kolom pesan berisi draf yang bisa diedit sebelum dikirim.
+
+### Detail Layanan dan konfirmasi
+
+~~~text
+┌─────────────────────────────────────────┐
+│ [‹]                                     │
+│              Foto utama                 │
+│ [ Foto 1 ] [ Foto 2 ] [ Foto 3 ]         │
+│ Nama layanan                            │
+│ Subkategori · Toko                      │
+│ Rp… per malam / per sesi                │
+│ Deskripsi               ★ 4,8 (12 ulasan)│
+│ Ketersediaan                            │
+│ [ Check-in / tanggal ]                  │
+│ [ Check-out / jam ]                     │
+├─────────────────────────────────────────┤
+│ [ Chat toko ]   [ Pilih jadwal / Pesan ] │
+│              Area aman bawah            │
+└─────────────────────────────────────────┘
+~~~
+
+Galeri memakai latar oranye muda, rasio foto utama 4:3, dan thumbnail horizontal untuk lebih dari satu foto. Urutan foto dimulai dari foto utama, lalu berdasarkan sort order. Kartu, galeri, dan thumbnail Profil Toko memakai penentu URL yang sama. Foto utama yang gagal memicu percobaan foto berikutnya, logo toko, lalu placeholder. Thumbnail galeri menampilkan placeholder jika foto pilihannya gagal.
+
+Bagian ringkasan menampilkan subkategori, nama toko yang membuka Profil Toko, harga dan satuannya, deskripsi, serta nilai dan jumlah ulasan. Detail menampilkan indikator saat memuat, aksi **Coba lagi** saat gagal, dan status **Layanan tidak tersedia** jika layanan mengembalikan 404.
+
+Penginapan memilih check-in dan check-out dengan malam yang tersedia berurutan. Layanan dengan slot memilih tanggal dan jam. Layanan tanpa slot dapat langsung dipesan. **Pilih jadwal** menggulir ke Ketersediaan. Setelah pilihan lengkap, **Pesan layanan** memeriksa kembali harga dan slot lalu membuka ringkasan dengan pilihan yang sama. Konfirmasi memeriksa ulang sebelum membuat pesanan dan menawarkan kembali ke pemilihan jika slot habis. Alur transaksi yang berlaku diteruskan setelah pesanan dibuat.
+
+| Peran | Token yang dipakai |
+| --- | --- |
+| Kanvas dan garis kartu | customerColors.canvas (#FAF7F2) dan customerColors.border (#E6DED4) |
+| Hero dan thumbnail aktif | colors.primaryFixed (#FFDBCC) dan colors.primary (#A04100) |
+| Kartu harga dan footer | colors.surfaceContainerLowest (#FFFFFF) |
+| Harga dan bintang ulasan | colors.primary (#A04100) |
+| Tombol Pesan layanan | colors.primaryContainer (#FF6B00) dan colors.onPrimaryFixed (#351000) |
+| Judul dan metadata | colors.navy dan colors.onSurfaceVariant |
+
+Skenario uji perangkat dicatat di [CUSTOMER-MOBILE-HANDOFF.md](CUSTOMER-MOBILE-HANDOFF.md).
+
+### Penyelesaian pesanan
+
+Tenant membuka Rincian Pesanan dan menekan **Tandai selesai** setelah menyerahkan layanan. Untuk pesanan terjadwal, tombol tersedia setelah akhir slot atau pada tanggal check-out dalam WIB. Pesanan kemudian berstatus **Menunggu konfirmasi selesai** di kedua sisi.
+
+Aktivitas Pesanan menampilkan waktu penandaan dan membuka Detail Pesanan. Customer dapat menekan **Konfirmasi selesai** atau mengisi alasan melalui **Laporkan kendala**. Kedua pihak melihat alasan dan waktu laporan, serta dapat melanjutkan percakapan di chat toko. Pesanan tetap menunggu sampai customer mengonfirmasi. Setelah konfirmasi, Detail Pesanan menampilkan waktu penyelesaian dan **Beri ulasan** bila pesanan belum pernah diulas.
+
+Pengingat di Aktivitas Pesanan muncul sekali setelah ambang waktu yang dikonfigurasi, selama pesanan masih menunggu dan customer belum melaporkan kendala. Daftar Pesanan dan tampilan tenant mengenali status menunggu dan selesai.

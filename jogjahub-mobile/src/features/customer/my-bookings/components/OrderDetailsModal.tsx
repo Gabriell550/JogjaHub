@@ -41,10 +41,7 @@ export default function OrderDetailsModal({
   if (!booking) return null;
 
   const isPaid =
-    booking.payment_status.toLowerCase().includes('lunas') ||
-    booking.status === 'confirmed' ||
-    booking.status === 'shipping' ||
-    booking.status === 'completed';
+    booking.payment_status === 'Lunas';
 
   return (
     <Modal

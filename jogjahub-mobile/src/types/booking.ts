@@ -1,4 +1,6 @@
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+import type { BookingRecord } from './bookingRecord';
+
+export type BookingStatus = BookingRecord['status'];
 
 export interface Booking {
   id: string;

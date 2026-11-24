@@ -20,7 +20,7 @@ interface SlotsResponse {
 interface BookingResponse {
   success: boolean;
   message: string;
-  data: { uuid: string };
+  data: { uuid: string; whatsapp_url?: string | null };
   payment_url: string | null;
   expires_at: string | null;
 }
@@ -135,12 +135,13 @@ export function ServiceBookingPanel({ serviceId, subcategoryId }: ServiceBooking
       }
 
       const response = await apiPost<BookingResponse>("/customer/bookings", payload);
-      if (response.payment_url) {
-        window.location.assign(response.payment_url);
+      const checkoutUrl = response.data?.whatsapp_url ?? response.payment_url;
+      if (checkoutUrl) {
+        window.location.assign(checkoutUrl);
         return;
       }
 
-      setBookingNotice(`Booking ${response.data.uuid} berhasil dibuat, tetapi backend tidak mengembalikan tautan pembayaran.`);
+      setBookingNotice(`Booking ${response.data.uuid} berhasil dibuat, tetapi backend tidak mengembalikan tautan untuk melanjutkan pesanan.`);
     } catch (error: unknown) {
       setBookingError(error instanceof Error ? error.message : "Booking gagal dibuat. Silakan coba lagi.");
       setLoadingAvailability(true);
@@ -187,7 +188,7 @@ export function ServiceBookingPanel({ serviceId, subcategoryId }: ServiceBooking
           {bookingError ? <p role="alert" className="mt-3 text-sm font-medium text-red-800">{bookingError}</p> : null}
           {bookingNotice ? <p role="status" className="mt-3 text-sm font-medium text-green-800">{bookingNotice}</p> : null}
           <button type="submit" disabled={submitting} className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#FF6B00] px-5 font-bold text-[#121C2A] transition hover:bg-[#E85F00] disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
-            {submitting ? "Memproses booking..." : "Booking dan lanjutkan pembayaran"}
+            {submitting ? "Memproses booking..." : "Pesan lewat WhatsApp"}
           </button>
         </form>
       ) : null}
@@ -208,7 +209,7 @@ export function ServiceBookingPanel({ serviceId, subcategoryId }: ServiceBooking
           {bookingError ? <p role="alert" className="text-sm font-medium text-red-800">{bookingError}</p> : null}
           {bookingNotice ? <p role="status" className="text-sm font-medium text-green-800">{bookingNotice}</p> : null}
           <button type="submit" disabled={submitting || slots.length === 0} className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#FF6B00] px-5 font-bold text-[#121C2A] transition hover:bg-[#E85F00] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
-            {submitting ? "Memproses booking..." : slots.length === 0 ? "Tidak ada tanggal tersedia" : "Booking dan lanjutkan pembayaran"}
+            {submitting ? "Memproses booking..." : slots.length === 0 ? "Tidak ada tanggal tersedia" : "Pesan lewat WhatsApp"}
           </button>
         </form>
       ) : null}
@@ -233,7 +234,7 @@ export function ServiceBookingPanel({ serviceId, subcategoryId }: ServiceBooking
           {bookingError ? <p role="alert" className="mt-3 text-sm font-medium text-red-800">{bookingError}</p> : null}
           {bookingNotice ? <p role="status" className="mt-3 text-sm font-medium text-green-800">{bookingNotice}</p> : null}
           <button type="submit" disabled={submitting || slots.length === 0} className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#FF6B00] px-5 font-bold text-[#121C2A] transition hover:bg-[#E85F00] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
-            {submitting ? "Memproses booking..." : "Booking dan lanjutkan pembayaran"}
+            {submitting ? "Memproses booking..." : "Pesan lewat WhatsApp"}
           </button>
         </form>
       ) : null}
