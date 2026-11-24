@@ -6,18 +6,11 @@ import { colors, typography, spacing, radius } from '../../../../constants/theme
 
 type Props = {
   businessName: string;
-  isOpen: boolean;
-  onToggleOpen: () => void;
   onPressBell?: () => void;
   onPressAvatar?: () => void;
 };
 
-// Header gelap dashboard vendor: logo app + notifikasi + avatar di baris atas,
-// sapaan + nama bisnis + status Buka/Tutup Toko di baris bawah.
-// Status Buka/Tutup ini BUKAN dekorasi — menentukan apakah vendor masih bisa menerima booking baru.
-// TODO: begitu vendorApi siap, ganti `isOpen` jadi field asli dari vendorApi.getMyProfile(),
-// dan panggil vendorApi.updateMyProfile({ isOpen }) tiap kali di-toggle.
-export function VendorHeaderBar({ businessName, isOpen, onToggleOpen, onPressBell, onPressAvatar }: Props) {
+export function VendorHeaderBar({ businessName, onPressBell, onPressAvatar }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -33,7 +26,6 @@ export function VendorHeaderBar({ businessName, isOpen, onToggleOpen, onPressBel
         <View style={styles.actionsRow}>
           <Pressable style={styles.iconBtn} onPress={onPressBell} hitSlop={8}>
             <Bell size={18} color={colors.onNavy} />
-            <View style={styles.notifDot} />
           </Pressable>
           <Pressable style={styles.iconBtn} onPress={onPressAvatar} hitSlop={8}>
             <User size={18} color={colors.onNavy} />
@@ -45,10 +37,6 @@ export function VendorHeaderBar({ businessName, isOpen, onToggleOpen, onPressBel
 
       <View style={styles.nameRow}>
         <Text style={styles.businessName} numberOfLines={1}>{businessName} </Text>
-        <Pressable style={[styles.statusPill, isOpen ? styles.statusOpen : styles.statusClosed]} onPress={onToggleOpen}>
-          <View style={[styles.statusDot, { backgroundColor: isOpen ? colors.accentGreen : colors.onSurfaceVariant }]} />
-          <Text style={styles.statusText}>{isOpen ? 'Toko Buka' : 'Toko Tutup'}</Text>
-        </Pressable>
       </View>
     </View>
   );

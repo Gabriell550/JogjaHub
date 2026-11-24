@@ -1,4 +1,4 @@
-# JogjaHub · Desain dashboard tenant mobile
+# JogjaHub · Desain mobile tenant dan customer
 
 **Baseline implementasi** [PR #84 · add tab navigator motion](https://github.com/Gabriell550/JogjaHub/pull/84), commit `105e87325a9be9425f6131ca480c3b3f5945dc5e` pada `mobile-app`. Gunakan baseline tersebut untuk implementasi karena sudah memuat Rubber Dock. Dokumen ini menjadi spesifikasi untuk perubahan UI berikutnya.
 
@@ -7,7 +7,7 @@
 - Redesign isi `Dashboard → DashboardHome` untuk tenant yang disetujui di aplikasi iOS dan Android. Dock merupakan bagian navigator tenant sehingga tampil konsisten pada kelima tab, termasuk saat membuka layar turunan. Layar tujuan mempertahankan isi dan gayanya.
 - Perubahan yang diizinkan meliputi susunan komponen, tata letak, token lokal, copy presentasi, styling, ukuran area sentuh, label aksesibilitas, dan penempatan dock serta lapisan animasi. Pertahankan pengaturan orientasi portrait dan tema aplikasi yang ada.
 - Pertahankan identifier, urutan, parameter, handler navigasi, event tab dan state stack, serta seluruh logika dashboard, sumber data, endpoint, bentuk request/response, otorisasi, izin perangkat, Redux, dan penyimpanan lokal. `RootNavigator` tetap menormalisasi role `tenant` ke `vendor` dan membatasi `VendorTabNavigator` ke `tenantStatus === 'approved'`.
-- Customer, admin, auth/onboarding, Expo Web, web JogjaHub, backend, dan konfigurasi lingkungan berada di luar ruang lingkup. Gunakan dependensi yang sudah tersedia. Jika berbagi `RubberDockTabBar`, aktifkan varian baru secara eksplisit dari `VendorTabNavigator` pada iOS/Android. Tampilan dan interaksi default customer mengikuti PR #84.
+- Bagian dashboard ini mencakup tenant native. Implementasi customer didokumentasikan pada bagian Desain customer mobile. Admin, auth/onboarding, Expo Web, web JogjaHub, backend, dan konfigurasi lingkungan berada di luar cakupan desain.
 
 ## Baseline yang ditinjau
 
@@ -177,8 +177,27 @@ Rujukan implementasi. [React Navigation v6 · Bottom Tabs Navigator](https://rea
 - [ ] Uji dock pada kelima tab dan layar turunan, termasuk input ber-keyboard. Ketuk, ketuk ulang, long press, geser, buka/tutup panel, jalankan setiap pintasan panel, dan gunakan Android Back saat panel terbuka. Pastikan hitbox tab stabil, panel terbuka ke atas, dan tidak ada lompatan atau clipping pada transisi.
 - [ ] Uji Reduce Motion, VoiceOver/TalkBack, dan teks sistem besar (minimal ~200% bila perangkat mendukung), termasuk layar 320 dp, nama usaha panjang, dan nominal Rupiah panjang. Pastikan target aktif 48 dp, indikator fokus terbaca, dan label atau aksi tidak hilang saat wrap. Nominal tersembunyi tidak dibaca.
 - [ ] Uji toggle toko, mata, refresh, layanan loading/kosong/berisi/foto gagal/API gagal, grafik kosong, pesanan baru kosong/berisi, detail dan tandai dilihat. Pastikan perubahan status baca bertahan setelah reload sesuai perilaku saat ini.
-- [ ] Bandingkan customer dock dengan baseline PR #84. Verifikasi tampilan dan tujuan customer, admin, tenant pending/rejected, serta Expo Web memakai perilaku yang sudah ada.
+- [ ] Verifikasi tujuan tab tenant dan perilaku role admin, tenant pending/rejected, serta Expo Web.
 
 ## Asumsi dan batas verifikasi
 
 Arah visual berasal dari gambar `image(3).png` yang diberikan bersama brief. Pemilihan hijau gelap, canvas hangat, urutan seksi, dan batas dimensi di atas adalah keputusan desain usulan. Audit baseline dilakukan dari source dan diff pada commit acuan. Pengukuran visual serta perilaku iOS dan Android masih perlu diverifikasi ketika spesifikasi diimplementasikan. Data contoh dashboard, kontrol dompet/ulasan, dan status toko lokal adalah kondisi yang sudah ada.
+
+## Desain customer mobile
+
+Beranda menggunakan kanvas krem hangat dan hierarki visual dari referensi. Header menampilkan merek JogjaHub, lokasi Yogyakarta, dan tombol notifikasi. Kolom pencarian berada di atas hero hijau “Wisuda Besok?”, diikuti kategori, rekomendasi vendor yang bisa digeser, dan peta Yogyakarta. Foto tetap berasal dari data vendor. Hero menggunakan bidang warna dan aksen lingkaran agar teks tetap terbaca.
+
+| Elemen | Implementasi |
+| --- | --- |
+| Warna | Kanvas '#FAF7F2' dan garis '#E6DED4' berbagi token tenant. Hero hijau '#0B5D48', judul navy, permukaan kartu putih, dan aksen oranye dari tema JogjaHub. |
+| Tipografi | Lexend untuk judul dan Inter untuk isi, metadata, serta label. |
+| Kategori | Empat slot setara dengan ikon beraksen oranye dan teks yang dapat membungkus. Urutannya Hotel, Beauty&Style, Gifting, Photo. ID, ikon, serta tujuan kategori mengikuti implementasi sebelumnya. Hotel membuka HotelBooking, sedangkan tiga lainnya membuka Catalog. |
+| Katalog dan kartu vendor | Katalog memakai kanvas yang sama. Kartu menampilkan foto, kategori, rating, lokasi, favorit, harga, dan tombol Pesan. Ketukan pada foto menggunakan handler VendorDetail yang sudah disediakan Beranda dan Katalog. |
+| Detail vendor | Tombol kembali berada di atas judul. Foto besar diikuti kartu layanan yang menuju pemesanan. Tombol WhatsApp menetap di footer saat vendor memiliki nomor. |
+| Isi dan data | Beranda memakai data rekomendasi dan state favorit yang sudah ada. Logika pencarian Katalog, request detail vendor, parameter pemesanan, dan tujuan peta dipertahankan. Tombol promo dan Lihat Semua yang sebelumnya berupa placeholder dihapus dari Beranda. |
+
+### Bottom bar customer
+
+iOS dan Android memakai varian Rubber Dock tenant melalui CustomerTabNavigator. Permukaan putih membulat dan berbayang mengambang pada footer krem selebar layar. Dock memakai margin sisi 12 dp, atau 8 dp pada layar sempit, dengan lebar maksimum 560 dp. Footer mengisi safe area bawah sampai tepi layar. Konten mendapat ruang tersendiri di atas footer sehingga baris terakhir tetap bisa dijangkau.
+
+Tiga slot tetap berurutan Beranda, Pesanan, Profil. Indikator aktif, gestur, animasi, dan panel pintasan memakai komponen yang sama dengan tenant. Dock tampil pada tiga tab utama. Layar yang dibuka melalui CustomerStackNavigator, seperti Katalog dan Detail Vendor, memiliki navigasi kembali sendiri. Expo Web memakai varian dock sebelumnya.

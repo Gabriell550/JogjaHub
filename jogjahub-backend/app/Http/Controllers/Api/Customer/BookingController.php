@@ -17,8 +17,9 @@ class BookingController extends Controller
     {
         $bookings = Booking::where('customer_id', $request->user()->id)
             // Load relasi slot (single-slot) DAN slots (multi-slot hotel) + payment untuk total_amount
-            ->with(['service.tenant', 'slot', 'slots', 'payment'])
+            ->with(['service.tenant', 'service.subcategory', 'slot', 'slots', 'review', 'payment'])
             ->latest()
+            ->orderByDesc('id')
             ->paginate(15);
 
         return BookingResource::collection($bookings)->additional(['success' => true]);

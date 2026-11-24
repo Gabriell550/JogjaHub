@@ -34,7 +34,7 @@ export default function ServiceDetailScreen() {
     let isMounted = true;
     (async () => {
       try {
-        const res = await vendorApi.getServiceDetail(params.service.id);
+        const res = await vendorApi.getMyServiceDetail(params.service.id);
         const detail = res.data?.data;
         if (isMounted && detail) {
           setService((prev) => ({ ...prev, ...detail }));
@@ -118,17 +118,17 @@ export default function ServiceDetailScreen() {
             <>
               <View style={styles.statItem}>
                 <ShoppingBag size={16} color={colors.primary} />
-                <Text style={styles.statText}>{service.confirmed_bookings_count ?? 0} dipesan</Text>
+                <Text style={styles.statText}>{service.bookings_count ?? 0} dipesan</Text>
               </View>
               <View style={styles.statItem}>
                 <Star size={16} color="#F5A623" fill="#F5A623" />
                 <Text style={styles.statText}>
-                  {service.reviews_average_rating != null ? service.reviews_average_rating.toFixed(1) : '-'}
+                  {service.reviews_avg_rating != null ? service.reviews_avg_rating.toFixed(1) : '-'}
                 </Text>
               </View>
               <View style={styles.statItem}>
                 <MessageSquare size={16} color={colors.secondary} />
-                <Text style={styles.statText}>{service.reviews_counts ?? 0} ulasan</Text>
+                <Text style={styles.statText}>{service.reviews_count ?? 0} ulasan</Text>
               </View>
             </>
           )}

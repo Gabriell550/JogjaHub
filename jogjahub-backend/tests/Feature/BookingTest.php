@@ -9,6 +9,7 @@ use App\Models\Subcategory;
 use App\Models\TenantProfile;
 use App\Models\TimeSlot;
 use App\Models\User;
+use App\Services\XenditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -82,6 +83,28 @@ class BookingTest extends TestCase
             'id'           => $slot->id,
             'booked_count' => 1,  // ← harus bertambah saat booking dibuat
         ]);
+    }
+
+    public function test_invoice_failure_releases_reserved_slot(): void
+    {
+        $customer = User::factory()->customer()->create();
+        $tenant = TenantProfile::factory()->approved()->create();
+        $subcategory = Subcategory::factory()->requiresSlot()->create();
+        $service = Service::factory()->create(['tenant_id' => $tenant->id, 'subcategory_id' => $subcategory->id]);
+        $slot = TimeSlot::factory()->create(['service_id' => $service->id, 'quota' => 1, 'booked_count' => 0]);
+
+        $this->mock(XenditService::class, function ($mock) {
+            $mock->shouldReceive('createInvoice')->once()->andThrow(new \RuntimeException('Invoice unavailable'));
+        });
+
+        $this->actingAs($customer)->postJson('/api/v1/customer/bookings', [
+            'service_id' => $service->id,
+            'slot_id' => $slot->id,
+        ])->assertServerError();
+
+        $this->assertSame(0, $slot->fresh()->booked_count);
+        $this->assertDatabaseHas('bookings', ['status' => 'cancelled', 'slot_id' => $slot->id]);
+        $this->assertDatabaseHas('payments', ['status' => 'failed']);
     }
 
     public function test_booking_gagal_jika_slot_penuh()

@@ -56,30 +56,28 @@ export type AdminStackParamList = {
 };
 
 export type CustomerStackParamList = {
-  CustomerTabs: undefined;
+  CustomerTabs: NavigatorScreenParams<CustomerTabParamList> | undefined;
   Notifications: undefined;
+  CustomerChats: undefined;
+  CustomerChatRoom: { id: number; name: string };
   HotelBooking: undefined;
-  Catalog: { categoryId: string; title?: string };
+  Catalog: { categoryId?: number; title?: string; query?: string };
   VendorDetail: {
     tenantUuid: string;
     businessName?: string;
     imageUrl?: string;
   };
-  Booking: {
-    serviceId?: number | string;
-    serviceName?: string;
-    vendorName?: string;
-    price?: number;
-  } | undefined;
+  Booking: { serviceId: number | string };
   BookingConfirmation: {
-    bookingId?: string | number;
-    serviceId?: number | string;
-    serviceName?: string;
-    vendorName?: string;
+    serviceId: number | string;
+    serviceName: string;
+    vendorName: string;
     date?: string;
     timeSlot?: string;
-    price?: number;
-    paymentMethod?: 'transfer' | 'cod';
+    price: number;
+    slotId?: number;
+    checkInDate?: string;
+    checkOutDate?: string;
   };
   // Tambahkan baris ini:
   EditCustomerProfile: undefined;
@@ -93,16 +91,7 @@ export type VendorDashboardStackParamList = {
 
 export type VendorOrdersStackParamList = {
   OrdersList: undefined;
-  OrderDetail: {
-    id: string;
-    order_code: string;
-    service_name: string;
-    customer_name: string;
-    customer_location: string;
-    price: number;
-    status: 'pending' | 'confirmed' | 'cancelled';
-    photo_url?: string;
-  };
+  OrderDetail: { id: string };
 };
 
 // Bentuk data layanan yang dipakai bareng oleh ServiceForm (edit) & ServiceDetail,
@@ -111,12 +100,14 @@ export type ServiceParam = {
   id: number;
   name: string;
   price: number;
+  price_type?: 'per_session' | 'per_night';
+  is_active?: boolean;
   description?: string;
   photos?: { url: string; is_primary: boolean; sort_order: number }[];
   subcategory?: { id: number; name: string; category?: { id: number; name: string } };
-  confirmed_bookings_count?: number;
-  reviews_average_rating?: number | null;
-  reviews_counts?: number;
+  bookings_count?: number;
+  reviews_avg_rating?: number | null;
+  reviews_count?: number;
 };
 
 // Stack kecil di dalam tab Listing — ServicesList (daftar layanan), ServiceForm (tambah/edit),

@@ -18,6 +18,8 @@ class UpdateServiceRequest extends FormRequest
             'name'           => 'sometimes|string|max:255',
             'description'    => 'nullable|string',
             'price'          => 'sometimes|numeric|min:0',
+            'is_active'     => 'sometimes|boolean',
+            'price_type'     => 'sometimes|in:per_session,per_night',
             'photos'         => 'nullable|array|max:10',
             'photos.*'       => 'image|mimes:jpeg,png,jpg,webp|max:5120',
             'remove_photos'  => 'nullable|array',

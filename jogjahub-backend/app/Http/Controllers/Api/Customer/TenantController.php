@@ -14,7 +14,7 @@ class TenantController extends Controller
         $tenant = TenantProfile::where('status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->select('id', 'business_name', 'latitude', 'longitude', 'whatsapp_number')
+            ->select('id', 'uuid', 'business_name', 'latitude', 'longitude', 'whatsapp_number')
             ->with('categories:id,name')
             ->get();
 
@@ -33,7 +33,7 @@ class TenantController extends Controller
             ], 404);
         }
 
-        $tenant->load(['categories', 'services' => fn($q) => $q->with('subcategory')]);
+        $tenant->load(['categories', 'services' => fn($q) => $q->where('is_active', true)->with('subcategory')]);
 
         return response()->json([
             'status' => "success",

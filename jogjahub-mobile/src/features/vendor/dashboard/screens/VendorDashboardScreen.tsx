@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useContext, useEffect, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, StatusBar, useWindowDimensions } from 'react-native';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -18,12 +18,10 @@ import type { VendorTabParamList, VendorDashboardStackParamList } from '../../..
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../../store';
 import { IconlyChart } from '../../../../components/icons/iconlyChart';
-import { IconlyCalendar } from '../../../../components/icons/iconlyCalendar';
 import { IconlyBag } from '../../../../components/icons/iconlyBag';
-import { IconlyTicket } from '../../../../components/icons/iconlyTicket';
-import { IconlyWallet } from '../../../../components/icons/iconlyWallet';
+import { bookingApi } from '../../../../api/bookingApi';
+import { type BookingRecord } from '../../../../types/bookingRecord';
 import { orderTracking } from '../../../../utils/orderTracking';
-import { PerformaCard } from '../components/PerformaCard';
 import { SaldoTokoCard } from '../components/SaldoTokoCard';
 import { MyServicesSection } from '../components/MyServicesSection';
 
@@ -42,57 +40,32 @@ type OrderType = {
   status: 'pending' | 'confirmed';
 };
 
-// TODO: ganti semua data mock di bawah dengan vendorApi.getMyProfile() + bookingApi.listIncomingBookings()
-// begitu endpoint vendor sudah tersedia dari backend. Bentuk datanya sudah disiapkan mendekati
-// response yang diharapkan supaya nanti tinggal ganti sumbernya, bukan tulis ulang tampilannya.
-
-const MOCK_SUMMARY = {
-  totalOrders: 128,
-  totalOrdersGrowthPercent: 12,
-  confirmedOrders: 5,
-  estimatedRevenue: 4_250_000,
-  completedRevenue: 3_800_000,
-  processingRevenue: 450_000,
-  storeRating: 4.9,
-  ratingCount: 2400,
-  avgResponseMinutes: 5,
-};
-
-const MOCK_ORDERS: OrderType[] = [
-  { id: '1', title: 'Anindhya Fathia Rizki', badgeLabel: 'TERBARU', buyerName: 'Andi Wijaya', timeAgo: '2 jam yang lalu', price: 75000, status: 'pending' },
-  { id: '2', title: 'Bouquet Matahari...', badgeLabel: 'DIPROSES', buyerName: 'Siti Khadijah', timeAgo: '6 jam yang lalu', price: 120000, status: 'confirmed' },
-  { id: '3', title: 'Paket Wisuda Premium', badgeLabel: 'TERBARU', buyerName: 'Budi Santoso', timeAgo: '30 menit lalu', price: 250000, status: 'pending' },
-  { id: '4', title: 'Foto Prewedding', badgeLabel: 'TERBARU', buyerName: 'Dewi Lestari', timeAgo: '1 jam yang lalu', price: 350000, status: 'pending' },
-];
-
-// TODO: 5 titik ini idealnya dari rekap booking per jam (bookingApi) begitu endpoint tenant
-// aktif. `peakHour` dipilih otomatis dari nilai tertinggi kalau nanti datanya dinamis.
-const MOCK_SALES_ACTIVITY = {
-  amount: 3_400_000,
-  growthPercent: 15,
-  completedCount: 18,
-  chartData: [
-    { hour: '08:00', value: 0.2 },
-    { hour: '11:00', value: 0.45 },
-    { hour: '14:00', value: 1 },
-    { hour: '17:00', value: 0.6 },
-    { hour: '20:00', value: 0.3 },
-  ],
-  peakHour: '14:00',
-  avgPerOrder: 188_800,
-};
-
 export default function VendorDashboardScreen() {
   const navigation = useNavigation<Nav>();
   const closedSceneHeight = useContext(TenantDockLayoutContext);
   const redesigned = closedSceneHeight !== null;
   const [refreshing, setRefreshing] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
-  const [orders, setOrders] = useState<OrderType[]>(MOCK_ORDERS);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [loadError, setLoadError] = useState(false);
   const [viewedOrderIds, setViewedOrderIds] = useState<Set<string>>(new Set());
   const businessName = useSelector(
   (state: RootState) => state.auth?.businessName
 );
+
+  const orders: OrderType[] = bookings.flatMap(booking => {
+    if (booking.status === 'cancelled') return [];
+    return [{
+      id: booking.uuid,
+      title: booking.service?.name ?? 'Layanan',
+      badgeLabel: booking.status === 'pending' ? 'TERBARU' : 'DIPROSES',
+      buyerName: booking.customer?.name ?? 'Pelanggan',
+      timeAgo: booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '',
+      price: Number(booking.total_amount ?? 0),
+      status: booking.status,
+    }];
+  });
+  const paidTotal = bookings.reduce((total, booking) =>
+    total + (booking.payment?.status === 'paid' ? Number(booking.total_amount ?? 0) : 0), 0);
 
   useEffect(() => {
     loadViewedOrders();
@@ -113,25 +86,7 @@ export default function VendorDashboardScreen() {
       setViewedOrderIds((prev) => new Set(prev).add(orderId));
     }
 
-    // FIX: 'OrderDetail' itu layar di DALAM stack Orders (VendorOrdersStackNavigator), bukan
-    // layar langsung yang dikenal dari stack Dashboard — jadi harus lewat nested navigation
-    // { screen, params }. Juga wajib kirim data booking LENGKAP (bukan cuma orderId), karena
-    // OrderDetailScreen baca field seperti price/order_code langsung dari route params.
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
-
-    navigation.navigate('Orders', {
-      screen: 'OrderDetail',
-      params: {
-        id: order.id,
-        order_code: `JH-${order.id.padStart(4, '0')}`,
-        service_name: order.title,
-        customer_name: order.buyerName,
-        customer_location: 'Yogyakarta', // TODO: ganti data asli begitu bookingApi sudah aktif
-        price: order.price,
-        status: order.status,
-      },
-    });
+    navigation.navigate('Orders', { screen: 'OrderDetail', params: { id: orderId }, initial: false });
   };
 
   const handleMarkAllViewed = async () => {
@@ -142,11 +97,19 @@ export default function VendorDashboardScreen() {
     }
   };
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // TODO: panggil ulang vendorApi/bookingApi di sini saat sudah tersambung.
-    setTimeout(() => setRefreshing(false), 800);
+    setLoadError(false);
+    try {
+      setBookings(await bookingApi.listAllBookings('tenant'));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
+
+  useFocusEffect(useCallback(() => { void onRefresh(); }, [onRefresh]));
 
   const actions = [
     {
@@ -157,27 +120,11 @@ export default function VendorDashboardScreen() {
       onPress: () => navigation.navigate('Listing'),
     },
     {
-      key: 'promo',
-      icon: IconlyWallet,
-      label: 'Dompet',
-      iconBg: colors.primaryFixed,
-      disabled: true,
-      onPress: () => {/* TODO */},
-    },
-    {
       key: 'stats',
       icon: IconlyChart,
       label: 'Statistik',
       iconBg: colors.accentGreenContainer,
       onPress: () => navigation.navigate('Statistics'),
-    },
-    {
-      key: 'reviews',
-      icon: IconlyTicket,
-      label: 'Ulasan',
-      iconBg: colors.grayPale,
-      disabled: true,
-      onPress: () => {/* TODO */},
     },
   ];
 
@@ -199,28 +146,14 @@ export default function VendorDashboardScreen() {
   const header = (
     <VendorHeaderBar
       businessName={businessName ?? 'Vendor'}
-      isOpen={isOpen}
-      onToggleOpen={() => setIsOpen((v) => !v)}
+      onPressBell={() => navigation.navigate('RecentActivity')}
+      onPressAvatar={() => navigation.navigate('Profile')}
     />
   );
   const hero = (
     <SaldoTokoCard
-      balance={MOCK_SUMMARY.estimatedRevenue}
-      onTarik={redesigned ? undefined : () => {/* TODO: fitur tarik dana belum ada di scope MVP PRD */}}
-      onRiwayat={redesigned ? undefined : () => {/* TODO: fitur riwayat dompet belum ada di scope MVP PRD */}}
+      balance={paidTotal}
       onPesanan={() => navigation.navigate('Orders')}
-    />
-  );
-  const performance = (
-    <PerformaCard
-      label="Pendapatan Hari Ini"
-      amount={MOCK_SALES_ACTIVITY.amount}
-      growthPercent={MOCK_SALES_ACTIVITY.growthPercent}
-      completedCount={MOCK_SALES_ACTIVITY.completedCount}
-      chartData={MOCK_SALES_ACTIVITY.chartData}
-      peakHour={MOCK_SALES_ACTIVITY.peakHour}
-      avgPerOrder={MOCK_SALES_ACTIVITY.avgPerOrder}
-      onSeeAnalysis={() => navigation.navigate('Statistics')}
     />
   );
   const quickActions = <QuickActionsGrid actions={actions} />;
@@ -246,9 +179,12 @@ export default function VendorDashboardScreen() {
       buyerName={order.buyerName}
       timeAgo={order.timeAgo}
       price={order.price}
-      icon={order.id === '2' ? IconlyCalendar : undefined}
+      onPress={() => handleOrderPress(order.id)}
     />
   );
+  const orderState = loadError
+    ? <Text onPress={onRefresh}>Pesanan gagal dimuat. Coba lagi.</Text>
+    : !refreshing && !orders.length ? <Text>Belum ada pesanan masuk.</Text> : null;
   const seeOrders = () => navigation.navigate('Orders');
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />;
 
@@ -262,7 +198,6 @@ export default function VendorDashboardScreen() {
       >
         <View style={tenantStyles.summary}>
           {quickActions}
-          {performance}
         </View>
         {services}
         {notifications}
@@ -273,8 +208,8 @@ export default function VendorDashboardScreen() {
               <Text style={dashboardStyles.linkText}>Lihat Semua</Text>
             </TenantPressable>
           </View>
-          <Text style={dashboardStyles.sample}>Data contoh</Text>
-          <View style={tenantStyles.orderList}>{MOCK_ORDERS.map(renderOrder)}</View>
+          {orderState}
+          <View style={tenantStyles.orderList}>{orders.slice(0, 4).map(renderOrder)}</View>
         </View>
       </TenantDashboardLayout>
     );
@@ -288,7 +223,6 @@ export default function VendorDashboardScreen() {
         refreshControl={refreshControl}
       >
         {hero}
-        {performance}
         <View style={{ height: spacing.stackMd }} />
         <View style={{ height: spacing.stackMd }} />
         {quickActions}
@@ -302,7 +236,8 @@ export default function VendorDashboardScreen() {
           <Text style={styles.sectionTitle}>Pesanan masuk</Text>
           <Text style={styles.seeAll} onPress={seeOrders}>Lihat Semua</Text>
         </View>
-        {MOCK_ORDERS.map((order) => (
+        {orderState}
+        {orders.slice(0, 4).map((order) => (
           <View key={order.id} style={{ marginBottom: spacing.stackSm }}>
             {renderOrder(order)}
           </View>

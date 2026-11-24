@@ -35,7 +35,7 @@ import { timeSlotApi } from '../../../../api/timeSlotApi';
 import { bookingApi } from '../../../../api/bookingApi';
 import AddSlotModal from '../components/AddSlotModal';
 
-type ServiceItem = { id: number; name: string; subcategoryId: number };
+type ServiceItem = { id: number; name: string; subcategoryId: number; perNight: boolean };
 type CategoryItem = { id: number; name: string; subcategories: { id: number }[] };
 type SlotItem = {
   id: number;
@@ -100,7 +100,7 @@ function parseServices(payload: unknown): ServiceItem[] {
     if (!Number.isInteger(id) || typeof item.name !== 'string' || !Number.isInteger(subcategoryId)) {
       throw new Error('Data layanan dari API tidak valid.');
     }
-    return { id, name: item.name, subcategoryId };
+    return { id, name: item.name, subcategoryId, perNight: item.price_type === 'per_night' };
   });
 }
 
@@ -409,7 +409,7 @@ export default function ManageCalendarScreen() {
       (subcategory) => subcategory.id === selectedService.subcategoryId,
     ))
     : undefined;
-  const isHotelService = selectedServiceCategory
+  const isHotelService = selectedService?.perNight ? true : selectedServiceCategory
     ? selectedServiceCategory.name.trim().toLocaleLowerCase('id-ID') === HOTEL_CATEGORY_NAME
     : null;
   const slotsForDate = useMemo(

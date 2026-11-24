@@ -1,30 +1,24 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Eye, EyeOff, ArrowUpRight, ArrowDownToLine, History, Package } from 'lucide-react-native';
+import { Eye, EyeOff, Package } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
 
 type Props = {
   balance: number;
-  onTarik?: () => void;
-  onRiwayat?: () => void;
   onPesanan?: () => void;
-  onPressDetail?: () => void; // panah kanan atas -> ke halaman Dompet
 };
 
 const formatRupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
 
 // Kartu hero oranye — beda dari kartu putih lain di dashboard, sengaja paling menonjol
 // karena ini angka yang paling sering dicek vendor tiap buka app.
-export function SaldoTokoCard({ balance, onTarik, onRiwayat, onPesanan, onPressDetail }: Props) {
+export function SaldoTokoCard({ balance, onPesanan }: Props) {
   const [hidden, setHidden] = useState(false);
 
   return (
     <View style={styles.card}>
       <View style={styles.topRow}>
-        <Text style={styles.label}>Saldo Toko</Text>
-        <Pressable onPress={onPressDetail} hitSlop={8}>
-          <ArrowUpRight size={18} color={colors.onPrimary} />
-        </Pressable>
+        <Text style={styles.label}>Total pembayaran diterima</Text>
       </View>
 
       <View style={styles.amountRow}>
@@ -35,18 +29,6 @@ export function SaldoTokoCard({ balance, onTarik, onRiwayat, onPesanan, onPressD
       </View>
 
       <View style={styles.actionsRow}>
-        <Pressable style={styles.actionItem} onPress={onTarik}>
-          <View style={styles.actionIcon}>
-            <ArrowDownToLine size={18} color={colors.onPrimary} />
-          </View>
-          <Text style={styles.actionLabel}>Tarik</Text>
-        </Pressable>
-        <Pressable style={styles.actionItem} onPress={onRiwayat}>
-          <View style={styles.actionIcon}>
-            <History size={18} color={colors.onPrimary} />
-          </View>
-          <Text style={styles.actionLabel}>Riwayat</Text>
-        </Pressable>
         <Pressable style={styles.actionItem} onPress={onPesanan}>
           <View style={styles.actionIcon}>
             <Package size={18} color={colors.onPrimary} />

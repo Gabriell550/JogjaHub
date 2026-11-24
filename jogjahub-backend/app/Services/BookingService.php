@@ -42,9 +42,9 @@ class BookingService
         $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
 
         // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
-        if (!$service->tenant || $service->tenant->status !== 'approved') {
+        if (!$service->is_active || !$service->tenant || $service->tenant->status !== 'approved') {
             throw ValidationException::withMessages([
-                'service_id' => ['Layanan ini belum tersedia karena tenant belum disetujui.'],
+                'service_id' => ['Layanan ini tidak tersedia untuk dipesan.'],
             ]);
         }
 
@@ -100,11 +100,15 @@ class BookingService
         });
 
         // ── Panggil Xendit API di luar transaksi ─────────────────────────────
-        // Kalau Xendit gagal → booking & payment sudah tersimpan dengan status pending.
-        // Job ReleaseExpiredBookingJob akan bersihkan otomatis setelah 1 jam.
         $booking->load(['service', 'customer', 'payment']);
 
-        $invoiceData = $this->xendit->createInvoice($booking);
+        try {
+            $invoiceData = $this->xendit->createInvoice($booking);
+        } catch (\Throwable $exception) {
+            $this->cancelBooking($booking);
+
+            throw $exception;
+        }
 
         // Update payment dengan data dari Xendit
         $booking->payment->update([

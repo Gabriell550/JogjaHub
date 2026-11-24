@@ -48,12 +48,13 @@ class ConversationController extends Controller
         $this->authorizeConversation($request->user(), $conversation);
 
         $messages = $conversation->messages()
-            ->latest()
+            ->latest('id')
             ->paginate(30);
 
         return response()->json([
             'success' => true,
             'data'    => MessageResource::collection($messages),
+            'last_page' => $messages->lastPage(),
         ]);
     }
 

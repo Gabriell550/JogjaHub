@@ -19,7 +19,7 @@ export type RubberDockPanel = {
 
 type Props = BottomTabBarProps & {
   panels: Record<string, RubberDockPanel>;
-  tenantLayout?: { usableHeight: number; onClosedHeightChange: (height: number) => void };
+  tenantLayout?: { usableHeight: number; onClosedHeightChange?: (height: number) => void };
 };
 
 const dockHeight = tabHeight + dockInset * 2;

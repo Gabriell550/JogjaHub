@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,66 +6,96 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Linking,
-  Platform,
+  Alert,
   ImageBackground,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, radius, typography } from '../../../../constants/theme';
+import { customerColors } from '../../../../constants/theme/customer';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { CustomerStackParamList } from '../../../../navigation/types';
 
 import PromoBanner from '../components/PromoBanner';
 import CategoryGrid from '../components/CategoryGrid';
 import VendorCard from '../components/VendorCard';
-import { verifiedVendors } from '../data/mockData';
+import { useCatalog } from '../../catalog/useCatalog';
+import { categoryApi } from '../../../../api/categoryApi';
+import { vendorApi } from '../../../../api/vendorApi';
 
 // Asset gambar peta Yogyakarta lokal
 const jogjaMapImage = require('../../../../assets/images/yogyakarta-map.png');
 
-export default function HomeScreen() {
-  const navigation = useNavigation<any>();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [vendors, setVendors] = useState(verifiedVendors);
+type MapVendor = { uuid: string; business_name: string; latitude: number | string; longitude: number | string };
 
-  const toggleFavorite = (id: string) => {
-    setVendors((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, isFavorite: !v.isFavorite } : v))
-    );
+export default function HomeScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<CustomerStackParamList>>();
+  const [searchQuery, setSearchQuery] = useState('');
+  const { cards: vendors, loading, error, retry } = useCatalog();
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [categoryError, setCategoryError] = useState(false);
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setCategoryError(false);
+    categoryApi.getCategories().then(({ data }) => {
+      if (active) setCategories(data.data);
+    }).catch(() => {
+      if (active) setCategoryError(true);
+    });
+    return () => { active = false; };
+  }, [categoryAttempt]);
+
+  const [locations, setLocations] = useState<MapVendor[]>();
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const loadLocations = async () => {
+    if (loadingLocations) return;
+    if (locations) {
+      setLocations(undefined);
+      return;
+    }
+    setLoadingLocations(true);
+    try {
+      const { data } = await vendorApi.listTenantsOnMap();
+      setLocations(data.data);
+    } catch {
+      Alert.alert('Lokasi vendor gagal dimuat', 'Coba lagi nanti.');
+    } finally {
+      setLoadingLocations(false);
+    }
   };
 
-  // Fungsi untuk membuka peta Yogyakarta di Google Maps / Apple Maps
-  const handleOpenMap = (latitude = -7.7956, longitude = 110.3695, query = 'Vendor Wisuda Yogyakarta') => {
-    const url = Platform.select({
-      ios: `maps:0,0?q=${encodeURIComponent(query)}@${latitude},${longitude}`,
-      android: `geo:${latitude},${longitude}?q=${encodeURIComponent(query)}`,
-    }) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-
-    Linking.canOpenURL(url)
-      .then((supported) => {
-        if (supported) {
-          Linking.openURL(url);
-        } else {
-          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
-        }
-      })
-      .catch(() => {
-        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
-      });
+  const openLocation = (vendor: MapVendor) => {
+    const coordinates = encodeURIComponent(vendor.latitude + ',' + vendor.longitude);
+    Linking.openURL('https://www.google.com/maps/search/?api=1&query=' + coordinates)
+      .catch(() => Alert.alert('Peta gagal dibuka'));
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#111827" />
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack?.()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Renter Dashboard</Text>
-        <TouchableOpacity hitSlop={10}>
-          <Ionicons name="search" size={20} color="#FFFFFF" />
+        <View style={styles.brand}>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandInitials}>JH</Text>
+          </View>
+          <View style={styles.brandCopy}>
+            <Text style={styles.headerTitle}>JogjaHub</Text>
+            <Text style={styles.headerLocation}>Yogyakarta</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={styles.notification}
+          onPress={() => navigation.navigate('Notifications')}
+          accessibilityRole="button"
+          accessibilityLabel="Aktivitas pesanan"
+        >
+          <Ionicons name="notifications-outline" size={22} color={colors.navy} />
         </TouchableOpacity>
       </View>
 
@@ -73,13 +103,16 @@ export default function HomeScreen() {
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={16} color="#9CA3AF" />
+            <Ionicons name="search" size={16} color={colors.onSurfaceVariant} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Cari Vendor Wisatamu"
-              placeholderTextColor="#9CA3AF"
+              placeholder="Cari vendor di Jogja"
+              accessibilityLabel="Cari vendor di Jogja"
+              placeholderTextColor={colors.onSurfaceVariant}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={() => navigation.navigate('Catalog', { query: searchQuery.trim() })}
             />
           </View>
         </View>
@@ -88,34 +121,14 @@ export default function HomeScreen() {
         <PromoBanner
           title="Wisuda Besok?"
           subtitle="Tenang, temukan vendor yang masih tersedia untuk hari spesialmu."
-          ctaLabel="Available Now"
-          onPress={() => {
-            // Arahkan ke kategori atau vendor tersedia
-          }}
         />
 
-        {/* Kategori */}
-        <CategoryGrid
-      onSelectCategory={(id) => {
-        if (id === 'hotel') {
-          navigation.navigate('HotelBooking');
-          return;
-        }
-        const titleMap: Record<string, string> = {
-          beauty: 'Beauty & Style',
-          gifting: 'Hadiah & Gifting',
-          photo: 'Fotografi',
-        };
-        navigation.navigate('Catalog', { categoryId: id, title: titleMap[id] ?? 'Katalog' });
-      }}
-    />
+        <CategoryGrid categories={categories} onSelectCategory={(categoryId, title) => navigation.navigate('Catalog', { categoryId, title })} />
+        {categoryError && <Text style={styles.sectionHeader} onPress={() => setCategoryAttempt(value => value + 1)}>Kategori gagal dimuat. Coba lagi.</Text>}
 
         {/* Rekomendasi Terverifikasi */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Rekomendasi Terverifikasi</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionLink}>Lihat Semua</Text>
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -123,7 +136,10 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.vendorList}
         >
-          {vendors.map((vendor) => (
+          {error && <Text onPress={retry}>Layanan gagal dimuat. Coba lagi.</Text>}
+          {loading && <Text>Memuat layanan...</Text>}
+          {!loading && !error && !vendors.length && <Text>Belum ada layanan tersedia.</Text>}
+          {vendors.slice(0, 8).map((vendor) => (
            <VendorCard
             key={vendor.id}
             vendor={vendor}
@@ -137,17 +153,13 @@ export default function HomeScreen() {
             onPressBook={() => {
               navigation.navigate('Booking', {
                 serviceId: vendor.id,
-                serviceName: vendor.name,
-                vendorName: vendor.name,
-                price: vendor.priceFrom,
               });
             }}
-            onToggleFavorite={() => toggleFavorite(vendor.id)}
           />
           ))}
         </ScrollView>
 
-        {/* Vendor di Sekitarmu */}
+        {/* Lokasi Vendor */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Vendor di Sekitarmu</Text>
         </View>
@@ -156,7 +168,9 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.mapCard}
           activeOpacity={0.9}
-          onPress={() => handleOpenMap()}
+          accessibilityRole="button"
+          disabled={loadingLocations}
+          onPress={loadLocations}
         >
           <ImageBackground
             source={jogjaMapImage}
@@ -172,114 +186,66 @@ export default function HomeScreen() {
               <Text style={styles.mapLocationText}>Yogyakarta & Sekitarnya</Text>
             </View>
 
-            {/* Pin Marker 1: GlowUp MUA Jogja */}
-            <View style={[styles.markerContainer, { top: '22%', left: '20%' }]}>
-              <View style={styles.markerBadge}>
-                <Ionicons name="sparkles" size={11} color="#EA580C" />
-                <Text style={styles.markerText}>GlowUp MUA</Text>
-              </View>
-              <View style={styles.markerDot} />
-            </View>
-
-            {/* Pin Marker 2: Grand Aston Hotel */}
-            <View style={[styles.markerContainer, { top: '35%', right: '22%' }]}>
-              <View style={styles.markerBadge}>
-                <Ionicons name="bed" size={11} color="#0284C7" />
-                <Text style={styles.markerText}>Grand Aston</Text>
-              </View>
-              <View style={styles.markerDot} />
-            </View>
-
-            {/* Pin Marker 3: Kado Wisuda Studio */}
-            <View style={[styles.markerContainer, { bottom: '26%', left: '40%' }]}>
-              <View style={styles.markerBadge}>
-                <Ionicons name="gift" size={11} color="#16A34A" />
-                <Text style={styles.markerText}>Kado Wisuda</Text>
-              </View>
-              <View style={styles.markerDot} />
-            </View>
-
             {/* Tombol Buka Peta */}
             <View style={styles.mapButton}>
               <Ionicons name="map" size={14} color="#FFFFFF" />
-              <Text style={styles.mapButtonText}>Buka Peta</Text>
+              <Text style={styles.mapButtonText}>{loadingLocations ? 'Memuat...' : locations ? 'Tutup daftar' : 'Lihat lokasi'}</Text>
             </View>
           </ImageBackground>
         </TouchableOpacity>
+        {locations && <View style={styles.locations}>
+          {locations.length === 0 && <Text>Belum ada lokasi vendor.</Text>}
+          {locations.map(vendor => (
+            <TouchableOpacity key={vendor.uuid} style={styles.locationLink} accessibilityRole="button" onPress={() => openLocation(vendor)}>
+              <Ionicons name="location-outline" size={18} color={colors.primary} />
+              <Text style={styles.locationName}>{vendor.business_name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  safeArea: { flex: 1, backgroundColor: customerColors.canvas },
   header: {
-    backgroundColor: '#111827',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 10, gap: 12,
   },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  brandCopy: { flexShrink: 1 },
+  brandMark: {
+    width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.navy,
+    alignItems: 'center', justifyContent: 'center',
   },
-  scrollContent: {
-    paddingBottom: 32,
+  brandInitials: { ...typography.headlineSm, color: colors.onNavy },
+  headerTitle: { ...typography.headlineLgMobile, color: colors.navy },
+  headerLocation: { ...typography.bodySm, color: colors.onSurfaceVariant },
+  notification: {
+    width: 48, height: 48, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: customerColors.border,
   },
-  searchWrapper: {
-    paddingHorizontal: 20,
-    marginTop: 16,
-  },
+  scrollContent: { paddingBottom: 16 },
+  searchWrapper: { paddingHorizontal: 20, marginTop: 4 },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg,
+    paddingHorizontal: 14, minHeight: 48, borderWidth: 1, borderColor: customerColors.border,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 13,
-    color: '#111827',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F97316',
-  },
+  searchInput: { ...typography.bodyMd, flex: 1, paddingVertical: 10, color: colors.onSurface },
+  sectionHeader: { paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
+  sectionTitle: { ...typography.titleMd, color: colors.navy },
   vendorList: {
     paddingLeft: 20,
     paddingRight: 6,
   },
   mapCard: {
     marginHorizontal: 20,
-    height: 175,
-    borderRadius: 16,
+    height: 192,
+    borderRadius: radius.xl,
     overflow: 'hidden',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: colors.secondaryContainer,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -292,7 +258,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapBackgroundImage: {
-    borderRadius: 16,
+    borderRadius: radius.xl,
   },
   mapOverlay: {
     ...StyleSheet.absoluteFill,
@@ -320,45 +286,16 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginLeft: 4,
   },
-  markerContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  markerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    gap: 4,
-  },
-  markerText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  markerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
-    marginTop: 2,
-  },
+  locations: { paddingHorizontal: 20, paddingTop: 8 },
+  locationLink: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
+  locationName: { ...typography.bodyMd, color: colors.navy },
   mapButton: {
     position: 'absolute',
     bottom: 12,
     right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827',
+    backgroundColor: colors.navy,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,

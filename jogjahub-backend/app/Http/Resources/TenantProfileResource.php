@@ -34,6 +34,7 @@ class TenantProfileResource extends JsonResource
             'nib_url'          => $this->when($canSeePrivate, $this->nib_url),
             'portfolio_url'    => $this->when($canSeePrivate, $this->portfolio_url),
             'categories'       => CategoryResource::collection($this->whenLoaded('categories')),
+            'services' => ServiceResource::collection($this->whenLoaded('services')),
             'user'             => new UserResource($this->whenLoaded('user')),
         ];
     }

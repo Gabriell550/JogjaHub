@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,22 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
+  Linking,
+  AppState,
+  Modal,
+  TextInput,
   SafeAreaView,
   StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { apiErrorMessage } from '../../../../api/apiErrorMessage';
+import { bookingLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
 import Toast from 'react-native-toast-message';
 import { bookingApi } from '../../../../api/bookingApi';
 import OrderDetailsModal from '../components/OrderDetailsModal';
 
-type CustomerBookingStatus = 'pending' | 'confirmed' | 'shipping' | 'completed' | 'cancelled';
+type CustomerBookingStatus = BookingRecord['status'];
 
 interface CustomerBookingItem {
   id: string;
@@ -37,111 +42,70 @@ interface CustomerBookingItem {
   package_type: string;
   status: CustomerBookingStatus;
   custom_note?: string;
-  proof_url?: string;
+  payment_url?: string;
+  reviewed: boolean;
 }
-
-const MOCK_CUSTOMER_BOOKINGS: CustomerBookingItem[] = [
-  {
-    id: '1',
-    order_code: 'JH-20260906-001',
-    time_ago: '10m lalu',
-    vendor_name: 'GlowUp MUA Jogja',
-    vendor_category: 'MUA & Styling Wisuda',
-    vendor_avatar: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200',
-    service_name: 'Makeup Wisuda + Hijab Do Reguler',
-    price: 450000,
-    schedule_date: 'Minggu, 6 Sep 2026',
-    schedule_time: '06:00 WIB',
-    location_detail: 'Kost Putri Samirono CT 3, Sleman',
-    payment_status: 'Menunggu Bukti Transfer',
-    package_type: '1 Paket Terpilih',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    order_code: 'JH-20260906-002',
-    time_ago: '1 jam lalu',
-    vendor_name: 'Kado Wisuda Studio',
-    vendor_category: 'Florist & Gift',
-    vendor_avatar: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=200',
-    service_name: 'Bouquet Matahari + Selempang Satin',
-    price: 185000,
-    schedule_date: 'Minggu, 6 Sep 2026',
-    schedule_time: '09:30 WIB',
-    location_detail: 'Estimasi Tiba: 09:30 WIB (Kurir Toko)',
-    custom_note: 'Custom Bordir: "Siti Khadijah, S.Pd. Cumlaude"',
-    payment_status: 'Lunas (QRIS)',
-    package_type: '1 Paket Terpilih',
-    status: 'shipping',
-  },
-  {
-    id: '3',
-    order_code: 'JH-2026-8891',
-    time_ago: '3 jam lalu',
-    vendor_name: 'Atelier Toga Jogja',
-    vendor_category: 'Perlengkapan & Toga Wisuda',
-    vendor_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-    service_name: 'Sewa Jas & Toga Lengkap Pria',
-    price: 250000,
-    schedule_date: 'Senin, 7 Sep 2026',
-    schedule_time: '08:00 WIB',
-    location_detail: 'Pengambilan di Galeri (Ukuran L)',
-    payment_status: 'Lunas',
-    package_type: '1 Paket Lengkap',
-    status: 'confirmed',
-  },
-];
 
 const FILTERS = [
   { key: 'all', label: 'Semua' },
   { key: 'pending', label: 'Perlu Diproses' },
-  { key: 'shipping', label: 'Sedang Dikirim' },
   { key: 'confirmed', label: 'Jadwal Mendatang' },
-  { key: 'completed', label: 'Selesai' },
+  { key: 'cancelled', label: 'Dibatalkan' },
 ];
 
 export default function MyBookingsScreen() {
   const navigation = useNavigation<any>();
-  const [bookings, setBookings] = useState<CustomerBookingItem[]>(MOCK_CUSTOMER_BOOKINGS);
+  const [bookings, setBookings] = useState<CustomerBookingItem[]>([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<CustomerBookingItem | null>(null);
 
+  const [reviewTarget, setReviewTarget] = useState<CustomerBookingItem>();
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const reviewBusy = useRef(false);
+  const loadSequence = useRef(0);
+
   const loadBookings = useCallback(async () => {
+    const request = ++loadSequence.current;
     setIsLoading(true);
     try {
-      const res = await bookingApi.listMyBookings();
-      const data = res.data?.data ?? res.data;
-      if (Array.isArray(data) && data.length > 0) {
-        const mapped: CustomerBookingItem[] = data.map((b: any, idx: number) => ({
-          id: String(b.id || idx),
-          order_code: b.order_code || `JH-20260906-${String(idx + 1).padStart(3, '0')}`,
-          time_ago: 'Baru saja',
-          vendor_name: b.service?.tenant?.business_name || b.service?.name || 'Vendor JogjaHub',
-          vendor_category: 'Vendor Terverifikasi',
-          vendor_avatar: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200',
-          service_name: b.service?.name || 'Layanan Wisuda',
-          price: b.service?.price || 150000,
-          schedule_date: b.slot?.slot_date || '6 Sep 2026',
-          schedule_time: b.slot?.start_time ? `${b.slot.start_time.substring(0, 5)} WIB` : '08:00 WIB',
-          location_detail: 'Yogyakarta',
-          payment_status: b.payment_proof_url ? 'Lunas (Menunggu Konfirmasi)' : 'Belum Ada Bukti Bayar',
-          package_type: '1 Paket Terpilih',
-          status: b.status || 'pending',
-          proof_url: b.payment_proof_url,
-        }));
-        setBookings(mapped);
-      }
-    } catch {
-      // Fallback to mock data
+      const records = await bookingApi.listAllBookings('customer');
+      if (request !== loadSequence.current) return;
+      setBookings(records.map((booking: BookingRecord) => ({
+        id: booking.uuid,
+        order_code: bookingLabel(booking),
+        time_ago: booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '',
+        vendor_name: booking.service?.tenant?.business_name ?? 'Vendor JogjaHub',
+        vendor_category: booking.service?.subcategory?.name ?? '',
+        vendor_avatar: booking.service?.tenant?.logo_url ?? '',
+        service_name: booking.service?.name ?? 'Layanan',
+        price: Number(booking.total_amount ?? booking.service?.price ?? 0),
+        schedule_date: booking.check_in_date ?? booking.slot?.slot_date.slice(0, 10) ?? 'Tanpa jadwal',
+        schedule_time: booking.check_out_date ? 'Check-out ' + booking.check_out_date : booking.slot?.start_time.slice(0, 5) ?? '',
+        location_detail: booking.service?.tenant?.address?.city ?? '',
+        payment_status: paymentLabel(booking),
+        payment_url: booking.payment?.status === 'pending' && booking.payment.expires_at &&
+          Date.parse(booking.payment.expires_at) > Date.now() ? booking.payment.payment_url ?? undefined : undefined,
+        package_type: booking.nights ? booking.nights + ' malam' : '',
+        status: booking.status,
+        reviewed: !!booking.review,
+      })));
+    } catch (error) {
+      if (request === loadSequence.current) Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
     } finally {
-      setIsLoading(false);
+      if (request === loadSequence.current) setIsLoading(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      loadBookings();
+      void loadBookings();
+      const subscription = AppState.addEventListener('change', state => {
+        if (state === 'active') void loadBookings();
+      });
+      return () => subscription.remove();
     }, [loadBookings])
   );
 
@@ -157,12 +121,14 @@ export default function MyBookingsScreen() {
           onPress: async () => {
             try {
               await bookingApi.cancelBooking(booking.id);
-            } catch {
-              // local fallback
+            } catch (error) {
+              Alert.alert('Pembatalan gagal', apiErrorMessage(error, 'Coba lagi nanti.'));
+              return;
             }
             setBookings((prev) =>
-              prev.map((b) => (b.id === booking.id ? { ...b, status: 'cancelled' } : b))
+              prev.map((b) => (b.id === booking.id ? { ...b, status: 'cancelled', payment_url: undefined, payment_status: 'Pesanan dibatalkan' } : b))
             );
+            void loadBookings();
             Toast.show({
               type: 'success',
               text1: 'Pesanan Dibatalkan',
@@ -174,34 +140,21 @@ export default function MyBookingsScreen() {
     );
   };
 
-  const handleUploadProof = async (booking: CustomerBookingItem) => {
+  const submitReview = async () => {
+    if (!reviewTarget || !rating || reviewBusy.current) return;
+    reviewBusy.current = true;
+    setReviewSubmitting(true);
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]?.uri) {
-        setBookings((prev) =>
-          prev.map((b) =>
-            b.id === booking.id
-              ? {
-                  ...b,
-                  proof_url: result.assets[0].uri,
-                  payment_status: 'Bukti Terkirim (Verifikasi)',
-                }
-              : b
-          )
-        );
-        Toast.show({
-          type: 'success',
-          text1: 'Bukti Terkirim',
-          text2: 'Bukti pembayaran Anda berhasil diunggah.',
-        });
-      }
-    } catch {
-      Alert.alert('Error', 'Gagal memilih bukti pembayaran.');
+      await bookingApi.submitReview(reviewTarget.id, { rating, comment: comment.trim() || undefined });
+      setBookings(previous => previous.map(booking => booking.id === reviewTarget.id ? { ...booking, reviewed: true } : booking));
+      setReviewTarget(undefined);
+      Toast.show({ type: 'success', text1: 'Ulasan dikirim' });
+      void loadBookings();
+    } catch (error) {
+      Alert.alert('Ulasan gagal dikirim', apiErrorMessage(error, 'Coba lagi nanti.'));
+    } finally {
+      reviewBusy.current = false;
+      setReviewSubmitting(false);
     }
   };
 
@@ -230,24 +183,10 @@ export default function MyBookingsScreen() {
             </View>
           )}
 
-          {item.status === 'shipping' && (
-            <View style={styles.blueBadge}>
-              <Ionicons name="car-outline" size={13} color="#0284C7" />
-              <Text style={styles.blueBadgeText}>Sedang Dikirim • {item.time_ago}</Text>
-            </View>
-          )}
-
           {item.status === 'confirmed' && (
             <View style={styles.greyBadge}>
               <Ionicons name="calendar-outline" size={13} color="#475569" />
               <Text style={styles.greyBadgeText}>Jadwal Mendatang</Text>
-            </View>
-          )}
-
-          {item.status === 'completed' && (
-            <View style={styles.greenBadge}>
-              <Ionicons name="checkmark-circle-outline" size={13} color="#16A34A" />
-              <Text style={styles.greenBadgeText}>Selesai</Text>
             </View>
           )}
 
@@ -325,48 +264,18 @@ export default function MyBookingsScreen() {
               <Text style={styles.rejectButtonText}>Batalkan</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {item.payment_url && <TouchableOpacity
               style={styles.acceptButton}
-              onPress={() => handleUploadProof(item)}
+              onPress={() => Linking.openURL(item.payment_url!).catch(() => Alert.alert('Tautan pembayaran gagal dibuka'))}
               activeOpacity={0.88}
             >
-              <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.acceptButtonText}>Upload Bukti</Text>
-            </TouchableOpacity>
+              <Ionicons name="card-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.acceptButtonText}>Bayar</Text>
+            </TouchableOpacity>}
           </View>
         )}
 
-        {item.status === 'shipping' && (
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() =>
-                Alert.alert('Hubungi Vendor', `Membuka kontak WhatsApp vendor ${item.vendor_name}`)
-              }
-              activeOpacity={0.8}
-            >
-              <Ionicons name="logo-whatsapp" size={16} color="#C2410C" />
-              <Text style={styles.chatButtonText}>Chat Vendor</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.shipButton}
-              onPress={() =>
-                Toast.show({
-                  type: 'info',
-                  text1: 'Kurir Sedang Berjalan',
-                  text2: 'Pesanan Anda sedang diantar ke lokasi.',
-                })
-              }
-              activeOpacity={0.88}
-            >
-              <Ionicons name="map-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.shipButtonText}>Lacak Pengiriman</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {(item.status === 'confirmed' || item.status === 'completed') && (
+        {item.status === 'confirmed' && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.fullDetailButton}
@@ -376,6 +285,13 @@ export default function MyBookingsScreen() {
               <Text style={styles.fullDetailButtonText}>Rincian Pesanan</Text>
               <Ionicons name="chevron-forward" size={16} color="#1E293B" />
             </TouchableOpacity>
+            {!item.reviewed && <TouchableOpacity style={styles.acceptButton} onPress={() => {
+              setRating(0);
+              setComment('');
+              setReviewTarget(item);
+            }}>
+              <Text style={styles.acceptButtonText}>Beri Ulasan</Text>
+            </TouchableOpacity>}
           </View>
         )}
       </View>
@@ -384,7 +300,7 @@ export default function MyBookingsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+      <StatusBar barStyle="dark-content" />
 
       {/* Top Header Bar */}
       <View style={styles.topHeader}>
@@ -526,6 +442,28 @@ export default function MyBookingsScreen() {
       </ScrollView>
 
       {/* Rincian Pesanan Modal */}
+      <Modal transparent visible={!!reviewTarget} onRequestClose={() => { if (!reviewSubmitting) setReviewTarget(undefined); }}>
+        <View style={styles.reviewOverlay}>
+          <View style={styles.reviewCard}>
+            <Text style={styles.topHeaderTitle}>Ulasan layanan</Text>
+            <Text>{reviewTarget?.service_name}</Text>
+            <View style={styles.reviewRatings}>
+              {[1, 2, 3, 4, 5].map(value => (
+                <TouchableOpacity key={value} accessibilityRole="button" accessibilityLabel={value + ' bintang'}
+                  accessibilityState={{ selected: rating === value }} disabled={reviewSubmitting} onPress={() => setRating(value)}>
+                  <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={30} color="#8C3B00" />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput placeholder="Komentar (opsional)" value={comment} maxLength={1000}
+              editable={!reviewSubmitting} multiline onChangeText={setComment} style={styles.reviewInput} />
+            <TouchableOpacity style={styles.acceptButton} onPress={submitReview} disabled={reviewSubmitting || !rating}>
+              <Text style={styles.acceptButtonText}>{reviewSubmitting ? 'Mengirim...' : 'Kirim Ulasan'}</Text>
+            </TouchableOpacity>
+            <Text onPress={() => { if (!reviewSubmitting) setReviewTarget(undefined); }}>Tutup</Text>
+          </View>
+        </View>
+      </Modal>
       <OrderDetailsModal
         visible={!!selectedBookingForDetail}
         booking={selectedBookingForDetail}
@@ -536,6 +474,10 @@ export default function MyBookingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  reviewOverlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#0008' },
+  reviewCard: { padding: 18, gap: 16, borderRadius: 16, backgroundColor: 'white' },
+  reviewRatings: { flexDirection: 'row', justifyContent: 'space-between' },
+  reviewInput: { minHeight: 64, padding: 12, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8 },
   safeArea: {
     flex: 1,
     backgroundColor: '#F8FAFC',

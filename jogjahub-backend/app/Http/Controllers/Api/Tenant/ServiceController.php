@@ -47,6 +47,8 @@ class ServiceController extends Controller
             'name'           => $request->name,
             'description'    => $request->description,
             'price'          => $request->price,
+            'is_active'     => $request->validated('is_active', true),
+            'price_type'     => $request->validated('price_type', 'per_session'),
             'photos'         => $photoData,
         ]);
 

@@ -1,25 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { VendorServicesStackParamList } from '../../../../navigation/types';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { VendorServicesStackParamList } from '../../../../navigation/types';
+import { bookingLabel, paymentLabel } from '../../../../types/bookingRecord';
+import { useTenantBookings } from '../../dashboard/useTenantBookings';
 
 type Props = NativeStackScreenProps<VendorServicesStackParamList, 'ServiceOrders'>;
 
 export default function ServiceOrdersScreen({ route }: Props) {
   const { serviceId, serviceName } = route.params;
+  const { records, error, reload } = useTenantBookings();
+  const orders = records?.filter(booking => booking.service?.id === serviceId);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Pesanan untuk {serviceName}</Text>
-      <Text style={styles.subtitle}>Service ID: {serviceId}</Text>
-
-      {/* TODO: fetch & tampilkan daftar pesanan berdasarkan serviceId */}
-    </View>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <Text accessibilityRole="header">Pesanan untuk {serviceName}</Text>
+      {error && <Text onPress={reload}>Pesanan gagal dimuat. Coba lagi.</Text>}
+      {!records && !error && <ActivityIndicator />}
+      {orders?.length === 0 && <Text>Belum ada pesanan.</Text>}
+      {orders?.map(booking => (
+        <View key={booking.uuid}>
+          <Text>{bookingLabel(booking)} · {booking.customer?.name ?? 'Pelanggan'}</Text>
+          <Text>{paymentLabel(booking)} · Rp {Number(booking.total_amount ?? 0).toLocaleString('id-ID')}</Text>
+        </View>
+      ))}
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666' },
-});
