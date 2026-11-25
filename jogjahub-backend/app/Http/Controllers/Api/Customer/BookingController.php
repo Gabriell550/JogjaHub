@@ -32,22 +32,12 @@ class BookingController extends Controller
         $result = $this->bookingService->createBooking($request->user()->id, $request->validated());
 
         return response()->json([
-<<<<<<< HEAD
             'success'    => true,
             // Pesan diubah: tidak lagi ada URL pembayaran Xendit
             // Customer perlu transfer manual lalu upload bukti
             'message'    => 'Booking berhasil dibuat. Silakan transfer dan upload bukti pembayaran dalam 10 menit.',
             'data'       => new BookingResource($result['booking']),
             'expires_at' => $result['expires_at'],  // batas waktu upload bukti (ISO 8601)
-=======
-            'success'     => true,
-            'message'     => $result['payment_url']
-                ? 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.'
-                : 'Pesanan dibuat. Lanjutkan transaksi melalui WhatsApp.',
-            'data'        => new BookingResource($result['booking']),
-            'payment_url' => $result['payment_url'],    // URL halaman bayar Xendit
-            'expires_at'  => $result['expires_at'],     // batas waktu bayar (ISO 8601)
->>>>>>> a80b74f1c1b63c9aaef6a717525ab36a91a8b882
         ], 201);
     }
 
