@@ -33,9 +33,9 @@ Sesuai dengan target MVP dalam batas waktu pengerjaan 3 bulan, fitur-fitur berik
 | c | Kategori & Sub-Kategori Layanan | Pengelompokan vendor ke dalam kategori utama (Penginapan, Beauty & Style, Gifting) beserta fitur filter spesifik di dalam kategori (misal: Beauty & Style difilter menjadi Salon dan Butik; Gifting difilter menjadi Selempang, Akrilik, Florist, Plakat). |
 | d | Integrasi Peta Lokasi (Map) | Menampilkan titik lokasi (pinpoint) vendor pada peta interaktif di antarmuka customer untuk memudahkan pencarian jarak. |
 | e | Sistem Pemesanan (Booking) | Fitur bagi customer untuk memilih tanggal dan slot waktu khusus (termasuk jam dini hari untuk kebutuhan wisuda) lalu melakukan booking. |
-| f | Fitur Live Chat / Direct Messaging | **Ditiadakan** — komunikasi langsung antara customer dan vendor di dalam aplikasi ditiadakan; komunikasi dialihkan melalui kontak eksternal (seperti WhatsApp) yang tertera pada profil vendor. |
-| g | Manajemen Pesanan (List Booking & Konfirmasi) | Customer dapat melihat daftar pesanan (list booking), membatalkan pesanan, dan memberikan konfirmasi/ulasan. Vendor dapat melihat daftar pesanan masuk serta melakukan konfirmasi (accept/reject). |
-| h | Payment Gateway Otomatis (Midtrans/Xendit/Virtual Account) | **Ditiadakan** — transaksi pembayaran online otomatis ditiadakan; metode pembayaran difokuskan pada sistem manual transfer dengan unggah bukti bayar atau sistem pembayaran langsung di tempat (COD/Pay on Arrival). |
+| f | Checkout di aplikasi | Customer memilih layanan dari profil tenant dan melanjutkan pemesanan di JogjaHub. Komplain demo diajukan dari detail pesanan dan ditangani admin. |
+| g | Manajemen Pesanan (List Booking & Konfirmasi) | Tenant melihat pembayaran pada pesanan masuk dan menandai pesanan yang sudah dikerjakan atau siap diambil. Customer mengonfirmasi penerimaan dari detail pesanan dan dapat memberikan ulasan. |
+| h | Pembayaran dan pencairan demo | Checkout menyediakan simulasi transfer bank, GoPay, dan DANA. Pembayaran ditahan sampai customer mengonfirmasi penerimaan. Tenant memantau dana dan tujuan pencairan yang disamarkan melalui menu Pendapatan. |
 
 ### 2. Out-of-Scope (Fitur yang Ditunda / Tidak Masuk Versi Ini)
 
@@ -44,6 +44,8 @@ Untuk menjaga batas waktu pengerjaan 3 bulan agar tetap realistis, fitur-fitur b
 a. **Sistem Multi-Bahasa & Multi-Mata Uang** — Aplikasi hanya menggunakan Bahasa Indonesia dan mata uang Rupiah.
 
 b. **Program Loyalitas & Voucher Diskon** — Fitur promo code, kupon, atau sistem poin bagi pelanggan setia ditunda ke pengembangan versi berikutnya.
+
+c. **Perpindahan uang dan integrasi payment gateway** — Versi demo menggunakan data contoh untuk pembayaran dan tujuan pencairan.
 
 ### 3. Fitur & Kebutuhan Fungsional (Functional Requirements)
 
@@ -64,9 +66,11 @@ Penjelasan modul dan alur interaksi pengguna (*user stories*):
 
 **Modul 4: Pemesanan (Booking) & Manajemen Pesanan**
 - **FR-08**: Customer dapat memilih produk/layanan vendor, menentukan tanggal, dan memilih slot waktu khusus (termasuk jam dini hari).
-- **FR-09**: Sistem mencatat data pesanan ke dalam menu *List Booking* milik Customer dengan status awal *Pending*.
-- **FR-10**: Vendor menerima notifikasi pesanan masuk di dashboard mereka dan dapat mengubah status pesanan menjadi *Confirmed* atau *Cancelled*.
-- **FR-11**: Customer dapat melakukan pembatalan pesanan melalui menu *List Booking* apabila memenuhi syarat ketentuan waktu.
+- **FR-09**: Pesanan demo tercatat di *List Booking* dengan status dikonfirmasi setelah pembayaran disimulasikan. Status dana tercatat sebagai **Ditahan**.
+- **FR-10**: Tenant melihat pesanan masuk dan menandainya **Selesai dikerjakan** atau **Siap diambil** sesuai jenis pesanan.
+- **FR-11**: Customer dapat membatalkan pesanan yang masih berstatus *Pending* apabila memenuhi ketentuan waktu. Untuk pesanan demo yang sudah dibayar, customer dapat melaporkan kendala sebelum mengonfirmasi penerimaan.
+- **FR-12**: Sistem memproses satu pencairan demo untuk setiap pesanan setelah customer menekan **Pesanan diterima**. Dana tetap ditahan jika tujuan pencairan belum tersedia atau komplain masih terbuka. Setelah admin menyelesaikan komplain, customer dapat mengonfirmasi penerimaan. Jika konfirmasi sudah tercatat, penyimpanan tujuan pencairan melanjutkan proses secara otomatis.
+- **FR-13**: Tenant menyimpan satu tujuan melalui Pengaturan Toko. Menu **Pendapatan** menampilkan satu entri per pesanan dengan nomor pesanan, nominal, status dana terkini, dan tujuan yang disamarkan saat pencairan diproses.
 
 ### 4. Kebutuhan Non-Fungsional (Non-Functional Requirements)
 
@@ -78,7 +82,7 @@ Waktu muat (*load time*) halaman utama dan katalog produk maksimal 3 detik pada 
 - Penerapan otorisasi berbasis peran (*Role-Based Access Control* / RBAC) agar customer tidak dapat mengakses halaman khusus vendor atau admin.
 
 **c. Aspek Skalabilitas**
-Arsitektur basis data dirancang secara modular agar mudah ditambah tabel atau relasi baru jika di kemudian hari fitur pembayaran otomatis atau chat ingin diintegrasikan.
+Basis data mencatat status pesanan secara terpisah dari status dana demo. Setiap pesanan memiliki satu catatan pembayaran yang mengikuti status dana terkini.
 
 **d. Kapasitas Penyimpanan**
 Menggunakan database relasional dengan kapasitas awal yang dioptimalkan untuk menampung data teks pengguna, vendor, dan histori booking skala menengah.
@@ -107,6 +111,6 @@ Diasumsikan bahwa vendor memiliki akses internet yang stabil untuk memantau pesa
 
 Berdasarkan use case diagram tersebut, sistem melibatkan tiga aktor:
 
-- **User** (pencari layanan) — dapat mendaftar, mencari dan booking vendor, melakukan pembayaran, mengelola pesanan, serta berinteraksi via chat atau WhatsApp.
-- **Vendor** (penyedia layanan) — mendaftar dengan persetujuan admin, mengelola listing layanan, mengatur jadwal, memproses pesanan, serta berinteraksi dengan user dan admin.
-- **Admin** — bertugas memverifikasi pendaftaran vendor baru serta memantau seluruh aktivitas transaksi, user, dan tender secara real-time.
+- **User** (pencari layanan) — dapat mendaftar, mencari layanan tenant, menyimulasikan pembayaran, melaporkan kendala, dan mengonfirmasi penerimaan di aplikasi.
+- **Vendor** (penyedia layanan) — mendaftar dengan persetujuan admin, mengelola listing dan jadwal, memproses pesanan, mengatur tujuan pencairan, dan memantau dana demo di menu Pendapatan.
+- **Admin** — memverifikasi pendaftaran vendor dan menangani komplain customer serta pencairan demo yang bermasalah melalui Monitoring Escrow.

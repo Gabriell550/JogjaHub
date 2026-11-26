@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\DemoFundStatus;
 use App\Enums\PriceType;
 use App\Jobs\ReleaseExpiredBookingJob;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\TimeSlot;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -39,6 +41,32 @@ class BookingService
      */
     public function createBooking(int $customerId, array $data): array
     {
+        if (!isset($data['demo_payment_method'])) {
+            return $this->createNewBooking($customerId, $data);
+        }
+
+        return DB::transaction(function () use ($customerId, $data) {
+            User::query()->lockForUpdate()->findOrFail($customerId);
+            $existing = Booking::withTrashed()
+                ->where('customer_id', $customerId)
+                ->where('demo_checkout_key', $data['demo_checkout_key'])
+                ->first();
+
+            if ($existing) {
+                abort_if($existing->trashed(), 409, 'Pesanan ini sudah dihapus.');
+
+                return ['booking' => $existing->load(['service', 'slot', 'slots', 'payment']), 'payment_url' => null, 'expires_at' => null];
+            }
+
+            $result = $this->createNewBooking($customerId, $data);
+            $result['booking']->forceFill(['demo_checkout_key' => $data['demo_checkout_key']])->save();
+
+            return $result;
+        }, 3);
+    }
+
+    private function createNewBooking(int $customerId, array $data): array
+    {
         $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
 
         // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
@@ -48,9 +76,12 @@ class BookingService
             ]);
         }
 
-        $usesXendit = config('booking.checkout') === 'xendit';
+        $demoMethod = $data['demo_payment_method'] ?? null;
+        $usesXendit = $demoMethod === null && config('booking.checkout') === 'xendit';
         unset($data['details']['whatsapp_number']);
-        if (!$usesXendit) {
+        if ($demoMethod !== null) {
+            unset($data['details']['check_in_date'], $data['details']['check_out_date'], $data['details']['nights'], $data['details']['demo_pickup']);
+        } elseif (!$usesXendit) {
             $number = preg_replace('/\D/', '', $service->tenant->whatsapp_number ?? '');
             if (str_starts_with($number, '0')) {
                 $number = '62' . substr($number, 1);
@@ -81,10 +112,18 @@ class BookingService
             $data['slot_id'] = null;
         }
 
+        if ($demoMethod !== null) {
+            $pickup = (bool) ($data['demo_pickup'] ?? false);
+            if ($pickup && ($requiresSlot || $isMultiSlot)) {
+                throw ValidationException::withMessages(['demo_pickup' => ['Ambil sendiri hanya tersedia untuk pesanan tanpa jadwal.']]);
+            }
+            $data['details']['demo_pickup'] = $pickup;
+        }
+
         // ── Kunci slot + buat booking + buat payment dalam satu transaksi ────
         // Transaksi harus selesai sebelum memanggil Xendit API,
         // supaya kalau Xendit gagal, slot tidak terkunci selamanya.
-        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $usesXendit) {
+        $booking = DB::transaction(function () use ($customerId, $data, $requiresSlot, $service, $isMultiSlot, $usesXendit, $demoMethod) {
 
             if ($isMultiSlot) {
                 // ── Mode hotel: kunci semua slot dalam rentang check_in s.d. (check_out - 1 hari) ──
@@ -103,13 +142,23 @@ class BookingService
                 ? (int) $service->price * $nights
                 : (int) $service->price;
 
+            if ($demoMethod !== null) {
+                if ($amount !== (int) $data['demo_expected_amount']) {
+                    throw ValidationException::withMessages(['demo_expected_amount' => ['Harga berubah. Periksa total terbaru.']]);
+                }
+                $booking->update(['status' => BookingStatus::CONFIRMED->value]);
+            }
+
             // Buat record payment — amount sudah dikalkulasi sesuai tipe harga
             Payment::create([
                 'booking_id'  => $booking->id,
                 'amount'      => $amount,
                 'currency'    => 'IDR',
-                'status'      => 'pending',
-                'payment_method' => $usesXendit ? null : 'WHATSAPP',
+                'status'      => $demoMethod === null ? 'pending' : 'paid',
+                'payment_method' => $demoMethod !== null ? 'DEMO' : ($usesXendit ? null : 'WHATSAPP'),
+                'payment_channel' => $demoMethod,
+                'paid_at' => $demoMethod !== null ? now() : null,
+                'fund_status' => $demoMethod !== null ? DemoFundStatus::HELD : null,
                 'expires_at'  => $usesXendit ? now()->addHour() : null,
             ]);
 

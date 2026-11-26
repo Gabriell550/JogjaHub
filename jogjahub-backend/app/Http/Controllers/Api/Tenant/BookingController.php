@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Services\BookingService;
+use App\Services\DemoEscrowService;
 use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Conversation;
@@ -31,7 +32,7 @@ class BookingController extends Controller
         return BookingResource::collection($bookings)->additional(['success' => true]);
     }
 
-    public function show(Request $request, Booking $booking)
+    public function show(Request $request, Booking $booking, DemoEscrowService $escrow)
     {
         $tenantId = $request->user()->tenantProfile->id;
 
@@ -39,9 +40,10 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
+        $escrow->reconcile(Booking::whereKey($booking->id));
         $booking->load(['customer:id,name,email,phone', 'service:id,name', 'slot', 'slots', 'review', 'payment']);
 
-        if ($booking->issue_reported_at) {
+        if ($booking->issue_reported_at && !$booking->payment?->fund_status) {
             $booking->completion_conversation_id = Conversation::where('customer_id', $booking->customer_id)
                 ->where('tenant_id', $request->user()->id)->value('id');
         }

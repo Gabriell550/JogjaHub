@@ -73,6 +73,9 @@ Route::prefix('v1')->group(function () {
 
         // Operasional layanan, slot, dan booking WAJIB sudah approved
         Route::middleware('tenant.approved')->group(function () {
+            Route::get('demo-earnings', [\App\Http\Controllers\Api\Tenant\DemoEarningsController::class, 'index']);
+            Route::get('demo-payout-destination', [\App\Http\Controllers\Api\Tenant\DemoEarningsController::class, 'destination']);
+            Route::put('demo-payout-destination', [\App\Http\Controllers\Api\Tenant\DemoEarningsController::class, 'saveDestination']);
             // ServiceController: index, store, show, update, destroy (semua diimplementasikan)
             Route::apiResource('services', \App\Http\Controllers\Api\Tenant\ServiceController::class);
 
@@ -105,6 +108,9 @@ Route::prefix('v1')->group(function () {
         Route::get('tenants/{tenant}/documents/{type}', [\App\Http\Controllers\Api\Admin\TenantController::class, 'document'])
             ->whereIn('type', ['ktp', 'nib', 'portfolio']);
         Route::get('bookings', [\App\Http\Controllers\Api\Admin\BookingController::class, 'index']);
+        Route::get('demo-escrow-cases', [\App\Http\Controllers\Api\Admin\BookingController::class, 'escrowCases']);
+        Route::post('bookings/{booking}/resolve-completion-issue', [\App\Http\Controllers\Api\BookingCompletionController::class, 'resolve']);
+        Route::post('bookings/{booking}/retry-demo-payout', [\App\Http\Controllers\Api\BookingCompletionController::class, 'retryPayout']);
         Route::get('dashboard/summary', [\App\Http\Controllers\Api\Admin\DashboardController::class, 'summary']);
     });
 });

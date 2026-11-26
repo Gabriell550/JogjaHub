@@ -8,7 +8,7 @@ import { bookingApi } from '../../../../api/bookingApi';
 import { chatApi } from '../../../../api/chatApi';
 import { colors, radius, typography } from '../../../../constants/theme';
 import type { CustomerStackParamList } from '../../../../navigation/types';
-import { bookingLabel, bookingStatusLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
+import { bookingLabel, bookingStatusLabel, fundStatusLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
 
 type Props = NativeStackScreenProps<CustomerStackParamList, 'BookingDetail'>;
 
@@ -45,6 +45,8 @@ export default function BookingDetailScreen({ navigation, route }: Props) {
   if (booking?.uuid !== id) return <ActivityIndicator accessibilityLabel="Memuat detail pesanan" />;
   const { tenant } = booking.service ?? {};
   const waiting = booking.status === 'awaiting_completion_confirmation';
+  const fundStatus = booking.payment?.fund_status;
+  const openIssue = !!booking.issue_reported_at && !booking.issue_resolved_at;
   const formatTime = (value: string) => new Date(value).toLocaleString('id-ID');
   const openForm = (type: typeof form) => { setReason(''); setRating(0); setForm(type); };
 
@@ -53,21 +55,23 @@ export default function BookingDetailScreen({ navigation, route }: Props) {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <Text style={styles.title}>{booking.service?.name ?? 'Layanan'}</Text>
         <Text>{[bookingLabel(booking), tenant?.business_name].filter(Boolean).join(' · ')}</Text>
-        <Text style={styles.heading}>{bookingStatusLabel[booking.status]}</Text>
+        <Text style={styles.heading}>{booking.demo_pickup && waiting ? 'Siap diambil' : bookingStatusLabel[booking.status]}</Text>
         <Text>{paymentLabel(booking)}</Text>
+        {fundStatus && <Text>Dana demo · {fundStatusLabel[fundStatus]}</Text>}
         <Text>Rp {Number(booking.total_amount ?? booking.service?.price ?? 0).toLocaleString('id-ID')}</Text>
         {!!booking.check_in_date && <Text>Check-in {booking.check_in_date} · Check-out {booking.check_out_date}</Text>}
         {!!booking.slot && <Text>Jadwal {booking.slot.slot_date.slice(0, 10)} · {booking.slot.start_time.slice(0, 5)} WIB</Text>}
-        {!!booking.fulfilled_at && <Text>Toko menandai selesai pada {formatTime(booking.fulfilled_at)}</Text>}
-        {!!booking.completed_at && <Text>Dikonfirmasi selesai pada {formatTime(booking.completed_at)}</Text>}
+        {!!booking.fulfilled_at && <Text>{booking.demo_pickup ? 'Siap diambil' : 'Selesai dikerjakan'} pada {formatTime(booking.fulfilled_at)}</Text>}
+        {!!booking.completed_at && <Text>Pesanan diterima pada {formatTime(booking.completed_at)}</Text>}
         {!!booking.issue_reported_at && <View style={styles.issue}>
-          <Text style={styles.heading}>{waiting ? 'Kendala dilaporkan' : 'Riwayat kendala'}</Text>
+          <Text style={styles.heading}>{fundStatus ? (openIssue ? 'Menunggu penanganan admin' : 'Kendala diselesaikan') : (waiting ? 'Kendala dilaporkan' : 'Riwayat kendala')}</Text>
           <Text>{formatTime(booking.issue_reported_at)}</Text>
           <Text>{booking.completion_issue}</Text>
+          {!!booking.issue_resolution && <Text>{booking.issue_resolution}</Text>}
         </View>}
-        {waiting && <>
-          <Action label="Konfirmasi selesai" disabled={saving} onPress={() => Alert.alert(
-            'Konfirmasi selesai', 'Pastikan layanan telah diterima sesuai pesanan.', [
+        {waiting && !(fundStatus && openIssue) && (
+          <Action label="Pesanan diterima" disabled={saving} onPress={() => Alert.alert(
+            'Pesanan diterima', 'Pastikan pesanan sudah diterima sesuai permintaan.', [
               { text: 'Batal', style: 'cancel' },
               { text: 'Konfirmasi', onPress: () => void run(async () => {
                 const { data } = await bookingApi.confirmCompletion(id);
@@ -76,12 +80,16 @@ export default function BookingDetailScreen({ navigation, route }: Props) {
               }) },
             ],
           )} />
-          {!booking.issue_reported_at && <Action label="Laporkan kendala" disabled={saving} onPress={() => openForm('issue')} />}
-          {!!booking.issue_reported_at && !!tenant?.uuid && <Action label="Chat toko" disabled={saving} onPress={() => void run(async () => {
+        )}
+        {(waiting || (fundStatus && booking.status === 'confirmed')) && !booking.issue_reported_at &&
+          <Action label="Laporkan kendala" disabled={saving} onPress={() => openForm('issue')} />}
+        {waiting && !fundStatus && !!booking.issue_reported_at && !!tenant?.uuid &&
+          <Action label="Chat toko" disabled={saving} onPress={() => void run(async () => {
             const { data } = await chatApi.start(tenant.uuid!);
             navigation.navigate('CustomerChatRoom', { id: data.data.id, name: tenant.business_name });
           })} />}
-        </>}
+        {fundStatus && (openIssue || fundStatus === 'processing' || booking.payment?.payout_waiting_for_destination) &&
+          <Action label="Perbarui status" disabled={saving} onPress={() => setAttempt(value => value + 1)} />}
         {booking.status === 'completed' && !booking.review && <Action label="Beri ulasan" disabled={saving} onPress={() => openForm('review')} />}
         {form && <View style={styles.form}>
           <Text style={styles.heading}>{form === 'issue' ? 'Jelaskan kendala' : 'Beri ulasan'}</Text>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DemoFundStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,10 @@ class Payment extends Model
         'paid_at',
         'expires_at',
         'xendit_raw_response',
+        'fund_status',
+        'payout_destination',
+        'payout_due_at',
+        'payout_completed_at',
     ];
 
     protected $casts = [
@@ -29,6 +34,9 @@ class Payment extends Model
         'expires_at'           => 'datetime',
         'xendit_raw_response'  => 'array',
         'amount'               => 'integer',
+        'fund_status'          => DemoFundStatus::class,
+        'payout_due_at'        => 'datetime',
+        'payout_completed_at'  => 'datetime',
     ];
 
     // ─── Relasi ──────────────────────────────────────────────────────────────

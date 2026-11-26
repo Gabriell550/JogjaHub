@@ -5,6 +5,9 @@ export interface BookingRecord {
   fulfilled_at?: string | null;
   completed_at?: string | null;
   issue_reported_at?: string | null;
+  issue_resolved_at?: string | null;
+  issue_resolution?: string | null;
+  demo_pickup?: boolean;
   completion_issue?: string | null;
   completion_reminded_at?: string | null;
   completion_conversation_id?: number | null;
@@ -25,8 +28,25 @@ export interface BookingRecord {
   customer?: { name: string; avatar_url?: string };
   slot?: { slot_date: string; start_time: string };
   review?: { rating: number; comment?: string };
-  payment?: { status?: string; payment_url?: string; expires_at?: string; paid_at?: string };
+  payment?: {
+    status?: string;
+    payment_url?: string;
+    expires_at?: string;
+    paid_at?: string;
+    fund_status?: DemoFundStatus | null;
+    payout_destination?: string | null;
+    payout_waiting_for_destination?: boolean;
+  };
 }
+
+export type DemoFundStatus = 'held' | 'processing' | 'simulated' | 'failed';
+
+export const fundStatusLabel: Record<DemoFundStatus, string> = {
+  held: 'Ditahan',
+  processing: 'Dalam pencairan',
+  simulated: 'Pencairan disimulasikan',
+  failed: 'Pencairan bermasalah',
+};
 
 export const bookingStatusLabel: Record<BookingRecord['status'], string> = {
   pending: 'Perlu diproses',
@@ -41,6 +61,7 @@ export function bookingLabel(booking: BookingRecord) {
 }
 
 export function paymentLabel(booking: BookingRecord) {
+  if (booking.payment?.fund_status) return 'Lunas · Pembayaran demo';
   if (booking.payment?.status === 'paid') return 'Lunas';
   if (booking.payment?.status === 'expired') return 'Pembayaran kedaluwarsa';
   if (booking.status === 'cancelled') return 'Pesanan dibatalkan';

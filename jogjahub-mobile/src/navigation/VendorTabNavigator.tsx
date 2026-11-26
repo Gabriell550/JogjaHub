@@ -25,6 +25,7 @@ const panels = {
     actions: [
       { label: 'Aktivitas terbaru', run: navigation => navigation.navigate('Dashboard', { screen: 'RecentActivity' }) },
       { label: 'Statistik bisnis', run: navigation => navigation.navigate('Dashboard', { screen: 'Statistics' }) },
+      { label: 'Pendapatan', run: navigation => navigation.navigate('Dashboard', { screen: 'DemoEarnings', initial: false }) },
     ],
   },
   Listing: {
@@ -70,7 +71,9 @@ export function VendorTabNavigator() {
         const orders: BookingRecord[] = data.data;
         if (latestOrderId !== undefined) {
           const cutoff = latestOrderId;
-          const unseen = orders.filter(order => order.status === 'pending' && order.id > cutoff);
+          const unseen = orders.filter(order => order.id > cutoff && (
+            order.status === 'pending' || (order.status === 'confirmed' && order.payment?.fund_status === 'held')
+          ));
           if (unseen.length > 0) setIncomingOrders(pending => [...pending, ...unseen]);
         }
         latestOrderId = Math.max(latestOrderId ?? 0, ...orders.map(order => order.id));

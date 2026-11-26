@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, ActivityIndicator, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, radius, typography } from '../../../../constants/theme';
 import { customerColors } from '../../../../constants/theme/customer';
@@ -15,7 +15,7 @@ import { vendorApi } from '../../../../api/vendorApi';
 
 type Category = { id: number; name: string };
 type ServiceItem = { id: number; name: string; price: number; photos?: CustomerPhotoData[]; subcategory?: { id: number; name: string }; reviews_count?: number; reviews_average_rating?: number | null; };
-type TenantProfile = { id: number; uuid: string; business_name: string; description?: string; address?: { street?: string; city?: string; province?: string; }; location?: { latitude: number; longitude: number }; whatsapp_number?: string; logo_url?: string; categories?: Category[]; services?: ServiceItem[]; };
+type TenantProfile = { id: number; uuid: string; business_name: string; description?: string; address?: { street?: string; city?: string; province?: string; }; location?: { latitude: number; longitude: number }; logo_url?: string; categories?: Category[]; services?: ServiceItem[]; };
 
 export default function VendorDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<CustomerStackParamList, 'VendorDetail'>>();
@@ -50,11 +50,6 @@ export default function VendorDetailScreen() {
     } finally {
       setOpeningChat(false);
     }
-  };
-
-  const handleWhatsApp = () => {
-    const number = profile?.whatsapp_number?.replace(/\D/g, '');
-    if (number) Linking.openURL(`https://wa.me/${number.startsWith('0') ? '62' + number.slice(1) : number}`);
   };
 
   const handleBook = (svc: ServiceItem) => {
@@ -114,12 +109,6 @@ export default function VendorDetailScreen() {
             <TouchableOpacity onPress={handleChat} disabled={openingChat} accessibilityRole="button" style={styles.contact}>
               <Text style={styles.contactLabel}>{openingChat ? 'Membuka chat...' : 'Chat toko'}</Text>
             </TouchableOpacity>
-            {!!profile.whatsapp_number && (
-              <TouchableOpacity onPress={handleWhatsApp} accessibilityRole="button" style={styles.contact}>
-                <Ionicons name="logo-whatsapp" size={20} color={colors.onNavy} />
-                <Text style={styles.contactLabel}>Hubungi via WhatsApp</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </>
       )}

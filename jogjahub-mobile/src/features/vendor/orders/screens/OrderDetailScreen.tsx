@@ -3,7 +3,7 @@ import { Alert, View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Act
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Bell, X, CheckCircle2 } from 'lucide-react-native';
 import { colors, typography, spacing, radius } from '../../../../constants/theme';
-import { bookingLabel, bookingStatusLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
+import { bookingLabel, bookingStatusLabel, fundStatusLabel, paymentLabel, type BookingRecord } from '../../../../types/bookingRecord';
 import { apiErrorMessage } from '../../../../api/apiErrorMessage';
 import { bookingApi } from '../../../../api/bookingApi';
 import Toast from 'react-native-toast-message';
@@ -37,6 +37,8 @@ export default function OrderDetailScreen() {
 
   if (error) return <Text style={styles.content} onPress={() => setAttempt(value => value + 1)}>Pesanan gagal dimuat. Coba lagi.</Text>;
   if (!booking || booking.uuid !== id) return <ActivityIndicator />;
+  const fundStatus = booking.payment?.fund_status;
+  const fulfillLabel = booking.demo_pickup ? 'Siap diambil' : 'Selesai dikerjakan';
 
   const handleDecision = async (status: 'confirmed' | 'cancelled') => {
     setProcessing(status === 'confirmed' ? 'accept' : 'reject');
@@ -91,6 +93,7 @@ export default function OrderDetailScreen() {
         <Text style={styles.alertTitle}>Rincian Pesanan</Text>
         <Text style={styles.alertSubtitle}>{bookingStatusLabel[booking.status]}</Text>
         <Text style={styles.alertSubtitle}>{paymentLabel(booking)}</Text>
+        {fundStatus && <Text style={styles.alertSubtitle}>Dana demo · {fundStatusLabel[fundStatus]}</Text>}
       </View>
 
       <View style={styles.card}>
@@ -127,11 +130,20 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
-        {!!booking.fulfilled_at && <Text>Ditandai selesai {new Date(booking.fulfilled_at).toLocaleString('id-ID')}</Text>}
+        {!!booking.payment?.payout_destination && <Text>Tujuan pencairan {booking.payment.payout_destination}</Text>}
+        {booking.payment?.payout_waiting_for_destination && (
+          <Text accessibilityRole="button" style={styles.orderId}
+            onPress={() => navigation.getParent<BottomTabNavigationProp<VendorTabParamList>>()?.navigate('Profile', { screen: 'DemoPayoutDestination', initial: false })}>
+            Tambahkan tujuan pencairan agar dana demo dapat dicairkan.
+          </Text>
+        )}
+        {fundStatus === 'processing' && <Text accessibilityRole="button" style={styles.orderId} onPress={() => setAttempt(value => value + 1)}>Perbarui status</Text>}
+        {!!booking.fulfilled_at && <Text>{fulfillLabel} · {new Date(booking.fulfilled_at).toLocaleString('id-ID')}</Text>}
         {!!booking.completed_at && <Text>Dikonfirmasi customer {new Date(booking.completed_at).toLocaleString('id-ID')}</Text>}
         {!!booking.issue_reported_at && <>
-          <Text>{booking.status === 'completed' ? 'Riwayat kendala' : 'Kendala dilaporkan'} · {new Date(booking.issue_reported_at).toLocaleString('id-ID')}</Text>
+          <Text>{booking.issue_resolved_at || booking.status === 'completed' ? 'Riwayat kendala' : 'Kendala dilaporkan'} · {new Date(booking.issue_reported_at).toLocaleString('id-ID')}</Text>
           <Text>{booking.completion_issue}</Text>
+          {!!booking.issue_resolution && <Text>{booking.issue_resolution}</Text>}
           {booking.status !== 'completed' && booking.completion_conversation_id != null && (
             <TouchableOpacity accessibilityRole="button" style={styles.acceptButton}
               onPress={() => openConversation(booking.completion_conversation_id!)}>
@@ -141,11 +153,11 @@ export default function OrderDetailScreen() {
         </>}
         {booking.status === 'confirmed' && (booking.can_mark_fulfilled ?
           <TouchableOpacity accessibilityRole="button" style={styles.acceptButton} disabled={processing !== null}
-            onPress={() => Alert.alert('Tandai selesai', 'Pastikan layanan sudah diberikan kepada pelanggan.', [
+            onPress={() => Alert.alert(fulfillLabel, booking.demo_pickup ? 'Pastikan pesanan sudah siap diambil.' : 'Pastikan layanan sudah diberikan kepada pelanggan.', [
               { text: 'Batal', style: 'cancel' },
-              { text: 'Tandai selesai', onPress: () => void markFulfilled() },
+              { text: fulfillLabel, onPress: () => void markFulfilled() },
             ])}>
-            <Text style={styles.acceptButtonText}>{processing === 'fulfill' ? 'Memproses…' : 'Tandai selesai'}</Text>
+            <Text style={styles.acceptButtonText}>{processing === 'fulfill' ? 'Memproses…' : fulfillLabel}</Text>
           </TouchableOpacity> : <Text>Tandai selesai tersedia setelah jadwal layanan berakhir.</Text>)}
         {booking.status === 'pending' && <View style={styles.actionRow}>
           <TouchableOpacity

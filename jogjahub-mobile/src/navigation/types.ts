@@ -36,6 +36,7 @@ export type VendorTabParamList = {
 export type VendorProfileStackParamList = {
   ProfileHome: undefined;
   EditBusinessProfile: undefined;
+  DemoPayoutDestination: undefined;
   VendorChatInbox: undefined;
   VendorChatRoom: {
     conversationId: string;
@@ -90,6 +91,7 @@ export type VendorDashboardStackParamList = {
   DashboardHome: undefined;
   RecentActivity: undefined;
   Statistics: undefined;
+  DemoEarnings: undefined;
 };
 
 export type VendorOrdersStackParamList = {

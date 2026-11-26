@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\DemoEscrowService;
 use App\Http\Resources\BookingResource;
 use Illuminate\Http\Request;
 
@@ -31,21 +32,24 @@ class BookingController extends Controller
 
         return response()->json([
             'success'     => true,
-            'message'     => $result['payment_url']
+            'message'     => $result['booking']->payment?->fund_status
+                ? 'Pembayaran demo berhasil. Dana ditahan sampai pesanan diterima.'
+                : ($result['payment_url']
                 ? 'Booking berhasil dibuat. Selesaikan pembayaran dalam 1 jam.'
-                : 'Pesanan dibuat. Lanjutkan transaksi melalui WhatsApp.',
+                : 'Pesanan dibuat. Lanjutkan transaksi melalui WhatsApp.'),
             'data'        => new BookingResource($result['booking']),
             'payment_url' => $result['payment_url'],    // URL halaman bayar Xendit
             'expires_at'  => $result['expires_at'],     // batas waktu bayar (ISO 8601)
         ], 201);
     }
 
-    public function show(Request $request, Booking $booking)
+    public function show(Request $request, Booking $booking, DemoEscrowService $escrow)
     {
         if ($booking->customer_id !== $request->user()->id) {
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
+        $escrow->reconcile(Booking::whereKey($booking->id));
         $booking->load(['service.tenant', 'slot', 'slots', 'review', 'payment']);
 
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);

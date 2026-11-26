@@ -174,7 +174,14 @@ export default function VendorDashboardScreen() {
   );
   const paidTotal = bookings.reduce((total, booking) =>
     total + (booking.payment?.status === 'paid' ? Number(booking.total_amount ?? 0) : 0), 0);
-  const revenueCard = <SaldoTokoCard nativeLayout={redesigned} balance={paidTotal} onPesanan={() => navigation.navigate('Orders')} />;
+  const revenueCard = (
+    <View>
+      <SaldoTokoCard nativeLayout={redesigned} balance={paidTotal} onPesanan={() => navigation.navigate('Orders')} />
+      <TenantPressable accessibilityRole="button" style={dashboardStyles.link} onPress={() => navigation.navigate('DemoEarnings')}>
+        <Text style={dashboardStyles.linkText}>Lihat Pendapatan</Text>
+      </TenantPressable>
+    </View>
+  );
 
   const statistics = (
     <View style={tenantStyles.statistics}>

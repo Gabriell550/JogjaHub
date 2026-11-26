@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import VendorDashboardScreen from '../features/vendor/dashboard/screens/VendorDashboardScreen';
 import RecentActivityScreen from '../features/vendor/dashboard/screens/RecentActivityScreen';
 import VendorStatisticsScreen from '../features/vendor/statistics/screens/VendorStatisticsScreen';
+import DemoEarningsScreen from '../features/vendor/earnings/screens/DemoEarningsScreen';
 import { VendorDashboardStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<VendorDashboardStackParamList>();
@@ -17,6 +18,7 @@ export function VendorDashboardStackNavigator() {
         options={{ headerShown: true, title: 'Recent Activity' }}
       />
       <Stack.Screen name="Statistics" component={VendorStatisticsScreen} />
+      <Stack.Screen name="DemoEarnings" component={DemoEarningsScreen} options={{ headerShown: true, title: 'Pendapatan' }} />
     </Stack.Navigator>
   );
 }

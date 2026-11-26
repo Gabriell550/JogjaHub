@@ -4,6 +4,7 @@ import VendorProfileScreen from '../features/vendor/profile/screens/VendorProfil
 import EditTenantProfileScreen from '../features/vendor/profile/screens/EditTenantProfileScreen';
 import VendorChatInboxScreen from '../features/vendor/profile/screens/VendorChatInboxScreen';
 import VendorChatRoomScreen from '../features/vendor/profile/screens/VendorChatRoomScreen';
+import DemoPayoutDestinationScreen from '../features/vendor/earnings/screens/DemoPayoutDestinationScreen';
 import type { VendorProfileStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<VendorProfileStackParamList>();
@@ -13,6 +14,8 @@ export function VendorProfileStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileHome" component={VendorProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EditBusinessProfile" component={EditTenantProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DemoPayoutDestination" component={DemoPayoutDestinationScreen}
+        options={{ headerShown: true, title: 'Tujuan Pencairan' }} />
       <Stack.Screen name="VendorChatInbox" component={VendorChatInboxScreen}
         options={{ headerShown: true, title: 'Chat Pelanggan' }} />
       <Stack.Screen name="VendorChatRoom" component={VendorChatRoomScreen}
