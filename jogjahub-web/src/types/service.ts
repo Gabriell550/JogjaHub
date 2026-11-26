@@ -25,6 +25,9 @@ export interface Service {
   name: string;
   description: string;
   price: number | string;
+  price_type?: "per_session" | "per_night" | null;
+  is_active?: boolean;
+  is_accommodation?: boolean;
   photos: ServicePhoto[] | null;
   subcategory?: ServiceSubcategory;
   tenant?: ServiceTenant;

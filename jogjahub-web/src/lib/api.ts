@@ -2,66 +2,68 @@ import { getSession } from "@/src/lib/auth";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number, public readonly errors: Record<string, string[]> = {}) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function authHeaders(): Record<string, string> {
   const token = getSession()?.token;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function apiGet<T>(endpoint: string, signal?: AbortSignal): Promise<T> {
+async function request(method: string, endpoint: string, payload?: unknown, signal?: AbortSignal, accept = "application/json") {
+  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: { Accept: "application/json", ...authHeaders() },
+    method,
+    headers: {
+      Accept: accept,
+      ...authHeaders(),
+      ...(payload !== undefined && !isFormData ? { "Content-Type": "application/json" } : {}),
+    },
+    body: payload === undefined || isFormData ? payload as FormData | undefined : JSON.stringify(payload),
     signal,
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const body = await response.json().catch(() => null) as { message?: unknown; errors?: Record<string, string[]> } | null;
+    const validation = Object.values(body?.errors ?? {}).flat().filter((value) => typeof value === "string");
+    const fallback = response.status === 401 ? "Sesi berakhir. Silakan masuk kembali."
+      : response.status === 403 ? "Akses ditolak." : `Permintaan gagal (${response.status}).`;
+    const message = validation.length ? [...new Set(validation)].join(" ")
+      : typeof body?.message === "string" ? body.message : fallback;
+    throw new ApiError(message, response.status, body?.errors);
   }
 
-  return response.json() as Promise<T>;
+  return response;
+}
+
+export async function apiGet<T>(endpoint: string, signal?: AbortSignal): Promise<T> {
+  return (await request("GET", endpoint, undefined, signal)).json();
 }
 
 export async function apiGetBlob(endpoint: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: { Accept: "*/*", ...authHeaders() },
-  });
-
-  if (!response.ok) {
-    const result: unknown = await response.json().catch(() => null);
-    const body = typeof result === "object" && result !== null
-      ? result as { message?: unknown }
-      : {};
-    throw new Error(
-      typeof body.message === "string" ? body.message : `Request failed: ${response.status}`,
-    );
-  }
-
-  return response.blob();
+  return (await request("GET", endpoint, undefined, undefined, "*/*")).blob();
 }
 
-async function sendWithBody<T>(method: "POST" | "PATCH", endpoint: string, payload?: unknown): Promise<T> {
-  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method,
-    headers: { ...(isFormData ? {} : { "Content-Type": "application/json" }), Accept: "application/json", ...authHeaders() },
-    body: payload !== undefined ? (isFormData ? payload : JSON.stringify(payload)) : undefined,
-  });
-  const result: unknown = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const body = typeof result === "object" && result !== null
-      ? result as { message?: unknown; errors?: unknown }
-      : {};
-    const validationMessages = typeof body.errors === "object" && body.errors !== null
-      ? Object.values(body.errors as Record<string, unknown>)
-        .flatMap((value) => Array.isArray(value) ? value : [value])
-        .find((value): value is string => typeof value === "string")
-      : undefined;
-
-    throw new Error((typeof body.message === "string" ? body.message : validationMessages) ?? `Permintaan gagal (${response.status}).`);
-  }
-
-  return result as T;
+async function send<T>(method: string, endpoint: string, payload?: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await request(method, endpoint, payload, signal);
+  if (response.status === 204) return undefined as T;
+  return response.json();
 }
 
-export const apiPost = <T>(endpoint: string, payload: unknown) => sendWithBody<T>("POST", endpoint, payload);
-export const apiPatch = <T>(endpoint: string, payload?: unknown) => sendWithBody<T>("PATCH", endpoint, payload);
+export const apiPost = <T>(endpoint: string, payload?: unknown, signal?: AbortSignal) => send<T>("POST", endpoint, payload, signal);
+export const apiPatch = <T>(endpoint: string, payload?: unknown) => send<T>("PATCH", endpoint, payload);
+export const apiPut = <T>(endpoint: string, payload: unknown) => send<T>("PUT", endpoint, payload);
+export const apiDelete = <T>(endpoint: string) => send<T>("DELETE", endpoint);
+
+export interface Resource<T> {
+  data: T;
+  message?: string;
+}
+
+export interface Page<T> extends Resource<T[]> {
+  meta: { current_page: number; last_page: number; total: number; per_page: number };
+}
