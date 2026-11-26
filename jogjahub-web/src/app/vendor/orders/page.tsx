@@ -1,15 +1,27 @@
-import { Card } from "@/src/components/ui/Card";
+"use client";
 
-export default function VendorOrdersPage() {
+import { useState } from "react";
+import { useApiQuery } from "@/src/hooks/useApiRequest";
+import { ActionButton, LoadingData, PageHeading, Pagination, RequestError } from "@/src/components/shared/OperationsUi";
+import { VendorBookingList } from "@/src/features/vendor/VendorBookingList";
+import type { Page } from "@/src/lib/api";
+import type { BookingResource } from "@/src/types/booking";
+
+export default function VendorOrders() {
+  const [page, setPage] = useState(1);
+  const query = useApiQuery<Page<BookingResource>>(`/tenant/bookings?page=${page}`);
+
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">Vendor</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">Orders</h1>
-      </div>
-      <Card className="p-6">
-        <p className="text-slate-600">This page is reserved for vendor orders and booking management.</p>
-      </Card>
-    </div>
+    <section className="space-y-5">
+      <PageHeading title="Pesanan"><ActionButton disabled={query.loading} onClick={query.reload}>Muat ulang</ActionButton></PageHeading>
+      {query.loading && <LoadingData />}
+      <RequestError message={query.error} retry={query.reload} />
+      {query.data && (
+        <>
+          <VendorBookingList bookings={query.data.data} />
+          <Pagination current={query.data.meta.current_page} last={query.data.meta.last_page} onChange={setPage} />
+        </>
+      )}
+    </section>
   );
 }

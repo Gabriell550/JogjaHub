@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { CUSTOMER_THEMES, useCustomerTheme, type CustomerTheme } from "@/src/components/customer/CustomerThemeProvider";
 import { useAuth } from "@/src/hooks/useAuth";
-import { apiGet, apiPost } from "@/src/lib/api";
+import { ApiError, apiGet, apiPost } from "@/src/lib/api";
 import { resolveAvatarUrl } from "@/src/lib/avatar";
 import type { AuthUser } from "@/src/features/auth/types";
 
@@ -25,16 +25,15 @@ interface ProfileErrors {
 
 function getErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  const status = message.match(/(?:Request failed: |Permintaan gagal \()(\d{3})/);
 
-  if (status) {
-    const messages: Record<string, string> = {
-      "401": "Sesi login tidak valid atau sudah berakhir. Silakan login kembali.",
-      "403": "Akun ini tidak memiliki akses ke profil customer.",
-      "404": "Endpoint profil tidak ditemukan. Periksa konfigurasi API backend.",
-      "500": "Server sedang mengalami gangguan. Coba lagi beberapa saat.",
+  if (error instanceof ApiError) {
+    const messages: Record<number, string> = {
+      401: "Sesi login tidak valid atau sudah berakhir. Silakan login kembali.",
+      403: "Akun ini tidak memiliki akses ke profil customer.",
+      404: "Endpoint profil tidak ditemukan. Periksa konfigurasi API backend.",
+      500: "Server sedang mengalami gangguan. Coba lagi beberapa saat.",
     };
-    return messages[status[1]] ?? `Permintaan gagal (${status[1]}). Silakan coba lagi.`;
+    return messages[error.status] ?? error.message;
   }
 
   return message || "Terjadi kesalahan. Silakan coba lagi.";

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
+import { ROUTES } from "@/src/constants/routes";
 
 type IconProps = { className?: string };
 
@@ -60,7 +61,7 @@ function LogOutIcon({ className }: IconProps) {
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: DashboardIcon },
   { href: "/admin/vendors", label: "Verification", icon: BadgeCheckIcon },
-  { href: "/admin/disputes", label: "Sengketa", icon: DisputeIcon },
+  { href: ROUTES.adminDisputes, label: "Sengketa", icon: DisputeIcon },
   { href: "/admin/users", label: "Users", icon: UsersIcon, disabled: true },
 ];
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

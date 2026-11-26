@@ -27,6 +27,7 @@ class Booking extends Model
         'fulfilled_at' => 'datetime',
         'completed_at' => 'datetime',
         'issue_reported_at' => 'datetime',
+        'issue_resolved_at' => 'datetime',
         'completion_reminded_at' => 'datetime',
     ];
 
@@ -62,6 +63,11 @@ class Booking extends Model
             substr($slot->slot_date, 0, 10) . ' ' . ($slot->end_time ?: $slot->start_time),
             $timezone
         ));
+    }
+
+    public function hasOpenCompletionIssue(): bool
+    {
+        return $this->issue_reported_at !== null && $this->issue_resolved_at === null;
     }
 
     public function service()

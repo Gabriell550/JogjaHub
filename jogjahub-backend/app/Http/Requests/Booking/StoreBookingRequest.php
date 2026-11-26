@@ -28,9 +28,10 @@ class StoreBookingRequest extends FormRequest
 
             'details'    => 'nullable|array',
 
-            // payment_method & payment_proof_url dihapus:
-            // metode bayar dipilih user di halaman Xendit (bukan di form booking),
-            // dan proof tidak diperlukan karena Xendit otomatis konfirmasi via webhook.
+            'demo_payment_method' => 'nullable|in:bank_transfer,gopay,dana',
+            'demo_checkout_key' => 'required_with:demo_payment_method|nullable|alpha_dash:ascii|min:16|max:64',
+            'demo_expected_amount' => 'required_with:demo_payment_method|nullable|integer|min:0',
+            'demo_pickup' => 'sometimes|boolean',
         ];
     }
 

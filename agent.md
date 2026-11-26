@@ -19,7 +19,7 @@ Yogyakarta adalah kota pelajar dengan ribuan wisudawan per periode wisuda. Mahas
 - **Gifting** (Florist, Selempang, Plakat, Akrilik)
 
 ### 1.2 Aktor Sistem (Multi-Role)
-1. **Customer** (Mahasiswa/Keluarga): Menjelajahi katalog, melihat lokasi vendor di peta, memilih slot waktu (termasuk slot dini hari), melakukan booking, mengunggah bukti bayar manual, membatalkan pesanan (sesuai ketentuan), dan memberi ulasan.
+1. **Customer** (Mahasiswa/Keluarga): Menjelajahi katalog, melihat lokasi vendor di peta, memilih slot waktu (termasuk slot dini hari), menyimulasikan pembayaran, melaporkan kendala, mengonfirmasi penerimaan, dan memberi ulasan.
 2. **Vendor / Tenant**: Mendaftar, melengkapi profil bisnis & kategori layanan, mengelola katalog produk/layanan, mengelola jadwal/slot waktu, menerima atau menolak pesanan masuk, serta memantau omzet/performa.
 3. **Admin**: Memverifikasi & *approve/reject* pendaftaran vendor baru, memantau transaksi, serta menangani pengaduan/kualitas layanan.
 
@@ -31,9 +31,8 @@ Yogyakarta adalah kota pelajar dengan ribuan wisudawan per periode wisuda. Mahas
   - Integrasi Peta Lokasi (pinpoint vendor DIY).
   - Sistem Pemesanan Berbasis Slot Waktu (*Time Slot Capacity* dengan pencegahan overbooking/race condition).
   - Manajemen Pesanan (Vendor: Konfirmasi/Tolak; Customer: List Booking & Batalkan).
-  - Pembayaran Manual (Transfer rekening + Unggah bukti bayar atau COD / Pay on Arrival).
+  - Pembayaran demo melalui simulasi transfer bank, GoPay, atau DANA. Dana dilepas setelah konfirmasi penerimaan dan tersedianya tujuan pencairan.
 - **OUT-OF-SCOPE (Jangan Diimplementasikan di MVP)**:
-  - **Live Chat / Direct Messaging In-App**: **Ditiadakan**. Komunikasi langsung dialihkan ke **WhatsApp** eksternal vendor.
   - **Payment Gateway Otomatis** (Midtrans, Xendit, dll.): **Ditiadakan** untuk versi MVP.
   - **Multi-Bahasa & Multi-Mata Uang**: Hanya Bahasa Indonesia & Rupiah (IDR).
   - **Loyalty Program / Kupon Promo**: Ditunda ke versi pasca-MVP.
@@ -161,6 +160,7 @@ flowchart LR
 
 | Tanggal | Modul | Deskripsi Perubahan / Bug Fix | Status | Issue Ref |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-11-25 | Escrow pembayaran demo (Mobile & Backend) | Checkout dan konfirmasi penerimaan di aplikasi, status dana terpisah, Pendapatan tenant dengan tujuan pencairan yang disamarkan, dan Monitoring Escrow admin. Pencairan memakai satu catatan pembayaran per pesanan dan berjalan otomatis setelah syarat terpenuhi. | Implementasi selesai. Pengujian API lulus. Uji perangkat masih terbuka. | [Issue escrow pembayaran demo](issue-escrow-pembayaran-demo.md) |
 | 2026-11-22 | Statistik Tenant (Mobile) | Kartu estimasi pendapatan memakai oranye utama JogjaHub. Stat card pada layar Statistik menggerakkan nominal, perubahan terhadap periode sebelumnya, grafik, dan indikator untuk empat pilihan periode. Dasbor memakai grafik animasi yang sama untuk Pendapatan Hari Ini. Animasi mengikuti spring DesignBookmark dan pengaturan Reduce Motion. Statistik masih memakai data contoh. | Implementasi selesai | - |
 | 2026-11-11 | Customer Profile (Web) | Implementasi issue #83. Akar masalah lokal: `APP_URL=http://localhost` membentuk URL avatar tanpa port API `:8000`, dan `backend/public/storage` belum tersedia; file avatar ada di disk public. Kontrak `GET/POST /api/v1/customer/profile`, field multipart `avatar`, response `data.avatar_url`, bearer auth, dan batas 2 MB dikonfirmasi dari routes/controller/resource/tests backend. Setelah memperbaiki `APP_URL` dan membuat junction lokal `public/storage` ke disk public, endpoint tanpa sesi merespons 401 dan file avatar dapat diakses (200); response profil terautentikasi tidak diverifikasi karena tidak ada sesi customer untuk pengujian. `src/lib/avatar.ts` menyelesaikan path relatif ke `/storage/...` dan menormalkan origin same-host berdasarkan `NEXT_PUBLIC_API_URL` (URL eksternal valid tetap digunakan); halaman profil mempertahankan inisial serta menampilkan pesan saat URL/gambar gagal, memetakan error 401/403/404/500, dan mengembalikan tampilan foto lama jika upload gagal. `.env.example` dan `.env` lokal memakai `APP_URL=http://localhost:8000`. Untuk menjalankan: konfigurasi `APP_URL` ke origin backend yang dapat diakses browser, jalankan `php artisan storage:link`, login customer, periksa GET profil, unggah gambar ≤2 MB, lalu verifikasi setelah refresh dan login ulang. `npm run lint`, `tsc --noEmit`, dan `npm run build` lulus. Batasan: PHP CLI tidak tersedia untuk menjalankan `storage:link`; junction lokal dibuat sebagai pengganti, tetapi upload terautentikasi belum diuji. | Implementasi selesai (runtime terbatas) | #83 |
 | 2026-11-02 | Tenant Profile (Mobile) | Implementasi issue #79: layar Edit Profil Tenant dipisahkan dari onboarding dan menampilkan Informasi Akun (nama/email read-only dari sesi) serta Informasi Bisnis, Kategori, dan Alamat/Lokasi. Field editable mengikuti `TenantProfileResource`/`UpdateProfileRequest`; telepon pemilik dan logo tidak ditambahkan karena kontrak tidak menyediakan keduanya. Data diambil dari `GET /tenant/profile` dan `GET /categories`, kategori memakai ID backend, koordinat response dinormalisasi dari `location`, lalu semua field editable dikirim lewat `PUT /tenant/profile` (`business_name`, `description`, `address`, `latitude`, `longitude`, `whatsapp_number`, `category_ids`). Response `data` memuat profil bisnis, alamat, lokasi, kategori, dan status. Validasi client mencakup field wajib, provinsi yang diizinkan, kategori, dan rentang koordinat backend; state loading/error/saving jelas, error server mempertahankan input, tombol batal/simpan tersedia, submit dikunci terhadap double tap, dan response terbaru disimpan ke Redux. Endpoint update mengembalikan status `pending`; aplikasi mengikuti status tersebut dan menampilkan alur menunggu approval. Berkas utama: `EditTenantProfileScreen.tsx`, `VendorProfileStackNavigator.tsx`, `vendorApi.ts`, `types/vendor.ts`, `VendorProfileScreen.tsx`, dan `RealCategoryMultiSelect.tsx`. `git diff --check` lolos. `npm run typecheck` masih melaporkan 17 diagnostic di file lain yang tidak tersentuh (MapPicker, StatusBar, listing, dan chat); tidak ada diagnostic pada file perubahan. Skrip lint tidak tersedia di `package.json`. Backend/API contract tidak diubah. | Selesai | #79 |
@@ -203,7 +203,7 @@ flowchart LR
    - Daftarkan layar `Catalog` dan `VendorDetail` di `CustomerStackNavigator.tsx`.
    - Bangun UI `CatalogScreen.tsx` untuk menampilkan daftar vendor dan layanan berdasarkan kategori/sub-kategori wisuda dengan filter.
 2. **[Customer] VendorDetailScreen**:
-   - Tampilkan informasi profil vendor, paket layanan wisuda, alamat/lokasi, dan tombol direct ke WhatsApp eksternal (sesuai aturan PRD: tanpa in-app chat).
+   - Tampilkan informasi profil vendor, paket layanan wisuda, dan alamat/lokasi. Arahkan pemilihan layanan ke checkout di JogjaHub.
 3. **[Customer] MyBookingsScreen & BookingDetailScreen**:
    - Hubungkan ke `bookingApi.listMyBookings()` dan `bookingApi.cancelBooking()`.
 4. **[Copywriting & Cleanup] Penyelarasan Istilah**:

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\DemoEscrowService;
 use App\Http\Resources\BookingResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -41,12 +42,13 @@ class BookingController extends Controller
         ], 201);
     }
 
-    public function show(Request $request, Booking $booking)
+    public function show(Request $request, Booking $booking, DemoEscrowService $escrow)
     {
         if ($booking->customer_id !== $request->user()->id) {
             return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
         }
 
+        $escrow->reconcile(Booking::whereKey($booking->id));
         $booking->load(['service.tenant', 'slot', 'slots', 'review', 'payment']);
 
         return response()->json(['success' => true, 'data' => new BookingResource($booking)]);

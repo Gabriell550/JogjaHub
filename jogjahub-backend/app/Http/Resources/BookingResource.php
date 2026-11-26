@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\DemoFundStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,9 @@ class BookingResource extends JsonResource
             'fulfilled_at' => $this->fulfilled_at,
             'completed_at' => $this->completed_at,
             'issue_reported_at' => $this->issue_reported_at,
+            'issue_resolved_at' => $this->issue_resolved_at,
+            'issue_resolution' => $this->issue_resolution,
+            'demo_pickup' => (bool) ($this->details['demo_pickup'] ?? false),
             'completion_issue' => $this->completion_issue,
             'completion_reminded_at' => $this->completion_reminded_at,
             'completion_conversation_id' => $this->completion_conversation_id,

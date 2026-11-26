@@ -2,36 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiGet } from "@/src/lib/api";
+import { ApiError, apiGet, type Page } from "@/src/lib/api";
 import { ROUTES } from "@/src/constants/routes";
-import type { Service, TimeSlot } from "@/src/types/service";
-import type { BookingStatus } from "@/src/types/booking";
+import { useAuth } from "@/src/hooks/useAuth";
+import type { BookingResource } from "@/src/types/booking";
+import { bookingCode, bookingSchedule, bookingStatusLabels, rupiah } from "@/src/features/booking/bookingDisplay";
 
 type BookingsView = "active" | "history";
-
-interface CustomerBooking {
-  id: number;
-  uuid: string;
-  status: BookingStatus;
-  details: Record<string, unknown> | null;
-  created_at: string;
-  service: Service;
-  slot: TimeSlot | null;
-}
-
-interface BookingListResponse {
-  success: boolean;
-  data: CustomerBooking[];
-  meta: { current_page: number; last_page: number; per_page: number; total: number };
-}
-
-const statusLabels: Record<BookingStatus, string> = {
-  pending: "Menunggu pembayaran",
-  confirmed: "Dikonfirmasi",
-  awaiting_completion_confirmation: "Menunggu konfirmasi selesai",
-  completed: "Selesai",
-  cancelled: "Dibatalkan",
-};
 
 const PAGE_SIZE = 15;
 
@@ -40,7 +17,8 @@ function formattedDate(value: string) {
 }
 
 export function CustomerBookingsPage({ view }: { view: BookingsView }) {
-  const [bookings, setBookings] = useState<CustomerBooking[]>([]);
+  const { logout } = useAuth();
+  const [bookings, setBookings] = useState<BookingResource[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,18 +33,19 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
         setError("");
 
         try {
-          const firstPage = await apiGet<BookingListResponse>("/customer/bookings?page=1", controller.signal);
+          const firstPage = await apiGet<Page<BookingResource>>("/customer/bookings?page=1", controller.signal);
           const allBookings = [...firstPage.data];
 
           for (let currentPage = 2; currentPage <= firstPage.meta.last_page; currentPage += 1) {
             if (controller.signal.aborted) return;
-            const response = await apiGet<BookingListResponse>(`/customer/bookings?page=${currentPage}`, controller.signal);
+            const response = await apiGet<Page<BookingResource>>(`/customer/bookings?page=${currentPage}`, controller.signal);
             allBookings.push(...response.data);
           }
 
           if (!controller.signal.aborted) setBookings(allBookings);
         } catch (requestError: unknown) {
           if (!controller.signal.aborted) {
+            if (requestError instanceof ApiError && requestError.status === 401) logout();
             setError(requestError instanceof Error ? requestError.message : "Pesanan gagal dimuat.");
           }
         } finally {
@@ -81,7 +60,7 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [requestNumber]);
+  }, [requestNumber, logout]);
 
   const visibleBookings = bookings.filter((booking) =>
     (booking.status === "cancelled" || booking.status === "completed") === isHistory);
@@ -121,29 +100,25 @@ export function CustomerBookingsPage({ view }: { view: BookingsView }) {
         <>
           <ul className="space-y-4">
             {pageBookings.map((booking) => {
-              const details = booking.details ?? {};
-              const checkIn = typeof details.check_in_date === "string" ? details.check_in_date : null;
-              const checkOut = typeof details.check_out_date === "string" ? details.check_out_date : null;
               return (
                 <li key={booking.uuid} className="rounded-2xl border border-[#DFE6F3] bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#5A6472]">Booking #{booking.uuid.slice(0, 8)}</p>
-                      <h2 className="font-display mt-2 text-lg font-semibold text-[#121C2A]">{booking.service.name}</h2>
-                      <p className="mt-1 text-sm text-[#4B596B]">{booking.service.tenant?.business_name ?? "Vendor JogjaHub"}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#5A6472]">{bookingCode(booking.id)}</p>
+                      <h2 className="font-display mt-2 text-lg font-semibold text-[#121C2A]">{booking.service?.name ?? "Layanan"}</h2>
+                      <p className="mt-1 text-sm text-[#4B596B]">{booking.service?.tenant?.business_name ?? "Vendor JogjaHub"}</p>
                     </div>
                     <span className={`inline-flex min-h-8 w-fit items-center rounded-full px-3 text-xs font-bold ${
                       booking.status === "confirmed" || booking.status === "completed" ? "bg-green-100 text-green-900" :
                         booking.status === "cancelled" ? "bg-slate-100 text-slate-700" : "bg-amber-100 text-amber-900"
-                    }`}>{statusLabels[booking.status]}</span>
+                    }`}>{booking.status === "pending" ? "Menunggu pembayaran" : bookingStatusLabels[booking.status]}</span>
                   </div>
                   <div className="mt-4 grid gap-2 border-t border-[#E6EEFF] pt-4 text-sm text-[#263449] sm:grid-cols-2">
-                    <p><span className="font-semibold">Harga layanan:</span> Rp{Number(booking.service.price).toLocaleString("id-ID")}</p>
+                    <p><span className="font-semibold">Total pesanan</span> {rupiah(booking.total_amount)}</p>
                     <p><span className="font-semibold">Dibuat:</span> {formattedDate(booking.created_at)}</p>
-                    {booking.slot ? <p><span className="font-semibold">Jadwal:</span> {formattedDate(booking.slot.slot_date)} · {booking.slot.start_time.slice(0, 5)}–{booking.slot.end_time.slice(0, 5)}</p> : null}
-                    {checkIn && checkOut ? <p><span className="font-semibold">Check-in/out:</span> {formattedDate(checkIn)} – {formattedDate(checkOut)}</p> : null}
+                    <p><span className="font-semibold">Jadwal</span> {bookingSchedule(booking)}</p>
                   </div>
-                  <Link href={`${ROUTES.services}/${booking.service.id}`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#A04100] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">Lihat detail layanan</Link>
+                  <Link href={`${ROUTES.dashboardOrders}/${booking.uuid}`} className="mt-4 inline-flex min-h-11 items-center font-semibold text-[#A04100] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">Lihat detail pesanan</Link>
                 </li>
               );
             })}

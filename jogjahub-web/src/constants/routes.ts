@@ -14,8 +14,10 @@ export const ROUTES = {
   vendorOrders: "/vendor/orders",
   vendorCalendar: "/vendor/calendar",
   vendorProfile: "/vendor/profile",
+  vendorEarnings: "/vendor/earnings",
   admin: "/admin",
   adminUsers: "/admin/users",
   adminVendors: "/admin/vendors",
   adminBookings: "/admin/bookings",
+  adminDisputes: "/admin/disputes",
 } as const;

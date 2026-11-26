@@ -53,8 +53,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           ) : null}
           <p className="mt-6 whitespace-pre-line leading-7 text-[#5A4136]">{service.description}</p>
           <p className="font-display mt-auto pt-8 text-2xl font-bold text-[#121C2A]">Rp{Number(service.price).toLocaleString("id-ID")}</p>
-          <p className="mt-2 text-sm text-[#4B596B]">Harga layanan mengikuti data vendor. Pembayaran diproses melalui halaman pembayaran dari backend.</p>
-          <ServiceBookingPanel serviceId={service.id} subcategoryId={service.subcategory?.id} />
+          <p className="mt-2 text-sm text-[#4B596B]">{service.price_type === "per_night" ? "Per malam" : "Per sesi"}</p>
+          <ServiceBookingPanel key={service.id} service={service} />
         </div>
       </div>
     </article>

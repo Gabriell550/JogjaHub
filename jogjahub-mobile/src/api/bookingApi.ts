@@ -2,18 +2,23 @@
 // role tenant, dan tenant yang sudah disetujui di backend.
 import { apiClient } from './client';
 import type { BookingRecord } from '../types/bookingRecord';
+import type { DemoPaymentMethod } from './demoEscrowApi';
 
-type CreateBookingPayload = {
+export type CreateBookingPayload = {
   service_id: string | number;
   slot_id?: number;
   check_in_date?: string;
   check_out_date?: string;
+  demo_payment_method: DemoPaymentMethod;
+  demo_checkout_key: string;
+  demo_expected_amount: number;
+  demo_pickup: boolean;
 };
 
 export const bookingApi = {
   getAvailableSlots: (serviceId: string | number) => apiClient.get(`/services/${serviceId}/slots`),
 
-  createBooking: (payload: CreateBookingPayload) => apiClient.post('/customer/bookings', payload),
+  createBooking: (payload: CreateBookingPayload) => apiClient.post<{ data: BookingRecord }>('/customer/bookings', payload),
   listMyBookings: (params?: { page?: number }) => apiClient.get('/customer/bookings', { params }),
   getMyBooking: (id: string) => apiClient.get<{ data: BookingRecord }>(`/customer/bookings/${id}`),
   confirmCompletion: (id: string) => apiClient.post<{ data: BookingRecord }>(`/customer/bookings/${id}/confirm-completion`),

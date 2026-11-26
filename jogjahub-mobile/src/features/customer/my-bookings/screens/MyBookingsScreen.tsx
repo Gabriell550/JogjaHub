@@ -87,7 +87,7 @@ export default function MyBookingsScreen() {
           Date.parse(booking.payment.expires_at) > Date.now() ? booking.payment.payment_url ?? undefined : undefined,
         package_type: booking.nights ? booking.nights + ' malam' : '',
         status: booking.status,
-        hasIssue: !!booking.issue_reported_at,
+        hasIssue: !!booking.issue_reported_at && !booking.issue_resolved_at,
       })));
     } catch (error) {
       if (request === loadSequence.current) Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
@@ -177,7 +177,7 @@ export default function MyBookingsScreen() {
             </View>
           )}
 
-          {item.status === 'awaiting_completion_confirmation' && item.hasIssue && <Text>Kendala dilaporkan</Text>}
+          {item.hasIssue && item.status !== 'completed' && <Text>Kendala dilaporkan</Text>}
           <Text style={styles.orderCodeText}>#{item.order_code}</Text>
         </View>
 

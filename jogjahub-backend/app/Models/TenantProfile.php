@@ -32,7 +32,8 @@ class TenantProfile extends Model
     ];
 
     protected $casts = [
-        'address' => 'array'
+        'address' => 'array',
+        'demo_payout_destination' => 'encrypted:array',
     ];
 
     // Lapisan pengaman tambahan: kalau model ini pernah di-return mentah (tanpa Resource),
@@ -41,6 +42,7 @@ class TenantProfile extends Model
         'ktp_url',
         'nib_url',
         'portfolio_url',
+        'demo_payout_destination',
     ];
 
     protected static function booted(): void

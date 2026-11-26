@@ -81,7 +81,7 @@ export default function IncomingOrdersScreen() {
         payment_status: paymentLabel(booking),
         package_type: booking.nights ? booking.nights + ' malam' : '',
         status: booking.status,
-        hasIssue: !!booking.issue_reported_at,
+        hasIssue: !!booking.issue_reported_at && !booking.issue_resolved_at,
       })));
     } catch (error) {
       Toast.show({ type: 'error', text1: apiErrorMessage(error, 'Gagal memuat pesanan. Tarik untuk memuat ulang.') });
@@ -159,7 +159,7 @@ export default function IncomingOrdersScreen() {
             </View>
           )}
 
-          {item.status === 'awaiting_completion_confirmation' && item.hasIssue && <Text>Kendala dilaporkan</Text>}
+          {item.hasIssue && item.status !== 'completed' && <Text>Kendala dilaporkan</Text>}
           <Text style={styles.orderCodeText}>#{item.order_code}</Text>
         </View>
 

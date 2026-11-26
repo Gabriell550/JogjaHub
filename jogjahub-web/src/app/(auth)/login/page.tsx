@@ -16,7 +16,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [error, setError] = useState(() => searchParams.get("registered") === "tenant" ? "Registrasi berhasil! Akunmu sedang menunggu approval admin sebelum bisa login." : "");
+  const [error, setError] = useState(() => searchParams.get("registered") === "tenant" ? "Registrasi berhasil. Masuk untuk melihat status persetujuan akunmu." : "");
   const [statusVariant, setStatusVariant] = useState<"error" | "info">(() => searchParams.get("registered") === "tenant" ? "info" : "error");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,14 +37,8 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       const session = await login({ email: email.trim(), password, role });
-      if (session.user.role === "tenant" && session.tenantStatus !== "approved") {
-        setStatusVariant("info");
-        setError(session.tenantStatus === "rejected"
-          ? "Pendaftaran akun tenant kamu ditolak admin. Hubungi admin untuk info lebih lanjut."
-          : "Akun tenant kamu masih menunggu approval admin. Kamu akan diberi tahu setelah disetujui.");
-        return;
-      }
-      router.push(session.user.role === "customer" ? ROUTES.dashboard : ROUTES.vendor);
+      router.push(session.user.role === "customer" ? ROUTES.dashboard
+        : session.tenantStatus === "approved" ? ROUTES.vendor : ROUTES.vendorProfile);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Login gagal. Periksa kembali data akunmu.");
     } finally {

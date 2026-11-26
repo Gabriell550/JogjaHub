@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\DemoFundStatus;
 use App\Enums\PriceType;
 use App\Jobs\ReleaseExpiredBookingJob;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\TimeSlot;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +44,32 @@ class BookingService
      */
     public function createBooking(int $customerId, array $data): array
     {
+        if (!isset($data['demo_payment_method'])) {
+            return $this->createNewBooking($customerId, $data);
+        }
+
+        return DB::transaction(function () use ($customerId, $data) {
+            User::query()->lockForUpdate()->findOrFail($customerId);
+            $existing = Booking::withTrashed()
+                ->where('customer_id', $customerId)
+                ->where('demo_checkout_key', $data['demo_checkout_key'])
+                ->first();
+
+            if ($existing) {
+                abort_if($existing->trashed(), 409, 'Pesanan ini sudah dihapus.');
+
+                return ['booking' => $existing->load(['service', 'slot', 'slots', 'payment']), 'payment_url' => null, 'expires_at' => null];
+            }
+
+            $result = $this->createNewBooking($customerId, $data);
+            $result['booking']->forceFill(['demo_checkout_key' => $data['demo_checkout_key']])->save();
+
+            return $result;
+        }, 3);
+    }
+
+    private function createNewBooking(int $customerId, array $data): array
+    {
         $service = Service::with(['subcategory', 'tenant'])->findOrFail($data['service_id']);
 
         // Validasi: hanya layanan milik tenant yang sudah approved yang boleh dibooking
@@ -51,9 +79,12 @@ class BookingService
             ]);
         }
 
-        $usesXendit = config('booking.checkout') === 'xendit';
+        $demoMethod = $data['demo_payment_method'] ?? null;
+        $usesXendit = $demoMethod === null && config('booking.checkout') === 'xendit';
         unset($data['details']['whatsapp_number']);
-        if (!$usesXendit) {
+        if ($demoMethod !== null) {
+            unset($data['details']['check_in_date'], $data['details']['check_out_date'], $data['details']['nights'], $data['details']['demo_pickup']);
+        } elseif (!$usesXendit) {
             $number = preg_replace('/\D/', '', $service->tenant->whatsapp_number ?? '');
             if (str_starts_with($number, '0')) {
                 $number = '62' . substr($number, 1);

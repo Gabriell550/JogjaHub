@@ -15,7 +15,7 @@ export function AdminTabNavigator() {
     <Tab.Navigator>
       <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
       <Tab.Screen name="PendingVendors" component={PendingVendorListScreen} />
-      <Tab.Screen name="Monitoring" component={TransactionMonitoringScreen} />
+      <Tab.Screen name="Monitoring" component={TransactionMonitoringScreen} options={{ title: 'Monitoring Escrow' }} />
       <Tab.Screen name="Profile" component={AdminProfileScreen} />
     </Tab.Navigator>
   );

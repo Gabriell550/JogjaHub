@@ -30,6 +30,7 @@ import {
   Clock,
   ExternalLink,
   ShieldCheck,
+  Wallet,
   FileText,
   LogOut,
   Navigation,
@@ -603,6 +604,14 @@ export default function VendorProfileScreen({ navigation }: { navigation: any })
 
         {/* ── SECTION: PENGATURAN TOKO & KEAMANAN ── */}
         <View style={[styles.standardSection, { gap: 10 }]}>
+          <TouchableOpacity style={styles.menuSettingRow} accessibilityRole="button"
+            onPress={() => navigation.navigate('DemoPayoutDestination')} activeOpacity={0.7}>
+            <View style={styles.menuSettingLeft}>
+              <Wallet size={18} color="#64748B" />
+              <Text style={styles.menuSettingLabel}>Tujuan Pencairan</Text>
+            </View>
+            <Text style={styles.menuSettingArrow}>›</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuSettingRow}
             onPress={handleEditProfile}
