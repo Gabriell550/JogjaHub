@@ -66,20 +66,17 @@ class BookingResource extends JsonResource
             'review'   => new ReviewResource($this->whenLoaded('review')),
             'customer' => new UserResource($this->whenLoaded('customer')),
 
-            // payment: info pembayaran (amount, status, url, expired_at)
+            // payment: info pembayaran (amount, status, bukti transfer, expired_at)
             'payment'  => $this->whenLoaded('payment', fn () => [
-                'amount'      => $this->payment?->amount,
-                'currency'    => $this->payment?->currency,
-                'status'      => $this->payment?->status,
-                'payment_url' => $this->payment?->payment_url,
-                'expires_at'  => $this->payment?->expires_at,
-                'paid_at'     => $this->payment?->paid_at,
-                'fund_status' => $this->payment?->fund_status?->value,
-                'payout_destination' => $this->payment?->payout_destination,
-                'payout_completed_at' => $this->payment?->payout_completed_at,
-                'payout_waiting_for_destination' => $this->completed_at !== null
-                    && $this->payment?->fund_status === DemoFundStatus::HELD
-                    && !$this->resource->hasOpenCompletionIssue(),
+                'amount'            => $this->payment?->amount,
+                'currency'          => $this->payment?->currency,
+                'status'            => $this->payment?->status,
+                // payment_proof_url: foto bukti transfer yang diupload customer (transfer manual)
+                'payment_proof_url' => $this->payment?->payment_proof_url
+                    ? asset('storage/' . $this->payment->payment_proof_url)
+                    : null,
+                'expires_at'        => $this->payment?->expires_at,
+                'paid_at'           => $this->payment?->paid_at,
             ]),
         ];
     }

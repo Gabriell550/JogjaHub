@@ -20,6 +20,8 @@ class Payment extends Model
         'payment_method',
         'payment_channel',
         'payment_url',
+        // Path foto bukti transfer manual yang diupload customer (disk: public)
+        'payment_proof_url',
         'paid_at',
         'expires_at',
         'xendit_raw_response',

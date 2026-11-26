@@ -52,6 +52,8 @@ Route::prefix('v1')->group(function () {
             ->only(['index', 'store', 'show']);
         Route::post('bookings/{booking}/cancel', [\App\Http\Controllers\Api\Customer\BookingController::class, 'cancel']);
         Route::post('bookings/{booking}/review', [\App\Http\Controllers\Api\Customer\ReviewController::class, 'store']);
+        // Upload bukti transfer manual — customer upload foto setelah transfer ke rekening tenant
+        Route::post('bookings/{booking}/payment-proof', [\App\Http\Controllers\Api\Customer\BookingController::class, 'uploadPaymentProof']);
 
         // Chat — conversation customer dengan tenant
         Route::get('conversations', [\App\Http\Controllers\Api\Customer\ConversationController::class, 'index']);
@@ -88,6 +90,9 @@ Route::prefix('v1')->group(function () {
             Route::get('bookings', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'index']);
             Route::get('bookings/{booking}', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'show']);
             Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
+            // Konfirmasi pembayaran transfer manual — tenant verifikasi bukti lalu konfirmasi
+            Route::post('bookings/{booking}/confirm-payment', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'confirmPayment']);
+            // Tandai pekerjaan selesai — tenant menyelesaikan layanan, menunggu konfirmasi customer
             Route::post('bookings/{booking}/mark-fulfilled', [\App\Http\Controllers\Api\BookingCompletionController::class, 'mark']);
         });
 

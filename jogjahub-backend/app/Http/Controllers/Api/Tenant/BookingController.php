@@ -83,4 +83,57 @@ class BookingController extends Controller
             'data' => new BookingResource($booking->fresh()),
         ]);
     }
+
+    /**
+     * Konfirmasi pembayaran transfer manual oleh tenant.
+     *
+     * Alur:
+     *  - Customer sudah upload bukti transfer
+     *  - Tenant memeriksa bukti via GET /tenant/bookings/{id}
+     *  - Tenant konfirmasi → booking status: confirmed, payment status: paid
+     *
+     * Validasi:
+     *  - Booking harus milik layanan tenant yang login
+     *  - Status booking harus pending
+     *  - Customer sudah upload bukti (payment_proof_url tidak null)
+     */
+    public function confirmPayment(Request $request, Booking $booking)
+    {
+        $tenantId = $request->user()->tenantProfile->id;
+
+        if ($booking->service->tenant_id !== $tenantId) {
+            return response()->json(['success' => false, 'message' => 'Tidak diizinkan'], 403);
+        }
+
+        if ($booking->status !== BookingStatus::PENDING->value) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya booking berstatus pending yang bisa dikonfirmasi.',
+            ], 422);
+        }
+
+        $payment = $booking->payment;
+
+        // Pastikan customer sudah upload bukti transfer sebelum tenant konfirmasi
+        if (!$payment || !$payment->payment_proof_url) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Customer belum mengupload bukti transfer. Mohon tunggu.',
+            ], 422);
+        }
+
+        // Konfirmasi: update payment → paid, booking → confirmed
+        $payment->update([
+            'status'  => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $booking->update(['status' => BookingStatus::CONFIRMED->value]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembayaran berhasil dikonfirmasi. Booking telah terkonfirmasi.',
+            'data'    => new BookingResource($booking->fresh(['service', 'slot', 'slots', 'payment'])),
+        ]);
+    }
 }

@@ -100,7 +100,7 @@ class HotelBookingTest extends TestCase
         $response->assertStatus(201)
                  ->assertJsonPath('success', true)
                  ->assertJsonPath('data.status', 'pending')
-                 ->assertJsonStructure(['data', 'payment_url', 'expires_at']);
+                 ->assertJsonStructure(['data', 'expires_at']);
 
         // Semua 3 slot harus bertambah booked_count-nya
         foreach ($slots as $slot) {
