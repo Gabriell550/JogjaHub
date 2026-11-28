@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/src/features/admin/services/adminApi";
 import type { TenantDocumentType } from "@/src/features/admin/services/adminApi";
 import type { PendingTenant } from "@/src/features/admin/types";
+import { ApiError } from "@/src/lib/api";
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -16,6 +17,20 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+async function normalizeDocument(document: Blob): Promise<Blob> {
+  const type = document.type.split(";")[0].trim();
+  if (type.startsWith("image/") || type === "application/pdf") return document;
+
+  const bytes = new Uint8Array(await document.slice(0, 8).arrayBuffer());
+  const matches = (signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
+  if (matches([0xff, 0xd8, 0xff])) return document.slice(0, document.size, "image/jpeg");
+  if (matches([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+    return document.slice(0, document.size, "image/png");
+  }
+  if (matches([0x25, 0x50, 0x44, 0x46, 0x2d])) return document.slice(0, document.size, "application/pdf");
+  return document;
 }
 
 function DocumentPreview({
@@ -33,12 +48,13 @@ function DocumentPreview({
   const [contentType, setContentType] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-
-
+  const [attempt, setAttempt] = useState(0);
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     let objectUrl: string | null = null;
+    const controller = new AbortController();
 
     async function loadDocument() {
       if (!hasDocument) {
@@ -50,15 +66,20 @@ function DocumentPreview({
       setIsLoading(true);
       setError("");
       setUrl(null);
+      setPreviewFailed(false);
 
       try {
-        const document = await adminApi.getTenantDocument(tenantUuid, type);
+        const document = await normalizeDocument(await adminApi.getTenantDocument(tenantUuid, type, controller.signal));
         if (!active) return;
         objectUrl = URL.createObjectURL(document);
         setContentType(document.type);
         setUrl(objectUrl);
       } catch (requestError) {
-        if (active) setError(errorMessage(requestError, "Dokumen gagal dimuat."));
+        if (active) {
+          setError(requestError instanceof ApiError && requestError.status === 404
+            ? "File dokumen tidak ditemukan di penyimpanan server."
+            : errorMessage(requestError, "Dokumen gagal dimuat."));
+        }
       } finally {
         if (active) setIsLoading(false);
       }
@@ -67,12 +88,13 @@ function DocumentPreview({
     loadDocument();
     return () => {
       active = false;
+      controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [tenantUuid, type, hasDocument]);
+  }, [tenantUuid, type, hasDocument, attempt]);
 
   const isImage = contentType.startsWith("image/");
-  const isPdf = contentType === "application/pdf";
+  const isPdf = contentType.split(";")[0].trim() === "application/pdf";
 
   return (
     <section className="rounded-xl border border-[#E3E8F0] bg-white p-4 sm:p-5">
@@ -90,15 +112,21 @@ function DocumentPreview({
         {isLoading ? (
           <p role="status" className="text-sm text-[#5A6472]">Memuat dokumen…</p>
         ) : error ? (
-          <p role="alert" className="max-w-sm text-center text-sm text-[#BA1A1A]">{error}</p>
-        ) : url && isImage ? (
+          <div className="text-center text-sm">
+            <p role="alert" className="max-w-sm text-[#BA1A1A]">{error}</p>
+            <button type="button" onClick={() => setAttempt((value) => value + 1)}
+              className="mt-2 min-h-10 font-medium text-[#A04100] underline underline-offset-2">
+              Coba lagi
+            </button>
+          </div>
+        ) : url && isImage && !previewFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={title} className="max-h-[30rem] w-full object-contain" />
+          <img src={url} alt={title} onError={() => setPreviewFailed(true)} className="max-h-[30rem] w-full object-contain" />
         ) : url && isPdf ? (
           <iframe title={title} src={url} className="h-72 w-full rounded-md sm:h-96" />
         ) : url ? (
           <p className="text-center text-sm text-[#5A6472]">
-            Pratinjau tidak tersedia untuk format ini.{" "}
+            {previewFailed ? "Gambar gagal ditampilkan." : "Pratinjau tidak tersedia untuk format ini."}{" "}
             <a href={url} download className="font-medium text-[#A04100] underline underline-offset-2">
               Unduh {title}
             </a>
@@ -108,7 +136,7 @@ function DocumentPreview({
         )}
       </div>
 
-      {url && (isImage || isPdf) ? (
+      {url && ((isImage && !previewFailed) || isPdf) ? (
         <a href={url} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-[#A04100] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A04100]">
           Buka dokumen di tab baru
         </a>

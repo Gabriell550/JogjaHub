@@ -26,8 +26,8 @@ export const adminApi = {
     if (!response.success) throw new Error("Backend gagal memuat pengajuan verifikasi.");
     return response;
   },
-  getTenantDocument: (uuid: string, type: TenantDocumentType) =>
-    apiGetBlob(`/admin/tenants/${encodeURIComponent(uuid)}/documents/${type}`),
+  getTenantDocument: (uuid: string, type: TenantDocumentType, signal?: AbortSignal) =>
+    apiGetBlob(`/admin/tenants/${encodeURIComponent(uuid)}/documents/${type}`, signal),
   // Route backend di-bind via getRouteKeyName() = 'uuid', jadi wajib mengirim uuid
   // (bukan id numerik) agar tidak kena 404.
   approveTenant: async (uuid: string) => {

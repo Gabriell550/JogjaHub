@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { CatalogCoordinates, CatalogSort } from '../features/customer/catalog/useCatalog';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -12,7 +13,8 @@ export type AuthStackParamList = {
 
 export type CustomerTabParamList = {
   Home: undefined;
-  Explore: { categoryId?: number; query?: string; requestId?: number } | undefined;
+  Explore: { categoryId?: number; query?: string; requestId?: number; servicesOnly?: boolean;
+    sort?: CatalogSort; coordinates?: CatalogCoordinates } | undefined;
   Messages: undefined;
   MyBookings: undefined;
   Profile: undefined;

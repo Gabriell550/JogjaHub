@@ -10,7 +10,8 @@ export const vendorApi = {
 listTenantsOnMap: () => apiClient.get('/tenants/map'),
   searchTenants: (params: { category_id?: number; q?: string; page: number }) => apiClient.get('/tenants', { params }),
   getTenantProfile: (uuid: string) => apiClient.get(`/tenants/${uuid}`),
-  listServices: (params?: { category_id?: number; subcategory_id?: number; q?: string; page?: number; accommodation?: boolean }) =>
+  listServices: (params?: { category_id?: number; subcategory_id?: number; q?: string; page?: number; accommodation?: boolean;
+    sort?: 'popular' | 'rating' | 'nearby'; latitude?: number; longitude?: number }) =>
     apiClient.get('/services', { params }),
   getServiceReviews: (serviceId: string | number) =>
     apiClient.get(`/services/${serviceId}/reviews`),

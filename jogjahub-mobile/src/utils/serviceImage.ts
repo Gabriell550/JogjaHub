@@ -59,6 +59,10 @@ function customerPhotoUrl(source?: string): string {
 export function customerPhotoUrls(photos: CustomerPhotoData[] = [], logo?: string): string[] {
   const urls = [...photos]
     .sort((a, b) => Number(!!b.is_primary) - Number(!!a.is_primary) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .map(photo => customerPhotoUrl(photo.full_url) || customerPhotoUrl(photo.url));
+    .flatMap(photo => {
+      const url = customerPhotoUrl(photo.full_url) || customerPhotoUrl(photo.url);
+      const fallback = getServicePhotoApiUrl(customerPhotoUrl(photo.url) || url);
+      return fallback ? [url, fallback] : [url];
+    });
   return [...new Set([...urls, customerPhotoUrl(logo)].filter(Boolean))];
 }

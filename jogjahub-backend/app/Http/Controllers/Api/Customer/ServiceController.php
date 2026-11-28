@@ -4,16 +4,27 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Service;
+use App\Models\TenantProfile;
+use App\Enums\BookingStatus;
 use App\Http\Resources\ServiceResource;
 use App\Http\Resources\TimeSlotResource;
 use App\Http\Resources\ReviewResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ServiceController extends Controller
 {
     public function index(Request $request)
     {
+        $filters = $request->validate([
+            'sort' => 'sometimes|in:popular,rating,nearby',
+            'latitude' => 'required_if:sort,nearby|numeric|between:-90,90',
+            'longitude' => 'required_if:sort,nearby|numeric|between:-180,180',
+        ]);
+        $sort = $filters['sort'] ?? null;
         $services = Service::with(['tenant', 'subcategory.category'])
+            ->withAvg('reviews', 'rating')
+            ->withCount(['bookings as confirmed_bookings_count' => fn($query) => $query->whereIn('status', BookingStatus::accepted())])
             ->where('is_active', true)
             ->whereHas('tenant', fn($q) => $q->where('status', 'approved')) // cuma tampilin tenant yang udah approved
             ->when($request->subcategory_id, fn($q) => $q->where('subcategory_id', $request->subcategory_id))
@@ -35,8 +46,21 @@ class ServiceController extends Controller
                         ->orWhereHas('subcategory.category', fn ($category) => $category->whereRaw('LOWER(TRIM(name)) = ?', ['penginapan']));
                 });
             })
-            ->orderBy('id')
-            ->paginate(15);
+            ->when($sort === 'popular', fn($query) => $query->orderByDesc('confirmed_bookings_count'))
+            ->when($sort === 'rating', fn($query) => $query
+                ->where(fn($reviews) => $reviews->selectRaw('AVG(reviews.rating)')
+                    ->from('reviews')->join('bookings', 'bookings.id', '=', 'reviews.booking_id')
+                    ->whereNull('bookings.deleted_at')
+                    ->whereColumn('bookings.service_id', 'services.id'), '>=', DB::raw('4.8'))
+                ->orderByDesc('reviews_avg_rating'))
+            ->when($sort === 'nearby', function ($query) use ($filters) {
+                $query->whereHas('tenant', fn($tenant) => $tenant->whereNotNull('latitude')->whereNotNull('longitude'))
+                    ->orderBy(TenantProfile::selectRaw(
+                        '(latitude - ?) * (latitude - ?) + (longitude - ?) * (longitude - ?)',
+                        [$filters['latitude'], $filters['latitude'], $filters['longitude'], $filters['longitude']],
+                    )->whereColumn('tenant_profiles.id', 'services.tenant_id'));
+            })
+            ->orderBy('id')->paginate(15);
 
         return ServiceResource::collection($services)->additional(['success' => true]);
     }

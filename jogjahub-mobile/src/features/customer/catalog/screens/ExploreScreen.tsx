@@ -32,11 +32,11 @@ function ExploreResults({ initial, stack }: {
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState(initial?.query ?? '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId);
-  const [filter, setFilter] = useState<Filter>('Semua');
+  const [filter, setFilter] = useState<Filter>(initial?.servicesOnly ? 'Layanan' : 'Semua');
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryError, setCategoryError] = useState(false);
   const [categoryAttempt, setCategoryAttempt] = useState(0);
-  const services = useCatalog(categoryId, query);
+  const services = useCatalog(categoryId, query, false, initial?.sort, initial?.coordinates);
   const shops = useShops(categoryId, query);
   const all = filter === 'Semua';
   const results = normalize(query) && shops.rows.some(shop => normalize(shop.business_name) === normalize(query))

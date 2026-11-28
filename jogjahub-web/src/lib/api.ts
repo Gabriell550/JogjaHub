@@ -44,8 +44,8 @@ export async function apiGet<T>(endpoint: string, signal?: AbortSignal): Promise
   return (await request("GET", endpoint, undefined, signal)).json();
 }
 
-export async function apiGetBlob(endpoint: string): Promise<Blob> {
-  return (await request("GET", endpoint, undefined, undefined, "*/*")).blob();
+export async function apiGetBlob(endpoint: string, signal?: AbortSignal): Promise<Blob> {
+  return (await request("GET", endpoint, undefined, signal, "*/*")).blob();
 }
 
 async function send<T>(method: string, endpoint: string, payload?: unknown, signal?: AbortSignal): Promise<T> {
