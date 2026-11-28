@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,16 @@ Route::prefix('v1')->group(function () {
     Route::get('/tenants/map', [\App\Http\Controllers\Api\Customer\TenantController::class, 'map']);
     Route::get('/tenants', [\App\Http\Controllers\Api\Customer\TenantController::class, 'index']);
     Route::get('/services', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'index']);
+    Route::get('/service-photos/{filename}', function (string $filename) {
+        $disk = Storage::disk('public');
+        $path = 'services/' . $filename;
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->response($path, null, [
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    })->where('filename', '[A-Za-z0-9_-]+\.(?:jpe?g|png|webp)');
     Route::get('/services/{service}', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'show']);
     Route::get('/services/{service}/slots', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'slots']);
     Route::get('services/{service}/reviews', [\App\Http\Controllers\Api\Customer\ServiceController::class, 'reviews']);
@@ -92,7 +103,6 @@ Route::prefix('v1')->group(function () {
             Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'updateStatus']);
             // Konfirmasi pembayaran transfer manual — tenant verifikasi bukti lalu konfirmasi
             Route::post('bookings/{booking}/confirm-payment', [\App\Http\Controllers\Api\Tenant\BookingController::class, 'confirmPayment']);
-            // Tandai pekerjaan selesai — tenant menyelesaikan layanan, menunggu konfirmasi customer
             Route::post('bookings/{booking}/mark-fulfilled', [\App\Http\Controllers\Api\BookingCompletionController::class, 'mark']);
         });
 

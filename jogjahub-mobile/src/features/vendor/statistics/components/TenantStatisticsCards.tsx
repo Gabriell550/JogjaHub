@@ -29,7 +29,7 @@ export function TenantStatisticsCards({ records = emptyRecords, initialPeriod, a
   const revenue = data.revenue.reduce((sum, value) => sum + value, 0);
   const orders = data.orders.reduce((sum, value) => sum + value, 0);
   const averagePayment = average(revenue, data.paidCount);
-  const props = { periods, period, onChangePeriod: setPeriod, active };
+  const props = { periods, period, periodLabel: data.periodLabel, onChangePeriod: setPeriod, active };
 
   return (
     <View style={styles.cards}>

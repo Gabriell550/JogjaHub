@@ -24,7 +24,7 @@ class BookingController extends Controller
 
         $bookings = Booking::whereHas('service', fn($q) => $q->where('tenant_id', $tenantId))
             // Load slot (single-slot) DAN slots (multi-slot hotel) + payment untuk total_amount
-            ->with(['customer:id,name,email', 'service:id,name', 'slot', 'slots', 'review', 'payment'])
+            ->with(['customer:id,name,email', 'service:id,name,photos', 'slot', 'slots', 'review', 'payment'])
             ->latest()
             ->orderByDesc('id')
             ->paginate(15);

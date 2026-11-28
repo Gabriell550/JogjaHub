@@ -1,11 +1,13 @@
 export const tenantColors = {
-  canvas: '#FAF7F2',
-  hero: '#0B5D48',
-  heroTextMuted: '#D4F3E8',
-  border: '#E6DED4',
-  onPositive: '#1F6426',
-  translucentWhite: 'rgba(255,255,255,0.12)',
-  heroAction: 'rgba(255,255,255,0.22)',
+  canvas: '#F8FAFC',
+  hero: '#FF5E00',
+  heroGradientStart: '#FF5E00',
+  heroGradientEnd: '#EA580C',
+  heroTextMuted: '#FFEDD5',
+  border: '#E2E8F0',
+  onPositive: '#166534',
+  translucentWhite: 'rgba(255,255,255,0.18)',
+  heroAction: 'rgba(255,255,255,0.25)',
   dockShadow: '0 4px 14px rgba(18,28,42,0.12)',
 } as const;
 

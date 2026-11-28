@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  <title>JogjaHub Merchant Dashboard</title>
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              200: '#fed7aa',
+              400: '#fb923c',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+              800: '#9a3412',
+            },
+            surface: {
+              card: '#FFFFFF',
+              subtle: '#F8FAFC',
+            }
+          },
+          boxShadow: {
+            'card-lift': '0 10px 25px -4px rgba(15, 23, 42, 0.04), 0 4px 8px -2px rgba(15, 23, 42, 0.02)',
+            'card-float': '0 14px 34px -6px rgba(194, 65, 12, 0.35), 0 6px 14px -3px rgba(194, 65, 12, 0.2)',
+            'bento': '0 2px 8px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+            'dock': '0 -8px 24px -4px rgba(15, 23, 42, 0.06), 0 -2px 6px -1px rgba(15, 23, 42, 0.02)',
+          }
+        }
+      }
+    }
+  </script>
+  <style data-purpose="custom-scrollbars">
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+  <style data-purpose="responsive-layout">
+    /* Responif bersih di semua ukuran device: HP, Tablet, Laptop/Desktop */
+    html, body {
+      background-color: #F1F5F9;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #0F172A;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .app-viewport {
+      width: 100%;
+      max-width: 540px; /* Fleksibel dan natural di smartphone, elegan & proporsional di tablet/desktop */
+      margin: 0 auto;
+      min-height: 100vh;
+      background-color: #F8FAFC;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(15, 23, 42, 0.08);
+    }
+
+    /* Tab Page Animations */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modal Animation */
+    .modal-backdrop {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-sheet {
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 1, 0.23, 1);
+    }
+    .modal-backdrop.open .modal-sheet {
+      transform: translateY(0);
+    }
+
+    /* Dock Sliding Highlight Pill */
+    .dock-pill-track {
+      position: relative;
+    }
+    .dock-sliding-pill {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 20%;
+      left: 0;
+      pointer-events: none;
+      transition: transform 0.32s cubic-bezier(0.34, 1.45, 0.64, 1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1;
+    }
+    .dock-sliding-pill-inner {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(249, 115, 22, 0.12);
+      border: 1px solid rgba(249, 115, 22, 0.2);
+      box-shadow: 0 2px 10px -2px rgba(249, 115, 22, 0.25);
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-brand-500 selection:text-white">
+
+<!-- BEGIN: App Viewport Container (Edge-to-edge di HP, terpusat proporsional di Tablet/Desktop) -->
+<div class="app-viewport flex flex-col justify-between" data-purpose="app-viewport">
+
+  <!-- Content Container with Bottom Padding for Navigation Bar -->
+  <div id="scroll-container" class="flex-1 pb-28">
+
+    <!-- BEGIN: TopStatusBar -->
+    <section class="bg-[#0B111E] px-6 pt-3.5 pb-2 text-white flex justify-between items-center text-xs tracking-tight sticky top-0 z-40" data-purpose="status-bar">
+      <span id="current-clock" class="font-bold text-[13px] tracking-tight">12:39</span>
+      <div class="flex items-center space-x-2 text-slate-300">
+        <!-- Signal Icon -->
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.2 18.39A10.97 10.97 0 0 1 1 12C1 5.92 5.92 1 12 1s11 4.92 11 11c0 2.45-.8 4.71-2.17 6.54l-.77-.77C21.2 16.27 22 14.22 22 12c0-4.97-4.03-9-9-9zM12 6c-3.31 0-6 2.69-6 6 0 1.41.49 2.7 1.31 3.73l-.78.78A6.974 6.974 0 0 1 5 12c0-3.87 3.13-7 7-7s7 3.13 7 7c0 1.7-.6 3.25-1.6 4.46l-.77-.77A4.978 4.978 0 0 0 17 12c0-2.76-2.24-5-5-5zm0 3c-1.66 0-3 1.34-3 3 0 .73.26 1.4.7 1.93l-.76.76C8.33 14.07 8 13.08 8 12c0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.08-.33 2.07-.94 2.69l-.76-.76A1.99 1.99 0 0 0 14 12c0-1.1-.9-2-2-2z"></path>
+        </svg>
+        <!-- Wifi -->
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A17.92 17.92 0 0 0 12 4z"></path>
+        </svg>
+        <!-- Battery Pill -->
+        <div class="flex items-center gap-1 border border-slate-500/80 rounded-[5px] px-1.5 py-[1.5px]">
+          <span class="text-[10px] font-bold leading-none">40</span>
+          <div class="w-2.5 h-2 bg-emerald-400 rounded-[1px]"></div>
+        </div>
+      </div>
+    </section>
+    <!-- END: TopStatusBar -->
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DASBOR                              -->
+    <!-- ========================================== -->
+    <div id="view-dashboard" class="tab-content active">
+      <!-- BEGIN: HeaderSection -->
+      <header class="bg-gradient-to-b from-[#0B111E] via-[#0F172A] to-[#131F37] text-white px-5 pt-3 pb-16 rounded-b-[36px] relative overflow-hidden shadow-2xl" data-purpose="vendor-header">
+        <!-- Ambient Backlight Orb -->
+        <div class="absolute -top-12 -left-12 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute top-1/4 -right-16 w-52 h-52 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Brand & Settings Row -->
+        <div class="flex items-center justify-between relative z-10">
+          <div class="flex items-center gap-3">
+            <!-- JogjaHub Brand Logo Badge with subtle glow -->
+            <div class="relative group cursor-pointer" onclick="switchTab('dashboard')">
+              <div class="absolute -inset-0.5 bg-gradient-to-tr from-brand-500 to-sky-400 rounded-2xl blur opacity-35 group-hover:opacity-60 transition duration-300"></div>
+              <div class="relative w-11 h-11 rounded-2xl overflow-hidden bg-white/10 p-1.5 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-inner">
+                <img alt="JogjaHub Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRm3q3ijqxeaip_4uIS8Az8OCr2afqt65WpXowaoLr5XXBS4ur1bcErDQ_ehIstJ3piGkFtCtP34R2JnS0MujlFx4MyG9WX0cmnCtOny2Gj6sdKrEpHsrL9N8HxkFDVpD-K6a2O77ZcTrfYSJUDnDcJcxEDMAXN3lm8ghna-6F07zwC-jWntSgjzwAJeETXlYz9ixILPNY3MYjiHwcj6Rf2uDE-n4lSrPjn3uaSpY">
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] uppercase tracking-widest font-extrabold text-orange-400/90">Tenant<br></span>
+              </div>
+              <h1 class="text-[17px] font-extrabold tracking-tight text-white flex items-center gap-1">
+                JogjaHub
+              </h1>
+            </div>
+          </div>
+          <!-- Settings / Profile Button -->
+          <button onclick="switchTab('profile')" aria-label="Pengaturan" class="w-10 h-10 rounded-2xl bg-white/[0.08] hover:bg-white/[0.15] active:scale-95 backdrop-blur-xl border border-white/15 flex items-center justify-center text-slate-200 transition-all shadow-sm" data-purpose="settings-trigger">
+            <svg class="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </button>
+        </div>
+        <!-- Greeting & Store Status -->
+        <div class="mt-6 flex items-end justify-between relative z-10">
+          <div>
+            <p class="text-xs font-medium text-slate-400 tracking-wide">Selamat Datang,</p>
+            <h2 class="text-2xl font-bold tracking-tight text-white capitalize mt-0.5 font-sans">Cantik Style</h2>
+          </div>
+          <!-- Store Toggle Pill -->
+          <button onclick="toggleStoreStatus()" id="store-status-btn" class="inline-flex items-center gap-2 bg-slate-900/80 hover:bg-slate-900 backdrop-blur-xl border border-slate-700/70 px-3.5 py-1.5 rounded-full shadow-lg transition-all active:scale-95 cursor-pointer" data-purpose="store-status-badge">
+            <span class="relative flex h-2 w-2">
+              <span id="store-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span id="store-dot" class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span id="store-status-text" class="text-[11px] font-bold tracking-tight text-slate-200">Toko Tutup</span>
+          </button>
+        </div>
+      </header>
+      <!-- END: HeaderSection -->
+
+      <!-- Main Content Container with Negative Margin to overlap Header -->
+      <main class="px-4 -mt-10 space-y-5 relative z-20">
+        <!-- BEGIN: RevenueCard -->
+        <section class="bg-gradient-to-br from-[#E65100] via-[#F4511E] to-[#BF360C] text-white rounded-[28px] p-5 shadow-card-float border border-white/20 relative overflow-hidden" data-purpose="revenue-card">
+          <!-- Laser-engraved Geometric Contour Watermark Pattern -->
+          <div class="absolute -right-12 -top-12 w-44 h-44 rounded-full border-[18px] border-white/10 pointer-events-none"></div>
+          <div class="absolute -right-20 -bottom-20 w-60 h-60 rounded-full border-[26px] border-white/[0.07] pointer-events-none"></div>
+          <div class="absolute left-1/3 top-0 w-36 h-36 bg-amber-300/20 rounded-full blur-2xl pointer-events-none"></div>
+          <!-- Card Header & Metadata -->
+          <div class="flex items-center justify-between relative z-10">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xs font-semibold text-orange-100/90 tracking-wide uppercase">Estimasi Pendapatan</span>
+            </div>
+          </div>
+          <!-- Balance Display -->
+          <div class="mt-3 flex items-center gap-3 relative z-10">
+            <h3 id="balance-amount" class="text-4xl font-bold tracking-tight text-white drop-shadow-sm font-sans">Rp0</h3>
+            <button onclick="toggleBalanceVisibility()" aria-label="Sembunyikan Saldo" class="text-orange-200/80 hover:text-white transition-transform active:scale-90 p-1.5 rounded-full hover:bg-white/10">
+              <!-- Open Eye Icon -->
+              <svg id="eye-icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+              </svg>
+              <!-- Closed Eye Icon (Hidden by default) -->
+              <svg id="eye-icon-closed" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Quick Action Buttons -->
+          <div class="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-white/20 relative z-10">
+            <!-- Action: Tarik -->
+            <button onclick="openModal('modal-withdraw')" class="flex flex-col items-center group active:scale-95 transition-transform">
+              <div class="w-12 h-12 rounded-2xl bg-white/20 group-hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm transition-all duration-200">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 14l-7 7m0 0l-7-7m7 7V3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"></path>
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-white mt-2 tracking-tight">Tarik</span>
+            </button>
+            <!-- Action: Riwayat -->
+            <button onclick="openModal('modal-history')" class="flex flex-col items-center group active:scale-95 transition-transform">
+              <div class="w-12 h-12 rounded-2xl bg-white/20 group-hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm transition-all duration-200">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"></path>
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-white mt-2 tracking-tight">Riwayat</span>
+            </button>
+            <!-- Action: Pesanan -->
+            <button onclick="switchTab('orders')" class="flex flex-col items-center group active:scale-95 transition-transform">
+              <div class="w-12 h-12 rounded-2xl bg-white/20 group-hover:bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-sm transition-all duration-200">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+                </svg>
+              </div>
+              <span class="text-xs font-bold text-white mt-2 tracking-tight">Pesanan</span>
+            </button>
+          </div>
+        </section>
+        <!-- END: RevenueCard -->
+
+        <!-- BEGIN: QuickMenuGrid -->
+        <section class="grid grid-cols-4 gap-2.5" data-purpose="quick-menu-grid">
+          <!-- Produk Anda -->
+          <a onclick="switchTab('services')" class="bg-white p-3 rounded-2xl border border-slate-200/70 shadow-bento flex flex-col items-center text-center group hover:border-orange-300 hover:shadow-md transition-all active:scale-95 cursor-pointer" href="javascript:void(0)">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-2 transition-transform duration-200 group-hover:scale-105 shadow-sm" style="background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); box-shadow: 0 6px 14px -3px rgba(255, 107, 107, 0.45);">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-800 leading-tight">Produk Anda</span>
+          </a>
+          <!-- Dompet -->
+          <a onclick="openModal('modal-wallet')" class="bg-white p-3 rounded-2xl border border-slate-200/70 shadow-bento flex flex-col items-center text-center group hover:border-sky-300 hover:shadow-md transition-all active:scale-95 cursor-pointer" href="javascript:void(0)">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-2 transition-transform duration-200 group-hover:scale-105 shadow-sm" style="background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%); box-shadow: 0 6px 14px -3px rgba(59, 130, 246, 0.45);">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-800 leading-tight">Dompet</span>
+          </a>
+          <!-- Statistik -->
+          <a onclick="scrollToStats()" class="bg-white p-3 rounded-2xl border border-slate-200/70 shadow-bento flex flex-col items-center text-center group hover:border-emerald-300 hover:shadow-md transition-all active:scale-95 cursor-pointer" href="javascript:void(0)">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-2 transition-transform duration-200 group-hover:scale-105 shadow-sm" style="background: linear-gradient(135deg, #10B981 0%, #14B8A6 100%); box-shadow: 0 6px 14px -3px rgba(16, 185, 129, 0.45);">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-800 leading-tight">Statistik</span>
+          </a>
+          <!-- Ulasan -->
+          <a onclick="openModal('modal-reviews')" class="bg-white p-3 rounded-2xl border border-slate-200/70 shadow-bento flex flex-col items-center text-center group hover:border-amber-300 hover:shadow-md transition-all active:scale-95 cursor-pointer" href="javascript:void(0)">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-2 transition-transform duration-200 group-hover:scale-105 shadow-sm" style="background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%); box-shadow: 0 6px 14px -3px rgba(245, 158, 11, 0.45);"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg></div>
+            <span class="text-[11px] font-semibold text-slate-800 leading-tight">Ulasan</span>
+          </a>
+        </section>
+        <!-- END: QuickMenuGrid -->
+
+        <!-- BEGIN: StatisticsSection -->
+        <section id="statistics-section" class="space-y-3" data-purpose="statistics-card-wrapper">
+          <!-- Section Heading -->
+          <div class="flex items-center justify-between px-1">
+            <h4 class="text-base font-bold text-slate-900 tracking-tight">Statistik</h4>
+            <a onclick="showToast('Menampilkan seluruh statistik tenant')" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors tracking-tight cursor-pointer" href="javascript:void(0)">Lihat Statistik</a>
+          </div>
+          <!-- Total Orders Metric Card -->
+          <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-card-lift space-y-4">
+            <!-- Metric Header & Badge -->
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pesanan</span>
+                <div id="stat-orders-count" class="text-3xl font-bold text-slate-900 tracking-tight mt-1 font-sans">0</div>
+              </div>
+              <div class="text-right">
+                <span id="stat-percentage-badge" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200/80">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 14l-7 7m0 0l-7-7m7 7V3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+                  </svg>
+                  -100,0%
+                </span>
+                <p class="text-[10px] font-medium text-slate-400 mt-1">vs periode sebelumnya</p>
+              </div>
+            </div>
+            <!-- Stylized Range / Progress Line -->
+            <div class="relative w-full h-2 bg-slate-100 rounded-full overflow-visible">
+              <div id="stat-progress-bar" class="absolute left-0 top-0 bottom-0 w-full bg-gradient-to-r from-orange-400 via-orange-500 to-brand-600 rounded-full opacity-40 transition-all duration-300"></div>
+              <div id="stat-progress-knob" class="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-brand-600 ring-4 ring-orange-100 shadow transition-all duration-300"></div>
+            </div>
+            <!-- Period Switcher Tabs -->
+            <div class="bg-slate-100/80 p-1.5 rounded-2xl flex items-center justify-between text-xs font-semibold text-slate-600 border border-slate-200/50">
+              <button onclick="changePeriod('today')" id="period-btn-today" class="flex-1 py-2 text-center font-bold text-white bg-gradient-to-r from-orange-600 to-brand-500 rounded-xl shadow-sm transition-all">Hari Ini</button>
+              <button onclick="changePeriod('week')" id="period-btn-week" class="flex-1 py-2 text-center hover:text-slate-900 text-slate-600 font-semibold transition-colors">Minggu</button>
+              <button onclick="changePeriod('month')" id="period-btn-month" class="flex-1 py-2 text-center hover:text-slate-900 text-slate-600 font-semibold transition-colors">Bulan</button>
+              <button onclick="changePeriod('year')" id="period-btn-year" class="flex-1 py-2 text-center hover:text-slate-900 text-slate-600 font-semibold transition-colors">Tahun</button>
+            </div>
+          </div>
+        </section>
+        <!-- END: StatisticsSection -->
+
+        <!-- BEGIN: MyServicesSection -->
+        <section class="space-y-3" data-purpose="services-showcase">
+          <!-- Section Heading -->
+          <div class="flex items-center justify-between px-1">
+            <h4 class="text-base font-bold text-slate-900 tracking-tight">Layanan Saya</h4>
+            <a onclick="switchTab('services')" class="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors cursor-pointer" href="javascript:void(0)">
+              Lihat Semua
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+              </svg>
+            </a>
+          </div>
+          <!-- Horizontal Carousel of Services -->
+          <div class="flex space-x-3.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+            <!-- Service Card 1 -->
+            <div onclick="openServiceDetail('hairy', 'Rp128.800')" class="min-w-[155px] w-[155px] bg-white rounded-2xl p-3 border border-slate-200/80 shadow-bento flex flex-col justify-between flex-shrink-0 group hover:border-orange-300 transition-all cursor-pointer">
+              <!-- Service Image Placeholder -->
+              <div class="w-full h-24 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 rounded-xl flex items-center justify-center text-orange-400 border border-orange-100/70 mb-2.5 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+                <div class="absolute -right-2 -bottom-2 w-10 h-10 bg-orange-200/40 rounded-full blur-md"></div>
+                <svg class="w-8 h-8 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900 truncate">hairy</h5>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp128.800</p>
+              </div>
+            </div>
+            <!-- Service Card 2 -->
+            <div onclick="openServiceDetail('hair dyer', 'Rp13.000')" class="min-w-[155px] w-[155px] bg-white rounded-2xl p-3 border border-slate-200/80 shadow-bento flex flex-col justify-between flex-shrink-0 group hover:border-orange-300 transition-all cursor-pointer">
+              <div class="w-full h-24 bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 rounded-xl flex items-center justify-center text-sky-500 border border-sky-100/70 mb-2.5 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+                <div class="absolute -right-2 -bottom-2 w-10 h-10 bg-sky-200/40 rounded-full blur-md"></div>
+                <svg class="w-8 h-8 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900 truncate">hair dyer</h5>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+              </div>
+            </div>
+            <!-- Service Card 3 -->
+            <div onclick="openServiceDetail('Hair Treatment', 'Rp85.000')" class="min-w-[155px] w-[155px] bg-white rounded-2xl p-3 border border-slate-200/80 shadow-bento flex flex-col justify-between flex-shrink-0 group hover:border-orange-300 transition-all opacity-90 cursor-pointer">
+              <div class="w-full h-24 bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 rounded-xl flex items-center justify-center text-purple-400 border border-purple-100/70 mb-2.5 relative overflow-hidden group-hover:scale-[1.02] transition-transform">
+                <div class="absolute -right-2 -bottom-2 w-10 h-10 bg-purple-200/40 rounded-full blur-md"></div>
+                <svg class="w-8 h-8 stroke-current" fill="none" viewBox="0 0 24 24">
+                  <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900 truncate">Hair Treatment</h5>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp85.000</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- END: MyServicesSection -->
+
+        <!-- BEGIN: IncomingOrdersSection -->
+        <section class="space-y-3 pb-2" data-purpose="incoming-orders-list">
+          <!-- Section Heading -->
+          <div class="flex items-center justify-between px-1">
+            <h4 class="text-base font-bold text-slate-900 tracking-tight">Pesanan masuk</h4>
+            <a onclick="switchTab('orders')" class="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors tracking-tight cursor-pointer" href="javascript:void(0)">Lihat Semua</a>
+          </div>
+          <!-- Orders Stack List -->
+          <div class="space-y-3">
+            <!-- Order Item 1 -->
+            <div onclick="openOrderDetail('ORD-101', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer">
+              <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">
+                    DIPROSES
+                  </span>
+                </div>
+                <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+              </div>
+            </div>
+            <!-- Order Item 2 -->
+            <div onclick="openOrderDetail('ORD-102', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer">
+              <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">
+                    DIPROSES
+                  </span>
+                </div>
+                <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+              </div>
+            </div>
+            <!-- Order Item 3 -->
+            <div onclick="openOrderDetail('ORD-103', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer">
+              <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">
+                    DIPROSES
+                  </span>
+                </div>
+                <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+              </div>
+            </div>
+            <!-- Order Item 4 -->
+            <div onclick="openOrderDetail('ORD-104', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer">
+              <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2">
+                  <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">
+                    DIPROSES
+                  </span>
+                </div>
+                <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+                <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- END: IncomingOrdersSection -->
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: LAYANAN (SERVICES)                 -->
+    <!-- ========================================== -->
+    <div id="view-services" class="tab-content">
+      <header class="bg-[#0B111E] text-white px-5 pt-5 pb-6 border-b border-slate-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-white">Kelola Layanan</h2>
+            <p class="text-xs text-slate-400 mt-0.5">3 layanan aktif terdaftar</p>
+          </div>
+          <button onclick="openModal('modal-add-service')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-brand-500 hover:bg-brand-600 active:scale-95 text-white shadow-md transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4"/></svg>
+            Tambah
+          </button>
+        </div>
+      </header>
+
+      <main class="p-4 space-y-3.5">
+        <!-- Search / Filter -->
+        <div class="relative">
+          <input type="text" placeholder="Cari layanan Anda..." class="w-full bg-white border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-xs font-medium focus:ring-2 focus:ring-brand-500 focus:border-brand-500 shadow-sm" />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+
+        <!-- Service Item 1 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-xl bg-amber-50 border border-orange-200/60 flex items-center justify-center text-orange-500 font-bold text-lg">
+              💇‍♀️
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">hairy</h4>
+              <p class="text-xs font-extrabold text-brand-600 mt-0.5">Rp128.800</p>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>
+            </div>
+          </div>
+          <button onclick="openServiceDetail('hairy', 'Rp128.800')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 transition-colors">Edit</button>
+        </div>
+
+        <!-- Service Item 2 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-xl bg-sky-50 border border-sky-200/60 flex items-center justify-center text-sky-500 font-bold text-lg">
+              💨
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">hair dyer</h4>
+              <p class="text-xs font-extrabold text-brand-600 mt-0.5">Rp13.000</p>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>
+            </div>
+          </div>
+          <button onclick="openServiceDetail('hair dyer', 'Rp13.000')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 transition-colors">Edit</button>
+        </div>
+
+        <!-- Service Item 3 -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-500 font-bold text-lg">
+              ✨
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">Hair Treatment</h4>
+              <p class="text-xs font-extrabold text-brand-600 mt-0.5">Rp85.000</p>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>
+            </div>
+          </div>
+          <button onclick="openServiceDetail('Hair Treatment', 'Rp85.000')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-semibold text-slate-700 transition-colors">Edit</button>
+        </div>
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: KALENDER (CALENDAR)                -->
+    <!-- ========================================== -->
+    <div id="view-calendar" class="tab-content">
+      <header class="bg-[#0B111E] text-white px-5 pt-5 pb-6 border-b border-slate-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-white">Kalender Booking</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Atur jadwal dan ketersediaan layanan</p>
+          </div>
+          <div class="flex gap-1.5">
+            <button class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white active:scale-90">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white active:scale-90">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="p-4 space-y-4">
+        <!-- Month Overview Card -->
+        <div class="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-card-lift">
+          <div class="flex items-center justify-between mb-3 px-1">
+            <h3 class="text-sm font-bold text-slate-900">November 2026</h3>
+            <span class="text-xs font-semibold text-brand-600 bg-orange-50 px-2.5 py-0.5 rounded-lg border border-orange-200">Hari ini: 25 Nov</span>
+          </div>
+          <!-- Days of week -->
+          <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 uppercase py-1">
+            <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
+          </div>
+          <!-- Calendar Dates -->
+          <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold mt-1">
+            <div class="p-2 text-slate-300">1</div><div class="p-2 text-slate-300">2</div><div class="p-2 text-slate-300">3</div><div class="p-2 text-slate-300">4</div><div class="p-2 text-slate-300">5</div><div class="p-2 text-slate-300">6</div><div class="p-2 text-slate-300">7</div>
+            <div class="p-2 text-slate-600">8</div><div class="p-2 text-slate-600">9</div><div class="p-2 text-slate-600">10</div><div class="p-2 text-slate-600">11</div><div class="p-2 text-slate-600">12</div><div class="p-2 text-slate-600">13</div><div class="p-2 text-slate-600">14</div>
+            <div class="p-2 text-slate-600">15</div><div class="p-2 text-slate-600">16</div><div class="p-2 text-slate-600">17</div><div class="p-2 text-slate-600">18</div><div class="p-2 text-slate-600">19</div><div class="p-2 text-slate-600">20</div><div class="p-2 text-slate-600">21</div>
+            <div class="p-2 text-slate-600">22</div><div class="p-2 text-slate-600">23</div>
+            <div class="p-2 text-slate-800 bg-orange-100 rounded-xl font-bold">24</div>
+            <div class="p-2 text-white bg-brand-500 rounded-xl font-bold shadow-sm">25</div>
+            <div class="p-2 text-slate-600">26</div><div class="p-2 text-slate-600">27</div><div class="p-2 text-slate-600">28</div>
+            <div class="p-2 text-slate-600">29</div><div class="p-2 text-slate-600">30</div>
+          </div>
+        </div>
+
+        <!-- Agenda Section -->
+        <div class="space-y-2.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 px-1">Jadwal Booking Hari Ini</h4>
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-bento flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <div>
+                <p class="text-xs font-bold text-slate-900">14:00 - hair dyer (nopal)</p>
+                <p class="text-[11px] text-slate-400">Status: Terkonfirmasi • Meja #2</p>
+              </div>
+            </div>
+            <span class="text-xs font-extrabold text-brand-600">Rp13.000</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: PESANAN (ORDERS)                   -->
+    <!-- ========================================== -->
+    <div id="view-orders" class="tab-content">
+      <header class="bg-[#0B111E] text-white px-5 pt-5 pb-6 border-b border-slate-800">
+        <h2 class="text-xl font-bold tracking-tight text-white">Daftar Pesanan</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Kelola seluruh booking pelanggan Anda</p>
+      </header>
+
+      <main class="p-4 space-y-3.5">
+        <!-- Status Filter Pills -->
+        <div class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+          <button class="px-4 py-1.5 rounded-full text-xs font-bold bg-brand-500 text-white shadow-sm flex-shrink-0">Semua (4)</button>
+          <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-600 flex-shrink-0">Diproses (4)</button>
+          <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-600 flex-shrink-0">Selesai</button>
+          <button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-600 flex-shrink-0">Dibatalkan</button>
+        </div>
+
+        <!-- Order List Repeat -->
+        <div class="space-y-3">
+          <div onclick="openOrderDetail('ORD-101', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">DIPROSES</span>
+              </div>
+              <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+              <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+            </div>
+          </div>
+
+          <div onclick="openOrderDetail('ORD-102', 'hair dyer', 'nopal', '24/11/2026', 'Rp13.000', 'DIPROSES')" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-bento flex items-center gap-3.5 hover:border-orange-200 transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-brand-600 flex-shrink-0 shadow-inner">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <h5 class="text-[13px] font-bold text-slate-900 truncate">hair dyer</h5>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200/80 tracking-wide uppercase">DIPROSES</span>
+              </div>
+              <p class="text-[11px] font-medium text-slate-400 mt-0.5">nopal • 24/11/2026</p>
+              <p class="text-xs font-extrabold text-brand-700 mt-1">Rp13.000</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: PROFIL (PROFILE & SETTINGS)        -->
+    <!-- ========================================== -->
+    <div id="view-profile" class="tab-content">
+      <header class="bg-[#0B111E] text-white px-5 pt-5 pb-6 border-b border-slate-800">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-brand-500/20 border-2 border-brand-500 flex items-center justify-center text-2xl font-bold text-brand-400">
+            CS
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Cantik Style</h2>
+            <p class="text-xs text-slate-400">Tenant ID: #JH-TENANT-042</p>
+            <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Terverifikasi</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="p-4 space-y-4">
+        <!-- Profile Menu Items -->
+        <div class="bg-white rounded-3xl p-2 border border-slate-200/80 shadow-bento space-y-1">
+          <button onclick="openModal('modal-withdraw')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-2xl">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-orange-50 text-brand-600 flex items-center justify-center font-bold">💳</div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900">Rekening Pencairan Dana</h5>
+                <p class="text-[10px] text-slate-400">BCA **** 8912</p>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+
+          <button onclick="showToast('Jam operasional: Setiap hari 09:00 - 21:00 WIB')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-2xl">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">⏰</div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900">Jam Operasional & Libur</h5>
+                <p class="text-[10px] text-slate-400">Atur jam buka dan hari operasional</p>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+
+          <button onclick="showToast('Notifikasi pesanan aktif')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-2xl">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">🔔</div>
+              <div>
+                <h5 class="text-xs font-bold text-slate-900">Pengaturan Notifikasi</h5>
+                <p class="text-[10px] text-slate-400">Suara pesanan baru & status notifikasi</p>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <!-- Logout Button -->
+        <button onclick="showToast('Fitur keluar / ganti akun')" class="w-full py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors border border-rose-200/80">
+          Keluar dari Akun Tenant
+        </button>
+      </main>
+    </div>
+
+  </div>
+  <!-- END: Scrollable Content Container -->
+
+  <!-- BEGIN: FixedBottomNav with Sliding Highlight (Menyesuaikan dengan lebar konten di semua layar) -->
+  <div class="fixed bottom-0 inset-x-0 z-50 flex justify-center pointer-events-none">
+    <nav class="w-full max-w-[540px] pointer-events-auto bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-3 pt-2 pb-4 shadow-dock" data-purpose="vendor-bottom-navigation">
+      
+      <!-- Container with Sliding Highlight -->
+      <div class="dock-pill-track grid grid-cols-5 items-center justify-items-center">
+        
+        <!-- Moving Highlight Pill (Spring Transition) -->
+        <div id="dock-highlight-pill" class="dock-sliding-pill">
+          <div class="dock-sliding-pill-inner"></div>
+        </div>
+
+        <!-- Tab 1: Dasbor (Active default) -->
+        <button onclick="switchTab('dashboard')" id="nav-btn-dashboard" class="relative z-10 w-full flex flex-col items-center gap-1 text-brand-600 font-bold transition-all duration-200">
+          <div id="nav-icon-box-dashboard" class="p-1.5 rounded-xl transition-all">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M4 13h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm0 8h6c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1zm10 0h6c.55 0 1-.45 1-1v-8c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1v8c0 .55.45 1 1 1zm0-18v4c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1h-6c-.55 0-1 .45-1 1z"></path>
+            </svg>
+          </div>
+          <span class="text-[10px] tracking-tight font-semibold">Dasbor</span>
+        </button>
+
+        <!-- Tab 2: Layanan -->
+        <button onclick="switchTab('services')" id="nav-btn-services" class="relative z-10 w-full flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition-all duration-200">
+          <div id="nav-icon-box-services" class="p-1.5 rounded-xl transition-all">
+            <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
+              <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+          </div>
+          <span class="text-[10px] tracking-tight">Layanan</span>
+        </button>
+
+        <!-- Tab 3: Kalender -->
+        <button onclick="switchTab('calendar')" id="nav-btn-calendar" class="relative z-10 w-full flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition-all duration-200">
+          <div id="nav-icon-box-calendar" class="p-1.5 rounded-xl transition-all">
+            <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
+              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+          </div>
+          <span class="text-[10px] tracking-tight">Kalender</span>
+        </button>
+
+        <!-- Tab 4: Pesanan -->
+        <button onclick="switchTab('orders')" id="nav-btn-orders" class="relative z-10 w-full flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition-all duration-200">
+          <div id="nav-icon-box-orders" class="p-1.5 rounded-xl transition-all">
+            <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+          </div>
+          <span class="text-[10px] tracking-tight">Pesanan</span>
+        </button>
+
+        <!-- Tab 5: Profil -->
+        <button onclick="switchTab('profile')" id="nav-btn-profile" class="relative z-10 w-full flex flex-col items-center gap-1 text-slate-400 hover:text-slate-700 font-medium transition-all duration-200">
+          <div id="nav-icon-box-profile" class="p-1.5 rounded-xl transition-all">
+            <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24">
+              <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+            </svg>
+          </div>
+          <span class="text-[10px] tracking-tight">Profil</span>
+        </button>
+      </div>
+
+      <!-- iOS Home Indicator -->
+      <div class="w-28 h-1 bg-slate-300 rounded-full mx-auto mt-2"></div>
+    </nav>
+  </div>
+  <!-- END: FixedBottomNav -->
+
+</div>
+<!-- END: App Viewport Container -->
+
+<!-- ========================================== -->
+<!-- MODALS / SHEETS (FUNCTIONAL)               -->
+<!-- ========================================== -->
+
+<!-- Modal: Tarik Saldo (Withdraw) -->
+<div id="modal-withdraw" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Tarik Saldo Pendapatan</h3>
+      <button onclick="closeModal('modal-withdraw')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="p-4 bg-orange-50 rounded-2xl border border-orange-200/80">
+      <span class="text-xs font-semibold text-orange-600 uppercase tracking-wide">Saldo Tersedia</span>
+      <p id="withdraw-available" class="text-2xl font-bold text-slate-900 mt-0.5">Rp0</p>
+    </div>
+    <div class="space-y-1.5">
+      <label class="text-xs font-bold text-slate-700">Nominal Penarikan</label>
+      <input type="number" placeholder="Minimal Rp50.000" class="w-full border border-slate-200 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:border-brand-500" />
+    </div>
+    <div class="space-y-1.5">
+      <label class="text-xs font-bold text-slate-700">Pilih Rekening Tujuan</label>
+      <div class="p-3 border border-slate-200 rounded-xl flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-sm font-bold text-slate-800">BCA</span>
+          <span class="text-xs text-slate-500">**** 8912 (Cantik Style)</span>
+        </div>
+        <span class="text-xs font-bold text-brand-600">Utama</span>
+      </div>
+    </div>
+    <button onclick="handleWithdrawSubmit()" class="w-full py-3.5 rounded-full bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-sm shadow-md transition-all">
+      Ajukan Penarikan
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Riwayat Transaksi -->
+<div id="modal-history" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl max-h-[80vh] flex flex-col">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Riwayat Transaksi</h3>
+      <button onclick="closeModal('modal-history')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="overflow-y-auto no-scrollbar space-y-3 flex-1 pr-1">
+      <div class="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">⬇</div>
+          <div>
+            <h5 class="text-xs font-bold text-slate-900">Pesanan Selesai #JH-8831</h5>
+            <p class="text-[10px] text-slate-400">23 Nov 2026 • 15:30</p>
+          </div>
+        </div>
+        <span class="text-xs font-bold text-emerald-600">+Rp13.000</span>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">⬇</div>
+          <div>
+            <h5 class="text-xs font-bold text-slate-900">Pesanan Selesai #JH-8820</h5>
+            <p class="text-[10px] text-slate-400">22 Nov 2026 • 11:20</p>
+          </div>
+        </div>
+        <span class="text-xs font-bold text-emerald-600">+Rp128.800</span>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs">⬆</div>
+          <div>
+            <h5 class="text-xs font-bold text-slate-900">Pencairan Dana ke BCA</h5>
+            <p class="text-[10px] text-slate-400">20 Nov 2026 • 09:10</p>
+          </div>
+        </div>
+        <span class="text-xs font-bold text-slate-700">-Rp250.000</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Detail Pesanan -->
+<div id="modal-order-detail" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <div>
+        <span id="detail-order-id" class="text-[11px] font-bold text-brand-600 tracking-wider">#JH-ORD-101</span>
+        <h3 id="detail-service-title" class="text-base font-bold text-slate-900">hair dyer</h3>
+      </div>
+      <button onclick="closeModal('modal-order-detail')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    
+    <div class="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-200/80">
+      <div class="flex justify-between text-xs">
+        <span class="text-slate-500">Pelanggan</span>
+        <span id="detail-customer-name" class="font-bold text-slate-900">nopal</span>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-slate-500">Tanggal Booking</span>
+        <span id="detail-order-date" class="font-bold text-slate-900">24/11/2026</span>
+      </div>
+      <div class="flex justify-between text-xs">
+        <span class="text-slate-500">Status</span>
+        <span id="detail-order-status" class="font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">DIPROSES</span>
+      </div>
+      <div class="flex justify-between text-xs pt-2 border-t border-slate-200">
+        <span class="font-bold text-slate-800">Total Pembayaran</span>
+        <span id="detail-order-price" class="text-sm font-extrabold text-brand-600">Rp13.000</span>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button onclick="contactCustomerAction()" class="flex-1 py-3 rounded-xl border border-slate-200 hover:border-brand-500 text-xs font-bold text-slate-700 transition-colors">
+        Hubungi
+      </button>
+      <button onclick="completeOrderAction()" class="flex-1 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-xs font-bold text-white shadow-md transition-colors">
+        Selesaikan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Dompet (Wallet) -->
+<div id="modal-wallet" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Dompet Merchant</h3>
+      <button onclick="closeModal('modal-wallet')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="p-5 bg-gradient-to-br from-sky-500 to-blue-600 rounded-3xl text-white shadow-lg space-y-3">
+      <div class="flex justify-between items-center text-xs opacity-90">
+        <span>JogjaHub Pay • Tenant</span>
+        <span>Aktif</span>
+      </div>
+      <div>
+        <p class="text-xs opacity-80">Saldo Siap Tarik</p>
+        <h4 class="text-3xl font-extrabold mt-0.5">Rp0</h4>
+      </div>
+      <div class="text-[11px] opacity-75">
+        Nomor Rekening Terdaftar: BCA 8912 **** 001
+      </div>
+    </div>
+    <button onclick="closeModal('modal-wallet'); openModal('modal-withdraw')" class="w-full py-3.5 rounded-full bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs shadow-md transition-all">
+      Tarik Saldo ke Rekening
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Ulasan & Rating -->
+<div id="modal-reviews" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl max-h-[80vh] flex flex-col">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Ulasan Pelanggan</h3>
+        <p class="text-xs text-amber-500 font-bold">★ 4.9 dari 5.0 (38 ulasan)</p>
+      </div>
+      <button onclick="closeModal('modal-reviews')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="overflow-y-auto no-scrollbar space-y-3 flex-1 pr-1">
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-1">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-800">Dimas Pratama</span>
+          <span class="text-xs text-amber-500">★★★★★</span>
+        </div>
+        <p class="text-xs text-slate-600">Pelayanan sangat rapi dan ramah, hasil hair dryer memuaskan!</p>
+        <span class="text-[10px] text-slate-400">24 Nov 2026</span>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-1">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-800">Siti Rahma</span>
+          <span class="text-xs text-amber-500">★★★★★</span>
+        </div>
+        <p class="text-xs text-slate-600">Tempat bersih dan wangi, proses pengerjaan cepat sesuai jadwal booking.</p>
+        <span class="text-[10px] text-slate-400">22 Nov 2026</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Tambah Layanan -->
+<div id="modal-add-service" class="modal-backdrop fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-sheet w-full max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 space-y-4 shadow-2xl">
+    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden"></div>
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-bold text-slate-900">Tambah Layanan Baru</h3>
+      <button onclick="closeModal('modal-add-service')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-bold text-slate-700">Nama Layanan</label>
+        <input type="text" placeholder="Contoh: Creambath Premium" class="w-full mt-1 border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:ring-2 focus:ring-brand-500" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-700">Harga (Rp)</label>
+        <input type="number" placeholder="Contoh: 50000" class="w-full mt-1 border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:ring-2 focus:ring-brand-500" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-slate-700">Estimasi Durasi (menit)</label>
+        <input type="number" placeholder="Contoh: 45" class="w-full mt-1 border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:ring-2 focus:ring-brand-500" />
+      </div>
+    </div>
+    <button onclick="closeModal('modal-add-service'); showToast('Layanan baru berhasil ditambahkan!')" class="w-full py-3.5 rounded-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md transition-all">
+      Simpan Layanan
+    </button>
+  </div>
+</div>
+
+<!-- Toast Pill Notification -->
+<div id="toast-pill" class="fixed top-5 inset-x-0 mx-auto w-fit max-w-[90vw] z-50 pointer-events-none opacity-0 translate-y-[-12px] transition-all duration-300">
+  <div class="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2">
+    <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+    <span id="toast-message">Notifikasi</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- JAVASCRIPT: INTERACTION & DOCK MOTION      -->
+<!-- ========================================== -->
+<script>
+  // Current active tab state
+  let currentTab = 'dashboard';
+  const tabKeys = ['dashboard', 'services', 'calendar', 'orders', 'profile'];
+  let isBalanceHidden = false;
+  let isStoreOpen = false;
+
+  // Real-time clock update in status bar
+  function updateClock() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const clockEl = document.getElementById('current-clock');
+    if (clockEl) clockEl.textContent = `${hours}:${minutes}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Highlight Position Coordinates for 5 tabs
+  function updateDockHighlight(tabKey) {
+    const pill = document.getElementById('dock-highlight-pill');
+    const tabIndex = tabKeys.indexOf(tabKey);
+    if (pill && tabIndex !== -1) {
+      // 5 columns: 0%, 100%, 200%, 300%, 400%
+      pill.style.transform = `translateX(${tabIndex * 100}%)`;
+    }
+
+    // Update colors and typography for all tab buttons
+    tabKeys.forEach((key) => {
+      const btn = document.getElementById(`nav-btn-${key}`);
+      const box = document.getElementById(`nav-icon-box-${key}`);
+      if (!btn || !box) return;
+
+      if (key === tabKey) {
+        btn.classList.remove('text-slate-400', 'font-medium');
+        btn.classList.add('text-brand-600', 'font-bold');
+        box.classList.add('text-orange-600');
+        box.classList.remove('text-slate-400');
+      } else {
+        btn.classList.remove('text-brand-600', 'font-bold');
+        btn.classList.add('text-slate-400', 'font-medium');
+        box.classList.remove('text-orange-600');
+        box.classList.add('text-slate-400');
+      }
+    });
+  }
+
+  // Switch Active Tab with smooth highlight transition
+  function switchTab(tabKey) {
+    if (!tabKeys.includes(tabKey)) return;
+
+    currentTab = tabKey;
+    updateDockHighlight(tabKey);
+
+    // Hide all tab views and display targeted view
+    tabKeys.forEach((key) => {
+      const view = document.getElementById(`view-${key}`);
+      if (view) {
+        if (key === tabKey) {
+          view.classList.add('active');
+        } else {
+          view.classList.remove('active');
+        }
+      }
+    });
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Toggle Store Open / Closed Status
+  function toggleStoreStatus() {
+    isStoreOpen = !isStoreOpen;
+    const btn = document.getElementById('store-status-btn');
+    const ping = document.getElementById('store-ping');
+    const dot = document.getElementById('store-dot');
+    const text = document.getElementById('store-status-text');
+
+    if (isStoreOpen) {
+      ping.classList.remove('bg-rose-400');
+      ping.classList.add('bg-emerald-400');
+      dot.classList.remove('bg-rose-500');
+      dot.classList.add('bg-emerald-500');
+      text.textContent = 'Toko Buka';
+      text.classList.remove('text-slate-200');
+      text.classList.add('text-emerald-300');
+      btn.classList.remove('border-slate-700/70');
+      btn.classList.add('border-emerald-600/50', 'bg-emerald-950/40');
+      showToast('🟢 Toko sekarang BUKA & menerima pesanan');
+    } else {
+      ping.classList.remove('bg-emerald-400');
+      ping.classList.add('bg-rose-400');
+      dot.classList.remove('bg-emerald-500');
+      dot.classList.add('bg-rose-500');
+      text.textContent = 'Toko Tutup';
+      text.classList.remove('text-emerald-300');
+      text.classList.add('text-slate-200');
+      btn.classList.remove('border-emerald-600/50', 'bg-emerald-950/40');
+      btn.classList.add('border-slate-700/70');
+      showToast('🔴 Toko TUTUP sementara');
+    }
+  }
+
+  // Toggle Balance Visibility (Eye button)
+  function toggleBalanceVisibility() {
+    isBalanceHidden = !isBalanceHidden;
+    const amountEl = document.getElementById('balance-amount');
+    const openEye = document.getElementById('eye-icon-open');
+    const closedEye = document.getElementById('eye-icon-closed');
+
+    if (isBalanceHidden) {
+      amountEl.textContent = '••••••••';
+      amountEl.classList.add('tracking-widest');
+      openEye.classList.add('hidden');
+      closedEye.classList.remove('hidden');
+    } else {
+      amountEl.textContent = 'Rp0';
+      amountEl.classList.remove('tracking-widest');
+      openEye.classList.remove('hidden');
+      closedEye.classList.add('hidden');
+    }
+  }
+
+  // Switch Statistics Period Tab
+  function changePeriod(period) {
+    const periods = ['today', 'week', 'month', 'year'];
+    periods.forEach((p) => {
+      const btn = document.getElementById(`period-btn-${p}`);
+      if (p === period) {
+        btn.className = 'flex-1 py-2 text-center font-bold text-white bg-gradient-to-r from-orange-600 to-brand-500 rounded-xl shadow-sm transition-all';
+      } else {
+        btn.className = 'flex-1 py-2 text-center hover:text-slate-900 text-slate-600 font-semibold transition-colors';
+      }
+    });
+
+    const countEl = document.getElementById('stat-orders-count');
+    const badgeEl = document.getElementById('stat-percentage-badge');
+    const progressBar = document.getElementById('stat-progress-bar');
+    const progressKnob = document.getElementById('stat-progress-knob');
+
+    if (period === 'today') {
+      countEl.textContent = '0';
+      badgeEl.innerHTML = `
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 14l-7 7m0 0l-7-7m7 7V3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+        -100,0%
+      `;
+      progressBar.style.width = '100%';
+      progressKnob.style.right = '0%';
+    } else if (period === 'week') {
+      countEl.textContent = '4';
+      badgeEl.innerHTML = `
+        <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 10l7-7m0 0l7 7m-7-7v18" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path></svg>
+        +100,0%
+      `;
+      badgeEl.className = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200/80';
+      progressBar.style.width = '60%';
+      progressKnob.style.right = '40%';
+    } else if (period === 'month') {
+      countEl.textContent = '12';
+      badgeEl.className = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200/80';
+      progressBar.style.width = '85%';
+      progressKnob.style.right = '15%';
+    } else if (period === 'year') {
+      countEl.textContent = '48';
+      badgeEl.className = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200/80';
+      progressBar.style.width = '100%';
+      progressKnob.style.right = '0%';
+    }
+  }
+
+  // Scroll smoothly to Statistics section
+  function scrollToStats() {
+    const statsSec = document.getElementById('statistics-section');
+    if (statsSec) {
+      statsSec.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  // Modal open/close controls
+  function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.add('open');
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('open');
+  }
+
+  // Open Order Detail Modal with dynamic data
+  function openOrderDetail(orderId, serviceName, customerName, date, price, status) {
+    document.getElementById('detail-order-id').textContent = orderId;
+    document.getElementById('detail-service-title').textContent = serviceName;
+    document.getElementById('detail-customer-name').textContent = customerName;
+    document.getElementById('detail-order-date').textContent = date;
+    document.getElementById('detail-order-price').textContent = price;
+    document.getElementById('detail-order-status').textContent = status;
+    openModal('modal-order-detail');
+  }
+
+  // Open Service Detail
+  function openServiceDetail(serviceName, price) {
+    showToast(`Membuka editor layanan: ${serviceName} (${price})`);
+  }
+
+  // Order Detail Actions
+  function completeOrderAction() {
+    closeModal('modal-order-detail');
+    showToast('✅ Pesanan berhasil diselesaikan!');
+  }
+
+  function contactCustomerAction() {
+    closeModal('modal-order-detail');
+    showToast('💬 Membuka WhatsApp pelanggan...');
+  }
+
+  function handleWithdrawSubmit() {
+    closeModal('modal-withdraw');
+    showToast('Permintaan penarikan dana berhasil diajukan!');
+  }
+
+  // Toast Notification System
+  let toastTimer = null;
+  function showToast(message) {
+    const toast = document.getElementById('toast-pill');
+    const msgEl = document.getElementById('toast-message');
+    if (!toast || !msgEl) return;
+
+    msgEl.textContent = message;
+    toast.classList.remove('opacity-0', 'translate-y-[-12px]');
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('opacity-100', 'translate-y-0');
+      toast.classList.add('opacity-0', 'translate-y-[-12px]');
+    }, 2800);
+  }
+
+  // Initialize highlight position on first render
+  document.addEventListener('DOMContentLoaded', () => {
+    updateDockHighlight('dashboard');
+  });
+</script>
+
+</body>
+</html>

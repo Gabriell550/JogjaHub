@@ -327,7 +327,7 @@ export function RubberDockTabBar({ state, descriptors, navigation, insets, panel
                 importantForAccessibility="no-hide-descendants"
                 style={[styles.indicator, tenantStyles.pill, {
                   left: pillLeft, width: pillRight - pillLeft,
-                  backgroundColor: pressedTab === state.index ? colors.onPrimaryFixedVariant : colors.primary,
+                  backgroundColor: pressedTab === state.index ? '#ea580c' : '#FF5E00',
                 }]}
               >
                 <View style={[styles.highlightRow, { width: rowWidth, height: '100%', left: -pillLeft, gap }]}>

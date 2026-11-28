@@ -60,9 +60,9 @@ export const colors = {
     accentGreen: '#2E7D32',
   accentGreenContainer: '#e3f3e6',
 
-  navy: '#1E293B',
+  navy: '#0B111E',
   onNavy: '#FFFFFF',
-  navyAccent: '#FBBF24',
+  navyAccent: '#FF5E00',
   navySub: '#94A3B8',
   orangePale: '#FED7AA',
   grayPale: '#F3F4F6',

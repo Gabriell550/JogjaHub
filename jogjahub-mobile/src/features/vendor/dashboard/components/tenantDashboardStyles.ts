@@ -16,8 +16,8 @@ export const dashboardStyles = StyleSheet.create({
     justifyContent: 'space-between',
     columnGap: spacing.stackSm,
   },
-  heading: { ...typography.titleMd, color: colors.onSurface, flexShrink: 1 },
+  heading: { fontFamily: typography.titleMd.fontFamily, fontSize: 16, fontWeight: '700', color: '#0F172A', flexShrink: 1 },
   sample: { ...typography.bodySm, color: colors.onSurfaceVariant },
   link: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4, maxWidth: '100%' },
-  linkText: { ...typography.labelMd, color: colors.primary, flexShrink: 1 },
+  linkText: { fontFamily: typography.labelMd.fontFamily, fontSize: 12, fontWeight: '700', color: '#EA580C', flexShrink: 1 },
 });

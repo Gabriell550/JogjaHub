@@ -4,20 +4,26 @@ import { ImageOff } from 'lucide-react-native';
 
 type Props = {
   uri: string | null;
+  fallbackUri?: string | null;
   style: StyleProp<ImageStyle>;
   placeholderStyle: StyleProp<ViewStyle>;
   iconSize?: number;
   iconColor?: string;
 };
 
-export function ServicePhoto({ uri, style, placeholderStyle, iconSize = 28, iconColor }: Props) {
-  const [failed, setFailed] = useState(false);
+export function ServicePhoto({ uri, fallbackUri, style, placeholderStyle, iconSize = 28, iconColor }: Props) {
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const [fallbackFailed, setFallbackFailed] = useState(false);
 
   useEffect(() => {
-    setFailed(false);
-  }, [uri]);
+    setFailedUri(null);
+    setFallbackFailed(false);
+  }, [uri, fallbackUri]);
 
-  if (!uri || failed) {
+  const usingFallback = !uri || failedUri === uri;
+  const source = usingFallback ? (fallbackFailed ? null : fallbackUri) : uri;
+
+  if (!source) {
     return (
       <View style={placeholderStyle}>
         <ImageOff size={iconSize} color={iconColor} />
@@ -27,11 +33,14 @@ export function ServicePhoto({ uri, style, placeholderStyle, iconSize = 28, icon
 
   return (
     <Image
-      source={{ uri }}
+      source={{ uri: source }}
       style={style}
       onError={(event) => {
-        console.warn('Foto layanan gagal dimuat:', uri, event.nativeEvent.error);
-        setFailed(true);
+        if (usingFallback) setFallbackFailed(true);
+        else setFailedUri(source);
+        if (usingFallback || !fallbackUri) {
+          console.warn('Foto layanan gagal dimuat:', source, event.nativeEvent.error);
+        }
       }}
     />
   );

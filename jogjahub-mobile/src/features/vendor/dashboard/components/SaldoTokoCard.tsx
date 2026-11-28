@@ -19,12 +19,12 @@ export function SaldoTokoCard({ balance, onPesanan, nativeLayout = false }: Prop
   const [hidden, setHidden] = useState(false);
 
   const { width } = useWindowDimensions();
-  const foreground = nativeLayout ? colors.onNavy : colors.onPrimary;
+  const foreground = colors.onPrimary;
 
   return (
     <View style={[styles.card, nativeLayout && styles.nativeCard]}>
       <View style={styles.topRow}>
-        <Text style={[styles.label, nativeLayout && styles.nativeLabel]}>Total pembayaran diterima</Text>
+        <Text style={[styles.label, nativeLayout && styles.nativeLabel]}>ESTIMASI PENDAPATAN</Text>
       </View>
 
       <View style={styles.amountRow}>
@@ -35,15 +35,15 @@ export function SaldoTokoCard({ balance, onPesanan, nativeLayout = false }: Prop
       </View>
 
       <View style={styles.actionsRow}>
-        {nativeLayout && [{ label: 'Tarik', Icon: Download }, { label: 'Riwayat', Icon: History }].map(({ label, Icon }) => (
-          <View key={label} accessible accessibilityRole="button" accessibilityState={{ disabled: true }} style={styles.actionItem}>
-            <View style={styles.actionIcon}><Icon size={20} color={tenantColors.heroTextMuted} /></View>
-            <Text style={styles.nativeLabel}>{label}</Text>
+        {[{ label: 'Tarik', Icon: Download }, { label: 'Riwayat', Icon: History }].map(({ label, Icon }) => (
+          <View key={label} accessible accessibilityRole="button" style={styles.actionItem}>
+            <View style={styles.actionIcon}><Icon size={20} color={colors.onPrimary} /></View>
+            <Text style={[styles.actionLabel, { color: foreground }]}>{label}</Text>
           </View>
         ))}
         <Pressable accessibilityRole="button" style={styles.actionItem} onPress={onPesanan}>
           <View style={styles.actionIcon}>
-            <Package size={18} color={foreground} />
+            <Package size={20} color={foreground} />
           </View>
           <Text style={[styles.actionLabel, { color: foreground }]}>Pesanan</Text>
         </Pressable>
@@ -53,19 +53,19 @@ export function SaldoTokoCard({ balance, onPesanan, nativeLayout = false }: Prop
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.primaryContainer, borderRadius: radius.xl, padding: spacing.stackLg,marginBottom:20 },
-  nativeCard: { backgroundColor: tenantColors.hero, padding: 16, marginBottom: 0, elevation: 2 },
-  nativeLabel: { ...typography.labelMd, color: tenantColors.heroTextMuted },
-  visibility: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  card: { backgroundColor: '#FF5E00', borderRadius: radius.xl, padding: spacing.stackLg, marginBottom: 20 },
+  nativeCard: { backgroundColor: '#FF5E00', padding: 18, marginBottom: 0, elevation: 4 },
+  nativeLabel: { ...typography.labelSm, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.8 },
+  visibility: { width: 40, height: 40, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   largeAmount: { fontSize: 32 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontFamily: typography.labelMd.fontFamily, fontSize: 12, fontWeight: '600', color: colors.onPrimary },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: spacing.stackLg },
-  amount: { flex: 1, fontFamily: typography.headlineXl.fontFamily, fontSize: 28, fontWeight: '700', color: colors.onPrimary },
+  label: { fontFamily: typography.labelSm.fontFamily, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.85)' },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, marginBottom: spacing.stackLg },
+  amount: { flex: 1, fontFamily: typography.headlineXl.fontFamily, fontSize: 30, fontWeight: '800', color: colors.onPrimary },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-around' },
   actionItem: { flex: 1, minHeight: 48, alignItems: 'center', gap: 6 },
   actionIcon: {
-    width: 44, height: 44, borderRadius: radius.full,
+    width: 48, height: 48, borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center', justifyContent: 'center',
   },

@@ -13,19 +13,28 @@ export type ServiceWithPhotos = { photos?: ServicePhotoLike[] };
 export const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api\/v1\/?$/, '') + '/storage/';
 
 export function getStoragePath(photo: ServicePhotoLike): string {
-  const source = photo.url || photo.full_url || '';
+  const source = photo.url?.trim() || photo.full_url?.trim() || '';
   const storageMarker = '/storage/';
   const storageIndex = source.indexOf(storageMarker);
   const path = storageIndex >= 0
     ? source.slice(storageIndex + storageMarker.length)
     : source.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '');
 
-  return path.split(/[?#]/, 1)[0].replace(/^\/+/, '');
+  return path.split(/[?#]/, 1)[0].replace(/^\/+/, '').replace(/^storage\//, '');
 }
 
 export function getPhotoUrl(photo: ServicePhotoLike): string {
+  const source = photo.url?.trim() || photo.full_url?.trim() || '';
+  if (/^https?:\/\//i.test(source) && !source.includes('/storage/')) return source;
   const path = getStoragePath(photo);
   return path ? `${STORAGE_BASE_URL}${path}` : '';
+}
+
+export function getServicePhotoApiUrl(uri: string | null): string | null {
+  if (!uri?.startsWith(STORAGE_BASE_URL)) return null;
+  const path = uri.slice(STORAGE_BASE_URL.length);
+  const match = /^services\/([a-z\d_-]+\.(?:jpe?g|png|webp))$/i.exec(path);
+  return match ? `${API_BASE_URL}/service-photos/${match[1]}` : null;
 }
 
 export function getPrimaryPhotoUrl(item: ServiceWithPhotos): string | null {

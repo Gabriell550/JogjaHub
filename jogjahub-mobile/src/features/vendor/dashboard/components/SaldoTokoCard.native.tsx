@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { Eye, EyeOff, ArrowDownToLine, History, Package } from 'lucide-react-native';
+import { Eye, EyeOff, ArrowDown, Clock, Package } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, spacing, typography } from '../../../../constants/theme';
-import { tenantColors, tenantLayout } from '../../../../constants/theme/tenant';
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { colors, radius, typography } from '../../../../constants/theme';
+import { tenantLayout } from '../../../../constants/theme/tenant';
 import { TenantPressable } from '../../components/TenantPressable';
 
 type Props = {
   balance: number;
+  nativeLayout?: boolean;
   onTarik?: () => void;
   onRiwayat?: () => void;
   onPesanan?: () => void;
@@ -21,21 +23,39 @@ export function SaldoTokoCard({ balance, onTarik, onRiwayat, onPesanan }: Props)
   const { left, right } = useSafeAreaInsets();
   const compact = width - left - right < tenantLayout.narrowWidth;
   const VisibilityIcon = hidden ? EyeOff : Eye;
+  const gradientId = `saldo-bg-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
   const actions = [
-    { label: 'Tarik', Icon: ArrowDownToLine, onPress: onTarik },
-    { label: 'Riwayat', Icon: History, onPress: onRiwayat },
+    { label: 'Tarik', Icon: ArrowDown, onPress: onTarik },
+    { label: 'Riwayat', Icon: Clock, onPress: onRiwayat },
     { label: 'Pesanan', Icon: Package, onPress: onPesanan },
   ];
 
   return (
     <View style={styles.shadow}>
       <View style={styles.card}>
+        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#E65100" />
+              <Stop offset="50%" stopColor="#F4511E" />
+              <Stop offset="100%" stopColor="#BF360C" />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradientId})`} />
+          <Circle cx="92%" cy="10%" r="88" stroke="rgba(255,255,255,0.10)" strokeWidth="18" fill="none" />
+          <Circle cx="94%" cy="95%" r="118" stroke="rgba(255,255,255,0.07)" strokeWidth="24" fill="none" />
+        </Svg>
+
         <View style={styles.summary}>
-          <Text accessibilityRole="header" style={styles.label}>Estimasi Pendapatan</Text>
-          <Text style={styles.sample}>Data contoh</Text>
+          <Text accessibilityRole="header" style={styles.label}>ESTIMASI PENDAPATAN</Text>
         </View>
+
         <View style={styles.amountRow}>
-          <Text accessibilityLabel={hidden ? hiddenLabel : undefined} style={[styles.amount, compact && styles.compactAmount]}>
+          <Text
+            accessibilityLabel={hidden ? hiddenLabel : undefined}
+            style={[styles.amount, compact && styles.compactAmount]}
+          >
             {hidden ? '••••••••' : `Rp${balance.toLocaleString('id-ID')}`}
           </Text>
           <TenantPressable
@@ -48,25 +68,28 @@ export function SaldoTokoCard({ balance, onTarik, onRiwayat, onPesanan }: Props)
             style={styles.eye}
             onDark
           >
-            <View aria-hidden><VisibilityIcon size={20} color={colors.onPrimary} /></View>
+            <View aria-hidden>
+              <VisibilityIcon size={20} color="rgba(254, 215, 170, 0.9)" />
+            </View>
           </TenantPressable>
         </View>
+
+        <View style={styles.divider} />
+
         <View style={styles.actions}>
           {actions.map(({ label, Icon, onPress }) => (
             <TenantPressable
               key={label}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !onPress }}
               accessibilityLabel={label}
-              disabled={!onPress}
               onPress={onPress}
               onDark
               style={styles.action}
             >
-              <View aria-hidden style={[styles.actionIcon, onPress && styles.activeIcon]}>
-                <Icon size={20} color={onPress ? colors.onPrimary : colors.primaryFixed} />
+              <View aria-hidden style={styles.actionIcon}>
+                <Icon size={20} color={colors.onPrimary} strokeWidth={2.2} />
               </View>
-              <Text style={[styles.actionLabel, !onPress && styles.sample]}>{label}</Text>
+              <Text style={styles.actionLabel}>{label}</Text>
             </TenantPressable>
           ))}
         </View>
@@ -77,26 +100,89 @@ export function SaldoTokoCard({ balance, onTarik, onRiwayat, onPesanan }: Props)
 
 const styles = StyleSheet.create({
   shadow: {
-    borderRadius: radius.xl, backgroundColor: colors.primary, elevation: 2,
-    shadowColor: colors.onSurface, shadowOpacity: 0.14, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4,
+    borderRadius: 28,
+    backgroundColor: '#E65100',
+    elevation: 8,
+    shadowColor: '#C2410C',
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
   },
   card: {
-    backgroundColor: colors.primary, borderRadius: radius.xl, overflow: 'hidden',
-    padding: spacing.stackMd, gap: 8,
+    borderRadius: 28,
+    overflow: 'hidden',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
-  summary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  label: { ...typography.labelMd, color: colors.onPrimary, flexShrink: 1 },
-  sample: { ...typography.bodySm, color: colors.primaryFixed, flexShrink: 1 },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  amount: { ...typography.headlineXl, color: colors.onPrimary, flexShrink: 1 },
-  compactAmount: { fontSize: 28, lineHeight: 36 },
-  eye: { alignItems: 'center' },
-  actions: { flexDirection: 'row', gap: 8 },
-  action: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', gap: 4 },
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  label: {
+    fontFamily: typography.labelSm.fontFamily,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    color: 'rgba(255, 237, 213, 0.92)',
+    textTransform: 'uppercase',
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  amount: {
+    fontFamily: typography.headlineXl.fontFamily,
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.onPrimary,
+    letterSpacing: -0.5,
+  },
+  compactAmount: {
+    fontSize: 28,
+    lineHeight: 34,
+  },
+  eye: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  action: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   actionIcon: {
-    width: 44, height: 44, borderRadius: radius.full, backgroundColor: tenantColors.translucentWhite,
-    alignItems: 'center', justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeIcon: { backgroundColor: tenantColors.heroAction },
-  actionLabel: { ...typography.labelMd, color: colors.onPrimary, textAlign: 'center' },
+  actionLabel: {
+    fontFamily: typography.labelMd.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.onPrimary,
+    textAlign: 'center',
+  },
 });

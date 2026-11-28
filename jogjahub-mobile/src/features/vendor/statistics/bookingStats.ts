@@ -5,6 +5,11 @@ export type PeriodKey = 'today' | 'week' | 'month' | 'year';
 const hour = 3_600_000;
 const day = 24 * hour;
 const wibOffset = 7 * hour;
+const dateLabel = new Intl.DateTimeFormat('id-ID', { timeZone: 'UTC', dateStyle: 'full' });
+const rangeDateLabel = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric',
+});
+const monthLabel = new Intl.DateTimeFormat('id-ID', { timeZone: 'UTC', month: 'long', year: 'numeric' });
 
 export function getBookingStats(bookings: BookingRecord[], period: PeriodKey, now = Date.now()) {
   // Use UTC date arithmetic after shifting timestamps into WIB.
@@ -14,6 +19,14 @@ export function getBookingStats(bookings: BookingRecord[], period: PeriodKey, no
   const date = local.getUTCDate();
   const today = Date.UTC(year, month, date);
   const monday = today - (local.getUTCDay() + 6) % 7 * day;
+  const weekYear = new Date(monday + 3 * day).getUTCFullYear();
+  const weekNumber = Math.floor((monday + 3 * day - Date.UTC(weekYear, 0, 1)) / (7 * day)) + 1;
+  const periodLabels: Record<PeriodKey, string> = {
+    today: dateLabel.format(today),
+    week: `Minggu ke-${weekNumber} · ${rangeDateLabel.format(monday)} – ${rangeDateLabel.format(monday + 6 * day)}`,
+    month: monthLabel.format(today),
+    year: `Tahun ${year}`,
+  };
   const monthStart = Date.UTC(year, month, 1);
   const ranges = {
     today: { labels: ['00–06', '06–12', '12–18', '18–24'], starts: [0, 6, 12, 18, 24].map(h => today + h * hour), previous: today - day },
@@ -49,5 +62,5 @@ export function getBookingStats(bookings: BookingRecord[], period: PeriodKey, no
       previousPaidCount++;
     }
   }
-  return { labels, revenue, orders, previousRevenue, previousOrders, previousPaidCount, paidCount, paidCounts };
+  return { periodLabel: periodLabels[period], labels, revenue, orders, previousRevenue, previousOrders, previousPaidCount, paidCount, paidCounts };
 }
